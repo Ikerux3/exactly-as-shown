@@ -231,8 +231,8 @@ export function Ch2Kitchen() {
         return (
           <div key={i} className="absolute" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, zIndex: isOpen ? 5 : 1 }}>
             {!isOpen ? (
-              <button aria-label="Open the cupboard" className="block w-full" onClick={toggle}>
-                <Cupboard kind={u.kind} open={false} style={{ width: "100%", display: "block" }} />
+              <button aria-label="Open the cupboard" className="block w-full" style={{ aspectRatio: aspect, touchAction: "manipulation" }} onClick={toggle}>
+                <Cupboard kind={u.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
               </button>
             ) : (
               <div className="relative w-full" style={{ aspectRatio: aspect }}>
