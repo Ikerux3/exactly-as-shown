@@ -824,7 +824,7 @@ function PajamaCh5() {
       progress={allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"}
     >
       {/* a torn scrap taped at the top: the instruction and your colour */}
-      <div className="pointer-events-none absolute left-[8%] right-[8%] top-[3%] z-20 -rotate-1">
+      <div className="pointer-events-none absolute left-[8%] right-[8%] top-[8%] z-20 -rotate-1">
         <div className="paper torn relative px-3 py-1.5 text-center">
           <span className="absolute -top-2 left-1/2 h-4 w-14 -translate-x-1/2 rotate-2" style={{ background: "var(--c-" + s.favColor + ")", opacity: 0.85 }} />
           <p className="font-hand text-[clamp(13px,4cqw,17px)] leading-tight" aria-live="polite">{message}</p>

@@ -935,7 +935,7 @@ export function Ch2Dining() {
         }}
       >
         {/* view tabs */}
-        <div className="absolute inset-x-0 top-[2%] z-30 flex justify-center gap-2">
+        <div className="absolute inset-x-0 top-[36%] z-30 flex justify-center gap-3">
           {(["tray", "table"] as const).map((v) => (
             <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`wall-arrow relative px-3 py-1 font-crayon text-xs ${view === v ? "" : "opacity-60"}`} style={{ position: "relative" }}>
               {v === "tray" ? "Tray" : "Table"}
@@ -966,7 +966,7 @@ export function Ch2Dining() {
                 ))}
               </div>
             </div>
-            <p className="absolute inset-x-0 top-[88%] text-center font-hand text-xs text-paper/70">swipe or tap Table to look down at it</p>
+            <p className="absolute inset-x-0 top-[41%] text-center font-hand text-xs text-paper/80 drop-shadow">swipe or tap Table to look down at it</p>
           </div>
         ) : (
           <div className="wall-in-r absolute inset-0">
