@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Stage, illuminated } from "../Stage";
+import { OnWall, Stage, illuminated } from "../Stage";
 import { BG, TOY_IMG, PROP } from "../assets";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
@@ -183,6 +183,7 @@ export function Ch1() {
   return (
     <Stage
       bg={BG.bgPlayroom}
+      spread
       bgPos="15% 50%"
       chapter={1}
       chapterCard
@@ -220,6 +221,7 @@ export function Ch1() {
         )
       }
     >
+      <OnWall n={0}>
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
 
       {/* Clearly visible toy teleport: previously boxed toys land back on the floor. */}
@@ -235,6 +237,8 @@ export function Ch1() {
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
 
+      </OnWall>
+      <OnWall n={3}>
       {/* Toy 2 — under the sofa cushion */}
       {cushionMoved && <Toy t={r2} x={24} y={43} w={14} />}
       <button
@@ -275,6 +279,7 @@ export function Ch1() {
       {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
       </OnWall>
 
+      <OnWall n={3}>
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
         <button
