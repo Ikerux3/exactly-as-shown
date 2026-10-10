@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
+import { pajamaWall } from "../roomLayout";
 import { BG, MUSICBOX, toyImageFor } from "../assets";
 import { TOY_LABEL, useGame } from "../store";
 import {
@@ -802,7 +803,7 @@ function PajamaCh5() {
             {pile.filter((garment) => {
               const kind = PAJAMA_PIECES.findIndex((item) => item.kind === garment.kind);
               const color = PAJAMA_COLORS.indexOf(garment.color);
-              return (kind + color) % 4 === wall;
+              return pajamaWall(kind, color) === wall;
             }).map((garment) => {
             const used = garment.color === s.favColor && worn.includes(garment.kind);
             const away = inBasket.includes(garment.id);
