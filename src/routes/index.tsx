@@ -7,6 +7,7 @@ import { Ending, Final, Intro, Title } from "@/game/scenes/Opening";
 import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
 import { HOLD_MS, TransitionVeil, useChapterJump } from "@/game/fx";
+import { useDialogueVoice } from "@/game/DialogueVoice";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +27,7 @@ function Game() {
   const screen = useGame((s) => s.screen);
   const phaseKey = useGame((s) => s.phaseKey);
   useSubtitles();
+  useDialogueVoice();
   useEffect(() => {
     restoreSettings();
     preloadArt();

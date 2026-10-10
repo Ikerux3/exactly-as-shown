@@ -30,3 +30,9 @@ The game is fully playable offline. To let The Guest interpret free-text answers
 Never expose the key through a `VITE_*` variable. If Gemini is missing, slow, or unavailable, the scene automatically uses validated local rules.
 
 The adaptive director can only select validated difficulty curves, puzzle variants, hiding places, blackout pressure and dialogue. It never generates executable game rules, so checkpoints and offline play remain deterministic.
+
+## Optional ElevenLabs voices
+
+Character dialogue can use ElevenLabs while keeping credentials on the server. Configure `ELEVENLABS_API_KEY` and the three voice IDs shown in `.env.example`. `ELEVENLABS_MODEL` is optional and defaults to the low-latency `eleven_flash_v2_5` model.
+
+When ElevenLabs is missing, slow, or unavailable, the game automatically uses the browser's English text-to-speech voices. If device speech is unavailable too, dialogue continues through the always-visible subtitles. The existing Sound control mutes music, effects, and speech together.
