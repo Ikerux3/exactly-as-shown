@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
+import { KITCHEN_WALLS, TOY_ESCAPE_SPOTS } from "../roomLayout";
 import { BG, PROP, toyImageFor } from "../assets";
 import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
@@ -243,14 +244,7 @@ export function Ch1() {
       {/* Returned toys scatter to distinct walls and safe hitboxes, never a pile on the box. */}
       {ejected.map((toy) => {
         const slot = s.toyOrder.indexOf(toy);
-        const locations = [
-          { wall: 0, x: 26, y: 59 },
-          { wall: 1, x: 27, y: 73 },
-          { wall: 2, x: 68, y: 61 },
-          { wall: 3, x: 62, y: 68 },
-          { wall: 0, x: 80, y: 64 },
-        ];
-        const dest = locations[Math.max(0, slot)]!;
+        const dest = TOY_ESCAPE_SPOTS[Math.max(0, slot)]!;
         return (
           <OnWall key={toy} n={dest.wall}>
             <button type="button" aria-label={`Pick up the escaped ${labelFor(toy)}`}
@@ -447,7 +441,7 @@ export function Ch2Kitchen() {
     { speaker: "narrator", text: "The kitchen. Everything is put away in the cupboards." },
   ]);
   const remaining = ITEMS.filter((i) => !s.ch2Items.includes(i));
-  const cupboardWall = [0, 1, 2, 3, 0] as const;
+  const cupboardWall = KITCHEN_WALLS;
   const take = (it: string) => {
     if (!s.lightsOn || !s.interactive) return; // cannot collect dishes in darkness
     if (it.startsWith("decoy")) {
