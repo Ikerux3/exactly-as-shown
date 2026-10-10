@@ -766,8 +766,23 @@ export function Ch2Dining() {
         </>
       }
     >
+      {/* Seat colors match the player's answer and the dress from Mom's introduction. */}
+      <div className="pointer-events-none absolute left-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
+        style={{ backgroundColor: childLeft ? col.child : col.mother }} />
+      <div className="pointer-events-none absolute right-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
+        style={{ backgroundColor: childLeft ? col.mother : col.child }} />
       <Mat side="L" x={25} />
       <Mat side="R" x={75} />
+      {/* The Guest's plate, fork and glass appear one per blackout, removable in light. */}
+      {intruders.map((id) => (
+        <button key={id} type="button" disabled={!s.lightsOn || !s.interactive}
+          aria-label={"Remove corrupt " + (["plate", "fork", "glass"][id] ?? "utensil")}
+          onClick={() => { sfx("chime"); setIntruders((items) => items.filter((i) => i !== id)); }}
+          className="absolute z-20 grid h-[8%] w-[13%] place-items-center rounded-lg border-2 border-crimson bg-void text-2xl text-paper disabled:opacity-50"
+          style={{ left: (34 + id * 15) + "%", top: "33%" }}>
+          {["🍽️", "🍴", "🥛"][id]}
+        </button>
+      ))}
       {third && (
         <div className="absolute left-1/2 top-[52%] w-[22%] -translate-x-1/2 animate-float-up text-center">
           <Plate color={col.child} style={{ width: "100%" }} />
