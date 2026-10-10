@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useGame, type Line } from "./store";
-import { cancelBrowserSpeech, lineDisplayMs, speakWithBrowser, voiceRoleForSpeaker } from "./voice";
-import { synthesizeDialogueVoice } from "./voice.functions";
+import { cancelBrowserSpeech, lineDisplayMs, voiceRoleForSpeaker } from "./voice";
+import { blip } from "./audio";
 
 /** Sends a question rendered inside another UI panel through the same global voice queue. */
 export function useSpokenPrompt(
@@ -72,47 +72,20 @@ export function useDialogueVoice() {
         if (active && useGame.getState().line === line) useGame.getState().nextLine();
       }, remaining);
     };
-    const browserFallback = () => {
+    // Undertale-style blips: one pulse per letter, then the line holds for reading time.
+    const chars = [...text];
+    let i = 0;
+    const step = role === "guest" ? 62 : 42;
+    const tick = () => {
       if (!active || finished) return;
-      stopRemote();
-      const started = speakWithBrowser(text, undefined, { role, onEnd: finishLine });
-      if (!started) finishLine();
+      while (i < chars.length && !/[\p{L}\p{N}]/u.test(chars[i]!)) i++;
+      if (i >= chars.length) return finishLine();
+      blip(role);
+      i += role === "guest" ? 2 : 1;
+      const pause = /[.,!?…]/.test(chars[i - 1] ?? "") ? 180 : 0;
+      completionTimer = window.setTimeout(tick, step + pause);
     };
-
-    void synthesizeDialogueVoice({ data: { role, text } })
-      .then((result) => {
-        if (!active || finished) return;
-        if (!result.available) {
-          console.warn(
-            `[voice] ElevenLabs ${role} unavailable (${result.reason}); using browser fallback`,
-          );
-          browserFallback();
-          return;
-        }
-        if (typeof Audio === "undefined") {
-          console.warn(`[voice] Audio playback unavailable; using browser fallback for ${role}`);
-          browserFallback();
-          return;
-        }
-
-        const binary = atob(result.audioBase64);
-        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-        console.info(`[voice] ElevenLabs ${role} audio ready (${bytes.byteLength} bytes)`);
-        const url = URL.createObjectURL(new Blob([bytes], { type: result.mimeType }));
-        const audio = new Audio(url);
-        if (role === "mimic") audio.playbackRate = 0.96;
-        audio.onended = finishLine;
-        audio.onerror = browserFallback;
-        remoteAudio.current = { audio, url };
-        void audio.play().catch(browserFallback);
-      })
-      .catch((error) => {
-        console.warn(
-          `[voice] ElevenLabs ${role} unavailable; using browser fallback:`,
-          error instanceof Error ? error.message : "Unknown error",
-        );
-        browserFallback();
-      });
+    tick();
 
     return () => {
       active = false;

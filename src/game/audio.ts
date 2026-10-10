@@ -228,3 +228,31 @@ export function sfx(kind: Sfx, n = 0) {
     }
   }
 }
+
+/** Undertale-style talk blip: one tiny voiced pulse per letter, timbre per character. */
+const BLIP: Record<string, { f: number; type: OscillatorType; dur: number; vol: number; jitter: number }> = {
+  mother: { f: 520, type: "triangle", dur: 0.05, vol: 0.09, jitter: 0.06 },
+  guest: { f: 96, type: "sawtooth", dur: 0.075, vol: 0.11, jitter: 0.22 },
+  mimic: { f: 410, type: "square", dur: 0.045, vol: 0.05, jitter: 0.35 },
+  child: { f: 760, type: "square", dur: 0.035, vol: 0.05, jitter: 0.05 },
+};
+export function blip(role: string) {
+  const c = ensure();
+  if (!c || !master) return;
+  const v = BLIP[role] ?? BLIP["child"]!;
+  const t = c.currentTime + 0.005;
+  const o = c.createOscillator();
+  const g = c.createGain();
+  const f = c.createBiquadFilter();
+  o.type = v.type;
+  o.frequency.setValueAtTime(v.f * (1 + (Math.random() * 2 - 1) * v.jitter), t);
+  if (role === "guest") o.frequency.exponentialRampToValueAtTime(v.f * 0.7, t + v.dur);
+  f.type = "lowpass";
+  f.frequency.value = role === "guest" ? 900 : 3200;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(v.vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + v.dur);
+  o.connect(f).connect(g).connect(master);
+  o.start(t);
+  o.stop(t + v.dur + 0.02);
+}
