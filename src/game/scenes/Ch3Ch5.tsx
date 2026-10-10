@@ -191,6 +191,7 @@ export function Ch3() {
   return (
     <Stage
       bg={BG.bgBedroom}
+      spread
       bgPos="55% 50%"
       chapter={3}
       chapterCard
@@ -199,15 +200,18 @@ export function Ch3() {
       clues={
         show >= 0 &&
         seq[show] && (
+          <OnWall n={0}>
           <div
             key={`${round}-${show}`}
             className="glow-clue absolute left-[45%] top-[18%] -translate-x-1/2 animate-float-up"
           >
             <Symbol s={seq[show]} size={96} color={SYM_COLOR[seq[show]]} />
           </div>
+          </OnWall>
         )
       }
     >
+      <OnWall n={0}>
       {/* The icon on the box teaches how to reveal the melody. */}
       <div
         className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper"
@@ -215,14 +219,6 @@ export function Ch3() {
       >
         💡 ↓ ♪
       </div>
-      {!s.lightsOn && round >= 2 && !done && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-[7%] top-[11%] h-[22%] w-[18%] overflow-hidden rounded-t-2xl border border-paper/30 bg-void/80"
-        >
-          <div className="absolute left-[35%] top-[21%] h-[70%] w-[34%] rounded-full bg-paper/25 blur-sm" />
-        </div>
-      )}
       <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
         for {s.favToy ?? "your toy"}
         <br />
@@ -276,6 +272,22 @@ export function Ch3() {
           </p>
         </div>
       )}
+      </OnWall>
+      <OnWall n={1}>
+        <button type="button" className="absolute left-[20%] top-[42%] w-[60%] rounded-xl border-2 border-paper/40 bg-void/70 p-5 text-center font-hand text-paper active:scale-[0.98] touch-manipulation" onClick={() => { s.inspect("scratched wall"); s.say({ speaker: "narrator", text: "Scratched into the wall: LISTEN IN THE DARK. PLAY IN THE LIGHT.", ms: 2500 }); }}>
+          A music note scratched into the wall · Examine
+        </button>
+      </OnWall>
+      <OnWall n={2}>
+        <button type="button" className="absolute left-[23%] top-[26%] flex min-h-20 w-[54%] items-center justify-center rounded-t-2xl border-2 border-paper/40 bg-void/75 p-3 text-center font-hand text-paper touch-manipulation" onClick={() => { s.inspect("bedroom window"); s.say({ speaker: "narrator", text: "The glass is cold. Something is standing outside.", ms: 2000 }); }}>
+          {!s.lightsOn && round >= 2 && !done ? "A human-shaped silhouette fills the window." : "The dark window"}
+        </button>
+      </OnWall>
+      <OnWall n={3}>
+        <button type="button" className="absolute left-[17%] top-[55%] w-[66%] rounded-xl border-2 border-paper/40 bg-void/70 p-4 text-center font-hand text-paper touch-manipulation" onClick={() => { s.inspect("music box inscription"); s.say({ speaker: "narrator", text: "One wrong note starts only that verse again. Remember the whole melody.", ms: 2600 }); }}>
+          A torn page of music · Examine
+        </button>
+      </OnWall>
     </Stage>
   );
 }
