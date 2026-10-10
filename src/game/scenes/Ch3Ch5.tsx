@@ -457,6 +457,7 @@ export function Ch4() {
   return (
     <Stage
       bg={BG.bgMother}
+      spread
       bgPos="75% 50%"
       chapter={4}
       chapterCard
@@ -468,8 +469,8 @@ export function Ch4() {
         !solved && (
           <>
             {puzzle.answer.map((symbol, index) => (
+              <OnWall key={symbol} n={index === 0 ? 1 : index === 1 ? 3 : 2}>
               <div
-                key={symbol}
                 className="glow-clue absolute"
                 style={{
                   left: `${puzzle.positions[index]![0]}%`,
@@ -478,6 +479,7 @@ export function Ch4() {
               >
                 <Symbol s={symbol} size={44} color="var(--glow)" />
               </div>
+              </OnWall>
             ))}
           </>
         )
@@ -506,6 +508,7 @@ export function Ch4() {
         </>
       }
     >
+      <OnWall n={0}>
       {/* wardrobe opening */}
       <div
         className="pointer-events-none absolute right-0 top-[17%] h-[78%] bg-void transition-all duration-[3000ms]"
@@ -519,8 +522,10 @@ export function Ch4() {
         <GuestVoid style={{ right: "-2%", top: "18%", height: "70%" }} intensity={0.9} />
       )}
 
+      </OnWall>
+      <OnWall n={1}>
       <button
-        className="absolute left-[18%] top-[9%] w-[14%]"
+        className="absolute left-[18%] top-[9%] w-[20%] touch-manipulation active:scale-[0.97]"
         aria-label="The photograph"
         onClick={() =>
           inspectItem(
@@ -532,15 +537,19 @@ export function Ch4() {
       >
         <PhotoFrame wrong style={{ position: "static", width: "100%" }} />
       </button>
+      </OnWall>
+      <OnWall n={2}>
       <button
-        className="absolute left-[54%] top-[14%] w-[13%]"
+        className="absolute left-[54%] top-[14%] w-[19%] touch-manipulation active:scale-[0.97]"
         aria-label="The clock"
         onClick={() => inspectItem("clock", "The clock ticks. It is not counting forwards.", 2600)}
       >
         <Clock style={{ position: "static", width: "100%" }} />
       </button>
+      </OnWall>
+      <OnWall n={3}>
       <button
-        className="absolute left-[20%] top-[60%] w-[15%]"
+        className="absolute left-[20%] top-[60%] w-[21%] touch-manipulation active:scale-[0.97]"
         aria-label="The small box"
         onClick={() =>
           inspectItem(
@@ -552,6 +561,8 @@ export function Ch4() {
       >
         <TrinketBox style={{ position: "static", width: "100%" }} />
       </button>
+      </OnWall>
+      <OnWall n={0}>
       <button
         className="absolute left-[56%] top-[62%] w-[16%] rotate-[-8deg]"
         aria-label="A note on the rug"
@@ -642,6 +653,7 @@ export function Ch4() {
           Unlock the door and run
         </button>
       )}
+      </OnWall>
     </Stage>
   );
 }
