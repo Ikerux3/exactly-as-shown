@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Fraunces", Georgia, serif;
-  --font-hand: "Patrick Hand", "Comic Sans MS", cursive;
+  --font-display: "Special Elite", "Courier New", monospace;
+  --font-hand: "Special Elite", "Courier New", monospace;
+  --font-crayon: "Caveat Brush", cursive;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
