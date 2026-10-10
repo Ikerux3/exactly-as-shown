@@ -108,7 +108,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       top={<ChapterBar chapter={chapter} progress={progress} />}
       bottom={
         <DialogueBar
-          right={switchEnabled ? <LightSwitch on={s.lightsOn} onToggle={toggle} disabled={!s.interactive || s.scare} hint={switchHint && !s.line} /> : null}
+          right={switchEnabled ? <LightSwitch on={s.lightsOn} onToggle={toggle} disabled={!s.interactive || s.scare || s.forcedBlackout} hint={switchHint && !s.line} /> : null}
         />
       }
       overlay={
