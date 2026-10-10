@@ -82,7 +82,7 @@ export function Corridor({ to, onDone }: { to: Screen; onDone: () => void }) {
       window.setTimeout(() => setPhase("through"), 40 + WALK_MS + ARRIVE_MS),
       window.setTimeout(onDone, 40 + WALK_MS + ARRIVE_MS + THROUGH_MS),
     ];
-    if (ajar) ts.push(window.setTimeout(() => sfx("whisper"), 2600));
+    if (ajar) ts.push(window.setTimeout(() => sfx("whisper"), 1400));
     const steps = window.setInterval(() => sfx("step"), 470);
     ts.push(window.setTimeout(() => window.clearInterval(steps), 40 + WALK_MS + 700));
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDone(); };
