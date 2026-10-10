@@ -62,7 +62,7 @@ export function Ch3() {
 
   useSceneIntro(
     "ch3",
-    "Stop the music box. Watch the pattern in the dark, play it back in the light.",
+    "Watch the pattern in the dark. Repeat it in the light.",
     [
       { speaker: "narrator", text: "Your music box is playing by itself on the nightstand." },
       ...chooseInterventions(s.facts, 3)

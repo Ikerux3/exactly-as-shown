@@ -190,7 +190,7 @@
     scrollbar-width: none;
     padding: 0.55rem 0.9rem;
     text-align: left;
-    font-size: clamp(13px, 3.9cqw, 15.5px);
+    font-size: clamp(12.5px, 3.7cqw, 15px);
     line-height: 1.32;
     border: 1px solid oklch(0.72 0.11 80 / 0.25);
   }
