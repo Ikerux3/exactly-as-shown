@@ -24,7 +24,8 @@ import { interpretFavoriteToy } from "../ai/toy";
 import { generateFavoriteToyImage } from "../ai/toy-image";
 import { DialogueBar, Shell } from "../Shell";
 import { useSpokenPrompt } from "../DialogueVoice";
-import { adaptiveQuestion, currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
+import { currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
+import { applyCustomColor, parseColorWord } from "../colors";
 
 const CHAPTER_OF: Partial<Record<Screen, number>> = {
   ch1: 1,
@@ -295,7 +296,6 @@ function MenuPanel({
 
 /* ---------------- INTRO ---------------- */
 
-const COLORS: ColorKey[] = ["rose", "sage", "honey", "turq"];
 
 export function Intro() {
   const s = useGame();
@@ -306,8 +306,10 @@ export function Intro() {
   const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
-  const [questionLoading, setQuestionLoading] = useState(true);
-  const initialQuestionRequested = useRef(false);
+  // Mommy never "thinks": questions appear instantly; the AI only polishes the wording in the background.
+  const [colorInput, setColorInput] = useState("");
+  const stepRef = useRef(step);
+  stepRef.current = step;
   const name = sanitizeName(raw);
   const invalidName = !!raw.trim() && !name;
   const [questionText, setQuestionText] = useState(() => {
@@ -316,48 +318,30 @@ export function Intro() {
       currentQuestionContext(kind, profile?.name ? { name: profile.name } : {}),
     ).text;
   });
-  useSpokenPrompt(questionText, "mother", !questionLoading);
+  useSpokenPrompt(questionText, "mother");
 
-  useEffect(() => {
-    if (initialQuestionRequested.current) return;
-    initialQuestionRequested.current = true;
-    const kind = knownName ? "color" : "name";
-    void adaptiveQuestion(
-      currentQuestionContext(kind, {
-        ...(profile?.name ? { name: profile.name } : {}),
-        previousQuestions: [questionText],
-      }),
-    ).then((next) => {
-      setQuestionText(next.text);
-      setQuestionLoading(false);
-    });
-    // The first question is resolved once, before the player can answer it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const confirmName = async () => {
-    if (!name || questionLoading) return;
-    sfx("tap");
-    setQuestionLoading(true);
-    const next = await adaptiveQuestion(
-      currentQuestionContext("color", { name, previousQuestions: [questionText] }),
-    );
-    setQuestionText(next.text);
-    setStep(1);
-    setQuestionLoading(false);
+  const askNext = (kind: "color" | "toy", nextStep: number, nm: string) => {
+    const ctx = currentQuestionContext(kind, { name: nm, previousQuestions: [questionText] });
+    setQuestionText(offlineAdaptiveQuestion(ctx).text);
+    setStep(nextStep);
   };
 
-  const prepareToyQuestion = async () => {
-    if (questionLoading) return;
+  const confirmName = () => {
+    if (!name) return;
     sfx("tap");
-    setQuestionLoading(true);
-    const next = await adaptiveQuestion(
-      currentQuestionContext("toy", { name, previousQuestions: [questionText] }),
-    );
-    setQuestionText(next.text);
-    setStep(2);
-    setQuestionLoading(false);
+    askNext("color", 1, name);
   };
+
+  const confirmColor = () => {
+    const parsed = parseColorWord(colorInput);
+    if (!parsed) return;
+    sfx("chime");
+    const key: ColorKey = s.favColor;
+    applyCustomColor(key, parsed.css);
+    s.set({ favColorCss: parsed.css, favColorWord: parsed.word });
+    askNext("toy", 2, name);
+  };
+  void interpreting;
 
   const startGame = async () => {
     const answer = toyInput.trim();
@@ -441,9 +425,9 @@ export function Intro() {
             <button
               type="submit"
               className="stitch-btn sage mt-4 w-full"
-              disabled={!name || questionLoading}
+              disabled={!name}
             >
-              {questionLoading ? "Mommy is thinking…" : "That's me"}
+              That's me
             </button>
           </form>
         )}
@@ -452,42 +436,45 @@ export function Intro() {
             <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
               “{questionText}”
             </p>
-            <div
-              className="mt-4 grid grid-cols-4 gap-3"
-              role="radiogroup"
-              aria-label="Favourite colour"
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                confirmColor();
+              }}
             >
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={s.favColor === c}
-                  onClick={() => {
-                    sfx("tap");
-                    s.set({ favColor: c });
-                  }}
-                  aria-label={COLOR_LABEL[c]}
-                  className={`aspect-square rounded-full shadow-md transition ${s.favColor === c ? "scale-105 ring-4 ring-ink ring-offset-2 ring-offset-paper" : ""}`}
+              <label className="block text-xs uppercase tracking-widest opacity-60" htmlFor="fav-color">
+                Favourite colour
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  id="fav-color"
+                  autoFocus
+                  maxLength={24}
+                  value={colorInput}
+                  onChange={(e) => setColorInput(e.target.value)}
+                  placeholder="Red, purple, rojo…"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  className="min-w-0 flex-1 rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
+                />
+                <span
+                  aria-hidden
+                  className="h-11 w-11 shrink-0 rotate-[-6deg] rounded-full shadow-md transition-colors"
                   style={{
-                    background: `var(--c-${c})`,
-                    outline: "2px dashed oklch(1 0 0 / .6)",
+                    background: parseColorWord(colorInput)?.css ?? "transparent",
+                    outline: "2px dashed var(--ink)",
                     outlineOffset: -5,
                   }}
                 />
-              ))}
-            </div>
-            <p className="mt-3 text-sm opacity-70">
-              <span className="font-display">{COLOR_LABEL[s.favColor]}</span> it is. She buttons her{" "}
-              {MOTHER_LABEL[s.motherColor]} coat.
-            </p>
-            <button
-              className="stitch-btn mt-4 w-full"
-              onClick={() => void prepareToyQuestion()}
-              disabled={questionLoading}
-            >
-              {questionLoading ? "Mommy is thinking…" : "One more thing…"}
-            </button>
+              </div>
+              {colorInput.trim() && !parseColorWord(colorInput) && (
+                <p className="text-xs opacity-70">Mommy doesn't know that colour. Try another word.</p>
+              )}
+              <button type="submit" className="stitch-btn w-full" disabled={!parseColorWord(colorInput)}>
+                One more thing…
+              </button>
+            </form>
           </>
         )}
         {step === 2 && (
