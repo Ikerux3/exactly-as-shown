@@ -666,7 +666,7 @@ export function Ch2Dining() {
   };
 
   useEffect(() => {
-    if (correct === 6 && intruders.length === 0 && !ended.current) {
+    if (correct === 6 && intruderCount > 0 && intruders.length === 0 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
       window.setTimeout(() => {
@@ -689,7 +689,7 @@ export function Ch2Dining() {
       );
       window.setTimeout(() => useGame.getState().go("ch3"), 13000);
     }
-  }, [correct, intruders.length]);
+  }, [correct, intruderCount, intruders.length]);
 
   const Mat = ({ side, x }: { side: "L" | "R"; x: number }) => {
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
