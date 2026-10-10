@@ -3,6 +3,7 @@ import { useGame } from "./store";
 import { GuestVoid, LightSwitch } from "./Props";
 import { setUnease, sfx } from "./audio";
 import { ChapterCard } from "./kit";
+import { GAMEPLAY_RULES, checkpointScreen } from "./gameplayRules";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
 import { CutoutDefs, SanityFX } from "./fx";
 
@@ -59,10 +60,11 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       if (!st.lightsOn) {
         darkAcc.current += 1;
         st.fact({ darkSeconds: st.facts.darkSeconds + 1 });
-        st.addCordura(3);
+        lightAcc.current = 0;
+        st.addCordura(GAMEPLAY_RULES.darkPerSecond);
       } else {
         lightAcc.current += 1;
-        if (lightAcc.current >= 2) { lightAcc.current = 0; st.addCordura(-1); }
+        if (lightAcc.current >= GAMEPLAY_RULES.litSecondsPerPoint) { lightAcc.current = 0; st.addCordura(-1); }
       }
     }, 1000);
     return () => window.clearInterval(id);
@@ -75,9 +77,9 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       sfx("scare");
       window.setTimeout(() => {
         const st = useGame.getState();
-        const checkpoint = st.screen === "ch2d" ? "ch2k" : st.screen;
+        const checkpoint = checkpointScreen(st.screen);
         st.set({
-          screen: checkpoint, scare: false, forcedBlackout: false, cordura: 50, lightsOn: true,
+          screen: checkpoint, scare: false, forcedBlackout: false, cordura: GAMEPLAY_RULES.retryCordura, lightsOn: true,
           phaseKey: st.phaseKey + 1, scareArmed: true, line: undefined, queue: [],
           interactive: false,
           ...(checkpoint === "ch1" ? { ch1: [] } : {}),
