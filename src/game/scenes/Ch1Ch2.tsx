@@ -442,6 +442,7 @@ export function Ch2Kitchen() {
     { speaker: "narrator", text: "The kitchen. Everything is put away in the cupboards." },
   ]);
   const remaining = ITEMS.filter((i) => !s.ch2Items.includes(i));
+  const cupboardWall = [0, 1, 2, 3, 0] as const;
   const take = (it: string) => {
     if (!s.lightsOn || !s.interactive) return; // cannot collect dishes in darkness
     if (it.startsWith("decoy")) {
@@ -457,22 +458,24 @@ export function Ch2Kitchen() {
   return (
     <Stage
       bg={BG.bgKitchen}
+      spread
       bgPos="50% 50%"
       chapter={2}
       chapterCard
       progress={`Tray ${s.ch2Items.length}/6`}
       clues={UNITS.map((u, i) =>
         u.contents.some((c) => remaining.includes(c as ItemId)) && !open.includes(i) ? (
+          <OnWall key={i} n={cupboardWall[i] ?? 0}>
           <div
-            key={i}
             className="glow-clue absolute rounded-md border-2 border-current"
             style={{
-              left: `${u.x}%`,
+              left: cupboardWall[i] === 0 ? `${u.x}%` : "32%",
               top: `${u.y}%`,
-              width: `${u.w}%`,
+              width: cupboardWall[i] === 0 ? `${u.w}%` : "37%",
               height: u.kind === "door" ? "17.5%" : "9.7%",
             }}
           />
+          </OnWall>
         ) : null,
       )}
     >
@@ -486,6 +489,7 @@ export function Ch2Kitchen() {
       />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
+        const isFront = cupboardWall[i] === 0;
         const toggle = () => {
           sfx("open");
           if (!isOpen) s.inspect(`kitchen ${u.kind} ${i + 1}`);
@@ -493,10 +497,10 @@ export function Ch2Kitchen() {
         };
         const aspect = u.kind === "door" ? "4 / 5" : "12 / 7";
         return (
+          <OnWall key={i} n={cupboardWall[i] ?? 0}>
           <div
-            key={i}
             className="absolute"
-            style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, zIndex: isOpen ? 5 : 1 }}
+            style={{ left: isFront ? `${u.x}%` : "32%", top: `${u.y}%`, width: isFront ? `${u.w}%` : "37%", zIndex: isOpen ? 5 : 1 }}
           >
             {!isOpen ? (
               <button
@@ -577,6 +581,7 @@ export function Ch2Kitchen() {
               </div>
             )}
           </div>
+          </OnWall>
         );
       })}
       {/* Tray */}
