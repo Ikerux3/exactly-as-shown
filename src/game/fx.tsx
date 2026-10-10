@@ -21,26 +21,38 @@ function rand(seed: number) {
 }
 
 export function Ransom({ text, seed = 1, className = "" }: { text: string; seed?: number; className?: string }) {
+  // Letters are grouped per word so a line only ever wraps between words, never mid-word.
+  const words: Array<{ start: number; chars: string[] }> = [];
+  let pos = 0;
+  for (const word of text.split(" ")) {
+    words.push({ start: pos, chars: [...word] });
+    pos += [...word].length + 1;
+  }
   return (
     <span className={`ransom ${className}`} aria-label={text}>
-      {[...text].map((ch, i) => {
-        if (ch === " ") return <span key={i} className="ransom-gap" aria-hidden />;
-        const r = (k: number) => rand(seed * 31 + i * 7 + k);
-        const p = PAPERS[Math.floor(r(1) * PAPERS.length)]!;
-        const rotation = ((r(3) - 0.5) * 14).toFixed(3);
-        const offset = ((r(4) - 0.5) * 0.12).toFixed(3);
-        const size = (0.85 + r(5) * 0.35).toFixed(3);
-        return (
-          <span key={i} aria-hidden className="ransom-l" style={{
-            fontFamily: FONTS[Math.floor(r(2) * FONTS.length)],
-            backgroundColor: p[0], color: p[1],
-            transform: `rotate(${rotation}deg) translateY(${offset}em)`,
-            fontSize: `${size}em`,
-            textTransform: r(6) > 0.5 ? "uppercase" : "lowercase",
-          }}>{ch}</span>
-        );
-      })}
+      {words.map((w, wi) => (
+        <span key={wi} className="ransom-word">
+          {w.chars.map((ch, ci) => <RansomLetter key={ci} ch={ch} i={w.start + ci} seed={seed} />)}
+        </span>
+      ))}
     </span>
+  );
+}
+
+function RansomLetter({ ch, i, seed }: { ch: string; i: number; seed: number }) {
+  const r = (k: number) => rand(seed * 31 + i * 7 + k);
+  const p = PAPERS[Math.floor(r(1) * PAPERS.length)]!;
+  const rotation = ((r(3) - 0.5) * 14).toFixed(3);
+  const offset = ((r(4) - 0.5) * 0.12).toFixed(3);
+  const size = (0.85 + r(5) * 0.35).toFixed(3);
+  return (
+    <span aria-hidden className="ransom-l" style={{
+      fontFamily: FONTS[Math.floor(r(2) * FONTS.length)],
+      backgroundColor: p[0], color: p[1],
+      transform: `rotate(${rotation}deg) translateY(${offset}em)`,
+      fontSize: `${size}em`,
+      textTransform: r(6) > 0.5 ? "uppercase" : "lowercase",
+    }}>{ch}</span>
   );
 }
 

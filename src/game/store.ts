@@ -3,7 +3,7 @@ import type { AdaptiveChapter, AdaptivePlan } from "./ai/contracts";
 import { setMuted as setAudioMuted } from "./audio";
 
 export type Screen =
-  | "title" | "intro" | "ch1" | "ch2k" | "ch2d" | "ch3" | "ch4" | "ch5" | "final" | "ending";
+  | "title" | "intro" | "prologue" | "ch1" | "ch2k" | "ch2d" | "ch3" | "ch4" | "ch5" | "final" | "ending";
 
 export type ColorKey = "rose" | "sage" | "honey" | "turq";
 export type MotherColor = "plum" | "navy" | "mustard";
@@ -48,6 +48,8 @@ type State = {
   favFood?: string | undefined;
   favToy?: string | undefined;
   favToyId?: ToyId | undefined;
+  /** What the Guest says about your favourite toy; spoken at the end of the prologue. */
+  introGuestLine?: string | undefined;
   toyOrder: [ToyId, ToyId, ToyId, ToyId, ToyId]; // role index -> toy
   cordura: number;
   lightsOn: boolean;
@@ -103,6 +105,7 @@ const initial = (): Omit<State, "muted"> => ({
   favFood: undefined,
   favToy: undefined,
   favToyId: undefined,
+  introGuestLine: undefined,
   toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]) as State["toyOrder"],
   cordura: 0,
   lightsOn: true,

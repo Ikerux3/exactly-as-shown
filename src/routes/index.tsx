@@ -6,6 +6,7 @@ import { preloadArt } from "@/game/assets";
 import { Ending, Final, Intro, Title } from "@/game/scenes/Opening";
 import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
+import { Prologue } from "@/game/scenes/Prologue";
 import { HOLD_MS, TransitionVeil, useChapterJump } from "@/game/fx";
 import { useDialogueVoice } from "@/game/DialogueVoice";
 
@@ -41,6 +42,7 @@ function Game() {
     <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {screen === "title" && <Title />}
       {screen === "intro" && <Intro />}
+      {screen === "prologue" && <Prologue />}
       {screen === "ch1" && <Ch1 key={k} />}
       {screen === "ch2k" && <Ch2Kitchen key={k} />}
       {screen === "ch2d" && <Ch2Dining key={k} />}

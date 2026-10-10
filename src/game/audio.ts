@@ -135,11 +135,17 @@ function noise(dur: number, freq: number, vol: number, q = 1) {
   src.start();
 }
 
-export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note", n = 0) {
+export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note" | "step" | "door", n = 0) {
   const c = ensure();
   if (!c) return;
   const t = c.currentTime + 0.01;
   switch (kind) {
+    case "step": noise(0.09, 150 + Math.random() * 40, 0.45, 1.4); break;
+    case "door": {
+      noise(0.45, 110, 1.0, 0.6);
+      window.setTimeout(() => noise(0.05, 2600, 0.35, 6), 140); // the latch
+      break;
+    }
     case "tap": bell(880, t, 0.06, 0.25); break;
     case "note": bell(523.25 * Math.pow(2, [0, 4, 7, 11][n % 4]! / 12), t, 0.2, 1.2); break;
     case "chime": bell(784, t, 0.12); bell(1046, t + 0.12, 0.1); break;
