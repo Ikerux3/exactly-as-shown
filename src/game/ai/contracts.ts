@@ -107,3 +107,26 @@ export type RealtimeDecision = {
   fallbackUsed: boolean;
   provider: "gemini" | "offline";
 };
+
+export const QUESTION_KINDS = ["name", "color", "toy", "food"] as const;
+export type QuestionKind = (typeof QUESTION_KINDS)[number];
+
+export type AdaptiveQuestionContext = {
+  kind: QuestionKind;
+  name?: string;
+  favColor?: string;
+  favToy?: string;
+  previousRuns: number;
+  mistakes: number;
+  lightToggles: number;
+  dialogueSkips: number;
+  choiceTrail: string[];
+  previousQuestions: string[];
+};
+
+export type AdaptiveQuestion = {
+  text: string;
+  groundedIn: string;
+  fallbackUsed: boolean;
+  provider: "gemini" | "offline";
+};

@@ -59,6 +59,21 @@ describe("chapter checkpoint save", () => {
     expect(useGame.getState().paused).toBe(false);
   });
 
+  it("runs line completion only after advancing the finished line", () => {
+    let completed = false;
+    const s = useGame.getState();
+    s.say({
+      speaker: "guest",
+      text: "Let me finish.",
+      onDone: () => {
+        completed = true;
+      },
+    });
+    expect(completed).toBe(false);
+    s.nextLine();
+    expect(completed).toBe(true);
+  });
+
   it("keeps behavioural memory bounded and records recovery", () => {
     const s = useGame.getState();
     s.mistake();

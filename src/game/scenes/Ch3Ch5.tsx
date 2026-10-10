@@ -163,9 +163,12 @@ export function Ch3() {
             speaker: "narrator",
             text: "The ballerina has stopped mid-turn. She is facing the door.",
           },
-          { speaker: "narrator", text: "Then, from down the hall, a voice you know." },
+          {
+            speaker: "narrator",
+            text: "Then, from down the hall, a voice you know.",
+            onDone: () => useGame.getState().go("ch4"),
+          },
         ]);
-        window.setTimeout(() => useGame.getState().go("ch4"), 10500);
       } else {
         setBetweenRounds(true);
         s.set({ interactive: false });
@@ -177,13 +180,20 @@ export function Ch3() {
           const state = useGame.getState();
           if (state.screen !== "ch3") return;
           setLiveAction(decision.action);
-          state.set({ line: { speaker: "guest", text: decision.line, ms: 2600 }, queue: [] });
-          window.setTimeout(() => {
-            const latest = useGame.getState();
-            if (latest.screen !== "ch3") return;
-            latest.set({ ch3Rounds: completedRound, interactive: true });
-            setBetweenRounds(false);
-          }, 2700);
+          state.set({
+            line: {
+              speaker: "guest",
+              text: decision.line,
+              ms: 2600,
+              onDone: () => {
+                const latest = useGame.getState();
+                if (latest.screen !== "ch3") return;
+                latest.set({ ch3Rounds: completedRound, interactive: true });
+                setBetweenRounds(false);
+              },
+            },
+            queue: [],
+          });
         });
       }
     }
@@ -732,11 +742,11 @@ function PajamaCh5() {
       speaker: "narrator",
       text: "Everything is put away. Now the house is quiet.",
       ms: 1500,
+      onDone: () => {
+        if (useGame.getState().screen === "ch5") useGame.getState().go("final");
+      },
     });
-    const t = window.setTimeout(() => {
-      if (useGame.getState().screen === "ch5") useGame.getState().go("final");
-    }, 2100);
-    return () => window.clearTimeout(t);
+    return undefined;
   }, [allWorn, inBasket.length, otherTotal]);
   const pick = (garment: (typeof pile)[number]) => {
     if (!s.interactive || !s.lightsOn) return;
@@ -1048,12 +1058,12 @@ export function LegacyCh5() {
         {
           speaker: "narrator",
           text: `${toyLabel} was ${plan.hidingPlace === "bath" ? "in the bath, cold and damp" : plan.hidingPlace === "laundry" ? "under the laundry, wrapped too carefully" : "behind the towel, still warm"}.`,
+          onDone: () => {
+            sfx("switch");
+            useGame.getState().go("final");
+          },
         },
       ]);
-      window.setTimeout(() => {
-        sfx("switch");
-        useGame.getState().go("final");
-      }, 4500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [found]);

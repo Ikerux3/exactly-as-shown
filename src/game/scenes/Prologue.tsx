@@ -236,6 +236,7 @@ export function Prologue() {
     }
     if (step.shot === "slam") sfx("door");
     if (step.shot === "watch") startMusic();
+    if (said.current) return;
     const t = window.setTimeout(() => advance(i), step.ms);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

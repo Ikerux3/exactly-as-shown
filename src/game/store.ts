@@ -52,8 +52,12 @@ export type Line = {
   speaker: "mother" | "guest" | "mimic" | "child" | "narrator";
   text: string;
   ms?: number | undefined;
+  /** Spoken prompt rendered elsewhere (for example an answer form), not in the subtitle bar. */
+  voiceOnly?: boolean | undefined;
   /** Runs once when the line appears on screen (keeps cutscene effects in sync with skipping). */
   onShow?: (() => void) | undefined;
+  /** Runs after speech/subtitle completion or a manual skip. Runtime-only; never persisted. */
+  onDone?: (() => void) | undefined;
 };
 
 export type Facts = {
@@ -228,12 +232,14 @@ export const useGame = create<State & Actions>((set, get) => ({
     else set({ queue: [...s.queue, ...arr] });
   },
   nextLine: (manual = false) => {
+    const current = get().line;
     const [n, ...rest] = get().queue;
     set((s) => ({
       line: n,
       queue: rest,
       facts: manual ? { ...s.facts, dialogueSkips: s.facts.dialogueSkips + 1 } : s.facts,
     }));
+    current?.onDone?.();
   },
   addCordura: (n) => set((s) => ({ cordura: Math.max(0, Math.min(100, s.cordura + n)) })),
   setLights: (on) =>

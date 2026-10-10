@@ -5,6 +5,7 @@ import { Brain, Pause } from "lucide-react";
 import { CHAPTER_TITLE, useGame } from "./store";
 import { stopMusic } from "./audio";
 import { GUEST_MIND_LABEL } from "./guest";
+import { lineDisplayMs, voiceRoleForSpeaker, voiceSafetyMs } from "./voice";
 
 type ShellProps = {
   /** Show the HUD / dialogue bars. Without them the art fills the shell on phones. */
@@ -40,7 +41,10 @@ export function Shell({
         ref={frameRef}
         className={`game-frame ${frameClassName}`}
         onPointerMove={onFramePointer}
-        onPointerDown={(e) => { onFramePointer?.(e); onFrameDown?.(e); }}
+        onPointerDown={(e) => {
+          onFramePointer?.(e);
+          onFrameDown?.(e);
+        }}
         onPointerUp={onFrameUp}
       >
         {children}
@@ -55,15 +59,17 @@ export function Shell({
 export function useSubtitles() {
   const line = useGame((s) => s.line);
   const paused = useGame((s) => s.paused);
+  const muted = useGame((s) => s.muted);
   useEffect(() => {
     line?.onShow?.();
   }, [line]);
   useEffect(() => {
     if (!line || paused) return;
-    const ms = line.ms ?? Math.max(2200, line.text.length * 55);
+    const voiced = !muted && voiceRoleForSpeaker(line.speaker) !== null;
+    const ms = voiced ? voiceSafetyMs(line.text, line.ms) : lineDisplayMs(line.text, line.ms);
     const t = window.setTimeout(() => useGame.getState().nextLine(), ms);
     return () => window.clearTimeout(t);
-  }, [line, paused]);
+  }, [line, muted, paused]);
 }
 
 const SPEAKER: Record<string, string> = {
@@ -77,22 +83,24 @@ const SPEAKER: Record<string, string> = {
 export function DialogueBar({ right }: { right?: ReactNode }) {
   const line = useGame((s) => s.line);
   const objective = useGame((s) => s.objective);
-  const guest = !!line && (line.speaker === "guest" || line.speaker === "mimic");
+  const visibleLine = line?.voiceOnly ? undefined : line;
+  const guest =
+    !!visibleLine && (visibleLine.speaker === "guest" || visibleLine.speaker === "mimic");
   return (
     <>
-      {line ? (
+      {visibleLine ? (
         <button
           type="button"
           onClick={() => useGame.getState().nextLine(true)}
           className={`subtitle dialogue-panel ${guest ? "guest" : ""}`}
           aria-live="polite"
-          aria-label={`${line.text} — tap to continue`}
+          aria-label={`${visibleLine.text} — tap to continue`}
         >
-          {line.speaker !== "narrator" && (
-            <span className="speaker-tag dialogue-label">{SPEAKER[line.speaker]}</span>
+          {visibleLine.speaker !== "narrator" && (
+            <span className="speaker-tag dialogue-label">{SPEAKER[visibleLine.speaker]}</span>
           )}
-          <span key={line.text} className="block animate-float-up">
-            {line.text}
+          <span key={visibleLine.text} className="block animate-float-up">
+            {visibleLine.text}
           </span>
         </button>
       ) : (
