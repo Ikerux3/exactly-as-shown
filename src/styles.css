@@ -375,8 +375,8 @@
     repeating-linear-gradient(0deg, transparent 0 3px, oklch(0 0 0 / 0.08) 3px 4px); }
 .stitch-btn::before { content: ""; position: absolute; top: -4px; left: 38%; width: 26%; height: 9px; background: oklch(0.9 0.04 90 / 0.65); rotate: -3deg; pointer-events: none; }
 /* Toys and props fidget when the lights are off */
-.lights-off .prop, .lights-off .game-frame img:not(.scene-bg) { animation: fidget 2.8s ease-in-out infinite; }
-.lights-off :is(.prop, img:not(.scene-bg)):nth-of-type(2n) { animation-duration: 3.7s; animation-delay: -1.2s; }
+.lights-off .prop, .lights-off img:not(.scene-bg, .walker, .shadow-hand, .cut-eyes, .face-flash, .guest-cut) { animation: fidget 2.8s ease-in-out infinite; }
+.lights-off .prop:nth-of-type(2n) { animation-duration: 3.7s; animation-delay: -1.2s; }
 .game-frame.warp > * { filter: url(#warp); }
 .cut-eyes { position: absolute; mix-blend-mode: screen; filter: grayscale(1) contrast(1.6) brightness(.9) !important; animation: eyes 5s ease-in-out infinite; }
 .shadow-hand { position: absolute; width: 60%; filter: brightness(0) !important; transition: left 2s ease, right 2s ease; animation: creep 3.2s ease-in-out infinite alternate; }
