@@ -369,6 +369,8 @@ type Save = Pick<
   | "screen"
   | "name"
   | "favColor"
+  | "favColorCss"
+  | "favColorWord"
   | "motherColor"
   | "favFood"
   | "favToy"
