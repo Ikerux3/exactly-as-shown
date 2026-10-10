@@ -51,7 +51,6 @@ export function Title() {
           <Ransom text="will be" seed={8} className="block text-[0.6em]" />
           <span className="relative block">
             <Ransom text="BACK" seed={21} />
-            <span className="absolute left-[58%] top-[90%] block h-[0.9em] w-[3px] origin-top bg-crimson" style={{ animation: "drip 6s ease-out both" }} />
           </span>
         </h1>
         {panel === "menu" && (
