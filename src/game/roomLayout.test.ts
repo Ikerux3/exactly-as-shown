@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KITCHEN_WALLS, TOY_ESCAPE_SPOTS, pajamaWall } from "./roomLayout";
+import { FOURTH_TOY_LANDINGS, KITCHEN_WALLS, TOY_ESCAPE_SPOTS, pajamaWall, shouldReleaseFourthToy } from "./roomLayout";
 
 describe("four-wall puzzles - desktop and touch parity", () => {
   it("distributes five toys across all four walls with non-overlapping landing spots", () => {
@@ -16,6 +16,21 @@ describe("four-wall puzzles - desktop and touch parity", () => {
         if (a.wall !== b.wall) continue;
         expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(25);
       }
+    }
+  });
+
+  it("never escapes toys just because the lights change; fourth storage plus wall turn fires only once", () => {
+    for (let stored = 0; stored < 4; stored++) {
+      expect(shouldReleaseFourthToy(stored, false, true)).toBe(false);
+    }
+    expect(shouldReleaseFourthToy(4, false, true)).toBe(true);
+    expect(shouldReleaseFourthToy(5, false, true)).toBe(true);
+    expect(shouldReleaseFourthToy(4, true, true)).toBe(false);
+    expect(shouldReleaseFourthToy(4, false, false)).toBe(false);
+    expect(FOURTH_TOY_LANDINGS.map((s) => s.wall)).toEqual([0, 1, 2, 3]);
+    for (const spot of FOURTH_TOY_LANDINGS) {
+      expect(spot.x).toBeGreaterThan(20);
+      expect(spot.x).toBeLessThan(80);
     }
   });
 
