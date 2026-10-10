@@ -89,6 +89,7 @@ export function useDialogueVoice() {
 
         const binary = atob(result.audioBase64);
         const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+        console.info(`[voice] ElevenLabs ${role} audio ready (${bytes.byteLength} bytes)`);
         const url = URL.createObjectURL(new Blob([bytes], { type: result.mimeType }));
         const audio = new Audio(url);
         if (role === "mimic") audio.playbackRate = 0.96;
@@ -97,7 +98,13 @@ export function useDialogueVoice() {
         remoteAudio.current = { audio, url };
         void audio.play().catch(browserFallback);
       })
-      .catch(browserFallback);
+      .catch((error) => {
+        console.warn(
+          `[voice] ElevenLabs ${role} unavailable; using browser fallback:`,
+          error instanceof Error ? error.message : "Unknown error",
+        );
+        browserFallback();
+      });
 
     return () => {
       active = false;
