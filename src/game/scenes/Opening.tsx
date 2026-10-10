@@ -5,7 +5,9 @@ import {
   type ColorKey, type Screen,
 } from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
-import { GuestVoid, MotherCutout } from "../Props";
+import { ChildDoll, GuestVoid, MotherCutout } from "../Props";
+import { loadProfile, type Profile } from "../profile";
+import { CharacterCreator } from "./Creator";
 import { Ransom } from "../fx";
 import { resetOnce } from "../kit";
 import { interpretFavoriteToy } from "../ai/toy";
@@ -15,17 +17,19 @@ const CHAPTER_OF: Partial<Record<Screen, number>> = { ch1: 1, ch2k: 2, ch2d: 2, 
 
 /* ---------------- TITLE / START MENU ---------------- */
 
-type Panel = "menu" | "how" | "settings";
+type Panel = "menu" | "how" | "settings" | "character";
 
 export function Title() {
   const muted = useGame((s) => s.muted);
   const [mem, setMem] = useState<{ runs: number }>({ runs: 0 });
   const [saved, setSaved] = useState<Screen | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [panel, setPanel] = useState<Panel>("menu");
   const [confirmNew, setConfirmNew] = useState(false);
   useEffect(() => {
     setMem(loadMemory());
     setSaved(loadSave()?.screen ?? null);
+    setProfile(loadProfile());
   }, []);
 
   const newGame = () => {
@@ -74,6 +78,14 @@ export function Title() {
               Open the little house
             </button>
           )}
+          <button type="button" className="stitch-btn ghost flex w-full items-center justify-center gap-2 py-1.5" onClick={() => open("character")}>
+            {profile && (
+              <span className="relative block h-8 w-6 shrink-0 overflow-hidden" aria-hidden>
+                <ChildDoll look={profile.look} clothes="oklch(0.55 0.06 240)" className="absolute left-1/2 top-0 h-[260%] -translate-x-1/2" />
+              </span>
+            )}
+            <span className="truncate">{profile ? (profile.name ? `${profile.name} · your character` : "Your character") : "Create your character"}</span>
+          </button>
           <div className="grid w-full grid-cols-2 gap-3">
             <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("how")}>How to play</button>
             <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("settings")}>Settings</button>
@@ -90,6 +102,10 @@ export function Title() {
             <li><b className="font-display">Subtitles</b> are always on. Tap them to skip ahead. Mommy's list shows what to do next.</li>
           </ul>
         </MenuPanel>
+      )}
+
+      {panel === "character" && (
+        <CharacterCreator profile={profile} onClose={() => { setProfile(loadProfile()); setPanel("menu"); }} />
       )}
 
       {panel === "settings" && (
@@ -131,8 +147,11 @@ const COLORS: ColorKey[] = ["rose", "sage", "honey", "turq"];
 
 export function Intro() {
   const s = useGame();
-  const [raw, setRaw] = useState("");
-  const [step, setStep] = useState(0);
+  // A character made in the menu already has a name: Mommy uses it instead of asking.
+  const [profile] = useState(() => loadProfile());
+  const knownName = !!profile?.name;
+  const [raw, setRaw] = useState(profile?.name ?? "");
+  const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   const name = sanitizeName(raw);
@@ -157,6 +176,10 @@ export function Intro() {
       <div className="absolute inset-0 bg-void/30" />
       {/* Mother: a faceless black cardboard cut-out, pinned to the scene (kept clear of the dialogue card) */}
       <MotherCutout color={`var(--c-${s.motherColor})`} className="absolute bottom-[4%] right-[7%] h-[38%]" />
+      {/* your character, if you made one — dressed in the colour you pick */}
+      {profile && (
+        <ChildDoll look={profile.look} clothes={`var(--c-${s.favColor})`} className="absolute bottom-[4%] left-[14%] h-[27%]" />
+      )}
       <div className="absolute inset-x-[6%] top-[5%] paper animate-float-up p-5">
         {step === 0 && (
           <form onSubmit={(e) => { e.preventDefault(); confirmName(); }}>
@@ -172,7 +195,11 @@ export function Intro() {
         )}
         {step === 1 && (
           <>
-            <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">"And your favourite colour, {name}? I'll get you a new cup."</p>
+            <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
+              {knownName
+                ? `"I'm popping out for groceries, ${name}. What's your favourite colour? I'll get you a new cup."`
+                : `"And your favourite colour, ${name}? I'll get you a new cup."`}
+            </p>
             <div className="mt-4 grid grid-cols-4 gap-3" role="radiogroup" aria-label="Favourite colour">
               {COLORS.map((c) => (
                 <button key={c} type="button" role="radio" aria-checked={s.favColor === c} onClick={() => { sfx("tap"); s.set({ favColor: c }); }} aria-label={COLOR_LABEL[c]}
