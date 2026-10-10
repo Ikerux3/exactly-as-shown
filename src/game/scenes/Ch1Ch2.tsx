@@ -69,10 +69,12 @@ export function Ch1() {
   useEffect(() => {
     if (s.lightsOn || s.paused || !s.interactive || s.scare) return;
     const id = window.setInterval(() => {
+      const state = useGame.getState();
+      if (state.line || state.paused || state.scare || state.lightsOn || !state.interactive) return;
       setRoam((old) => {
         const next = { ...old };
-        s.toyOrder.forEach((t, slot) => {
-          if (s.ch1.includes(t) || s.toyEscape?.toy === t) return;
+        state.toyOrder.forEach((t, slot) => {
+          if (state.ch1.includes(t) || state.toyEscape?.toy === t) { delete next[t]; return; }
           const visible = slot === 0 || slot === 4 || (slot === 1 && cushionMoved) || (slot === 2 && drawerOpen) || (slot === 3 && (alternate ? extraOpen : jacketMoved));
           if (!visible) return;
           const original = PLAYROOM_TOYS[slot];
@@ -83,7 +85,6 @@ export function Ch1() {
         });
         return next;
       });
-      const state = useGame.getState();
       const escape = state.toyEscape;
       if (escape && !escape.recovered && Date.now() - (escape.escapedAt ?? 0) > 1000) {
         const x = escape.x + .9;
