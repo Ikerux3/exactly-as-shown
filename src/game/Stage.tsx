@@ -37,7 +37,6 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
   const dark = useRef<HTMLDivElement>(null);
-  const darkAcc = useRef(0);
   const lightAcc = useRef(0);
   usePauseKey(true);
 
@@ -85,8 +84,8 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
           ...(checkpoint === "ch2k" ? { ch2Items: [], ch2Placed: [] } : {}),
           ...(checkpoint === "ch3" ? { ch3Rounds: 0 } : {}),
         });
-        darkAcc.current = 0;
         lightAcc.current = 0;
+        useGame.getState().go(checkpoint); // writes the level-start checkpoint into the save
         st.say({ speaker: "narrator", text: "You blink. The room is the way it was a moment ago. Try again.", ms: 3200 });
       }, 1900);
     }
