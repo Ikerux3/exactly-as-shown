@@ -401,6 +401,7 @@ export function Ch2Kitchen() {
   ]);
   const remaining = ITEMS.filter((i) => !s.ch2Items.includes(i));
   const take = (it: string) => {
+    if (!s.lightsOn || !s.interactive) return; // cannot collect dishes in darkness
     if (it.startsWith("decoy")) {
       sfx("wrong");
       s.mistake();
