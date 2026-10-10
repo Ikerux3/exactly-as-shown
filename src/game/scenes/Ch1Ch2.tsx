@@ -518,9 +518,33 @@ export function Ch2Dining() {
   const [asking, setAsking] = useState(false);
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
+  const [foodQuestion, setFoodQuestion] = useState(
+    () => offlineAdaptiveQuestion(currentQuestionContext("food")).text,
+  );
+  const [foodQuestionLoading, setFoodQuestionLoading] = useState(false);
+  const foodQuestionRequested = useRef(false);
   const [bigOffered, setBigOffered] = useState(false);
   const [phase, setPhase] = useState<"play" | "crash" | "black" | "smile" | "after">("play");
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  useSpokenPrompt(foodQuestion, "guest", asking && !foodQuestionLoading);
+
+  useEffect(() => {
+    if (!asking || foodQuestionRequested.current) return;
+    foodQuestionRequested.current = true;
+    let active = true;
+    setFoodQuestionLoading(true);
+    void adaptiveQuestion(
+      currentQuestionContext("food", { name: nm, previousQuestions: [foodQuestion] }),
+    ).then((next) => {
+      if (!active) return;
+      setFoodQuestion(next.text);
+      setFoodQuestionLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [asking, foodQuestion, nm]);
+
   useSceneIntro(
     "ch2d",
     "Drag everything onto the table so it all fits. In the dark, the cloth remembers how.",
@@ -764,7 +788,9 @@ export function Ch2Dining() {
           )}
           {asking && (
             <div className="absolute inset-x-[6%] top-[14%] z-[45] paper animate-float-up p-5">
-              <p className="font-display text-lg italic">"What do you like to eat best?"</p>
+              <p className="font-display text-lg italic">
+                “{foodQuestionLoading ? "The voice is choosing its words…" : foodQuestion}”
+              </p>
               <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
               <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); void answerFood(); }}>
                 <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
@@ -774,12 +800,12 @@ export function Ch2Dining() {
                   maxLength={120}
                   value={foodInput}
                   onChange={(e) => setFoodInput(e.target.value)}
-                  disabled={interpreting}
+                  disabled={interpreting || foodQuestionLoading}
                   placeholder="Type anything…"
                   className="min-w-0 flex-1 rounded border border-ink/30 bg-paper px-3 py-2 font-hand text-sm text-ink outline-none focus:border-crimson"
                 />
-                <button type="submit" disabled={!foodInput.trim() || interpreting} className="stitch-btn sage text-sm disabled:opacity-50">
-                  {interpreting ? "Listening…" : "Tell it"}
+                <button type="submit" disabled={!foodInput.trim() || interpreting || foodQuestionLoading} className="stitch-btn sage text-sm disabled:opacity-50">
+                  {interpreting || foodQuestionLoading ? "Listening…" : "Tell it"}
                 </button>
               </form>
             </div>

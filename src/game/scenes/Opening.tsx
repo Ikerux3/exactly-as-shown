@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BG } from "../assets";
 import {
   CHAPTER_TITLE,
@@ -289,7 +289,8 @@ export function Intro() {
   const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
-  const [questionLoading, setQuestionLoading] = useState(false);
+  const [questionLoading, setQuestionLoading] = useState(true);
+  const initialQuestionRequested = useRef(false);
   const name = sanitizeName(raw);
   const invalidName = !!raw.trim() && !name;
   const [questionText, setQuestionText] = useState(() => {
@@ -298,7 +299,29 @@ export function Intro() {
       currentQuestionContext(kind, profile?.name ? { name: profile.name } : {}),
     ).text;
   });
-  useSpokenPrompt(questionText, "mother");
+  useSpokenPrompt(questionText, "mother", !questionLoading);
+
+  useEffect(() => {
+    if (initialQuestionRequested.current) return;
+    initialQuestionRequested.current = true;
+    let active = true;
+    const kind = knownName ? "color" : "name";
+    void adaptiveQuestion(
+      currentQuestionContext(kind, {
+        ...(profile?.name ? { name: profile.name } : {}),
+        previousQuestions: [questionText],
+      }),
+    ).then((next) => {
+      if (!active) return;
+      setQuestionText(next.text);
+      setQuestionLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+    // The first question is resolved once, before the player can answer it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const confirmName = async () => {
     if (!name || questionLoading) return;
