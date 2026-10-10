@@ -58,9 +58,9 @@ const DESTINATION: Record<number, { label: string; room: string; caption: string
 const L = 640;
 const WALK_TO = L - 150;
 const ARRIVE_TO = L - 55;
-const WALK_MS = 5000;
-const ARRIVE_MS = 1300;
-const THROUGH_MS = 700;
+const WALK_MS = 2600;
+const ARRIVE_MS = 900;
+const THROUGH_MS = 450;
 
 type Phase = "start" | "walk" | "arrive" | "through";
 
