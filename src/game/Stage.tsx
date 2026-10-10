@@ -3,6 +3,7 @@ import { useGame } from "./store";
 import { GuestVoid, LightSwitch } from "./Props";
 import { setMuted, setUnease, sfx } from "./audio";
 import { GUEST_MIND_LABEL } from "./guest";
+import { SanityFX } from "./fx";
 
 // Shared flashlight position (percent of frame) so scenes can test illumination.
 export const light = { x: 50, y: 55 };
@@ -105,6 +106,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       )}
 
       <div className="absolute inset-0 z-10">{children}</div>
+      <SanityFX bg={bg} bgPos={bgPos} />
 
       {guest?.show && !s.lightsOn && (
         <GuestVoid style={{ left: `${guest.x}%`, top: `${guest.y}%`, height: `${guest.h}%`, transform: "translate(-50%, 0)", zIndex: 25 }} intensity={0.95} />
@@ -158,7 +160,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
           className={`subtitle absolute bottom-[2.5%] left-[4%] right-[24%] z-40 px-4 py-3 text-left text-[15px] leading-snug animate-float-up ${(s.line.speaker === "guest" || s.line.speaker === "mimic") ? "guest" : ""}`}
         >
           {s.line.speaker !== "narrator" && (
-            <span className="mb-0.5 block font-hand text-xs uppercase tracking-widest opacity-70">
+            <span className="speaker-tag mb-0.5 block">
               {s.line.speaker === "mother" || s.line.speaker === "mimic" ? "Mommy" : s.line.speaker === "guest" ? "…" : "You"}
             </span>
           )}
