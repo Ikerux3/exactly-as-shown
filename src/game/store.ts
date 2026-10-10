@@ -22,10 +22,10 @@ export type MotherColor = "plum" | "navy" | "mustard";
 export type ToyId = "bear" | "rabbit" | "train" | "doll" | "elephant";
 
 export const COLOR_LABEL: Record<ColorKey, string> = {
-  rose: "Rose",
-  sage: "Sage",
-  honey: "Honey",
-  turq: "Sea blue",
+  rose: "Pink",
+  sage: "Green",
+  honey: "Yellow",
+  turq: "Blue",
 };
 export const MOTHER_LABEL: Record<MotherColor, string> = {
   plum: "plum",
