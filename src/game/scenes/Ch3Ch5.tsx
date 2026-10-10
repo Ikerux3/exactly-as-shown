@@ -7,6 +7,8 @@ import { Hint, useSceneIntro } from "../kit";
 import { sfx, startMusic, stopMusic } from "../audio";
 import { chooseInterventions } from "../guest";
 import { useAdaptiveChapter } from "../ai/adapt";
+import { runAdaptiveMoment } from "../ai/realtime";
+import type { AdaptivePlan, RealtimeAction } from "../ai/contracts";
 
 /* ---------------- CHAPTER 3 — THE MUSIC BOX ---------------- */
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
@@ -16,17 +18,29 @@ const ADAPTIVE_LENS = {
   standard: LENS,
   relentless: [4, 5, 6, 8],
 } as const;
+const DIFFICULTIES: AdaptivePlan["difficulty"][] = ["gentle", "standard", "relentless"];
 const SYM_COLOR: Partial<Record<Sym, string>> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
+
+function shiftedDifficulty(base: AdaptivePlan["difficulty"], action: RealtimeAction) {
+  const index = DIFFICULTIES.indexOf(base);
+  const shift = action === "ease" ? -1 : action === "escalate" ? 1 : 0;
+  return DIFFICULTIES[Math.max(0, Math.min(DIFFICULTIES.length - 1, index + shift))]!;
+}
 
 export function Ch3() {
   const s = useGame();
-  const plan = useAdaptiveChapter(3);
+  const incomingPlan = useAdaptiveChapter(3);
+  const plan = useRef(incomingPlan).current;
   const round = s.ch3Rounds;
   const [seq, setSeq] = useState<Sym[]>([]);
   const [show, setShow] = useState<number>(-1);
   const [input, setInput] = useState<Sym[]>([]);
   const [done, setDone] = useState(false);
+  const [liveAction, setLiveAction] = useState<RealtimeAction>("hold");
+  const [betweenRounds, setBetweenRounds] = useState(false);
   const aiLineSpoken = useRef(false);
+  const roundMistakes = useRef(0);
+  const roundStartedAt = useRef(Date.now());
 
   useSceneIntro("ch3", "Stop the music box. Watch the pattern in the dark, play it back in the light.", [
     { speaker: "narrator", text: "Your music box is playing by itself on the nightstand." },
@@ -36,10 +50,15 @@ export function Ch3() {
   useEffect(() => {
     if (round >= 4) return;
     const bias: Sym = s.favColor === "rose" ? "heart" : s.favColor === "turq" ? "moon" : s.favColor === "honey" ? "star" : "key";
-    const length = ADAPTIVE_LENS[plan.difficulty][round]!;
+    const difficulty = shiftedDifficulty(plan.difficulty, liveAction);
+    const length = ADAPTIVE_LENS[difficulty][round]!;
     setSeq(Array.from({ length }, (_, index) => index === 0 ? bias : SYMS[Math.floor(Math.random() * 4)]!));
     setInput([]);
-  }, [round, plan.difficulty, s.favColor]);
+    roundMistakes.current = 0;
+    roundStartedAt.current = Date.now();
+    // Difficulty changes are applied only when a completed round advances this counter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [round, s.favColor]);
 
   useEffect(() => {
     if (plan.provider !== "gemini" || aiLineSpoken.current) return;
@@ -60,11 +79,11 @@ export function Ch3() {
   }, [s.lightsOn, seq, done]);
 
   const press = (sym: Sym) => {
-    if (!s.lightsOn || done) return;
+    if (!s.lightsOn || done || betweenRounds) return;
     sfx("note", SYMS.indexOf(sym));
     const next = [...input, sym];
     if (seq[next.length - 1] !== sym) {
-      sfx("wrong"); s.mistake(); setInput([]);
+      sfx("wrong"); s.mistake(); roundMistakes.current += 1; setInput([]);
       s.say({ speaker: "narrator", text: "The tune stumbles and starts over.", ms: 1800 });
       return;
     }
@@ -82,7 +101,27 @@ export function Ch3() {
         ]);
         window.setTimeout(() => useGame.getState().go("ch4"), 10500);
       } else {
-        s.set({ ch3Rounds: round + 1 });
+        const completedRound = round + 1;
+        const observedMistakes = roundMistakes.current;
+        const elapsedMs = Date.now() - roundStartedAt.current;
+        setBetweenRounds(true);
+        s.set({ interactive: false });
+        void runAdaptiveMoment(3, "round_complete", `round-${completedRound}`, {
+          recentMistakes: observedMistakes,
+          round: completedRound,
+          elapsedMs,
+        }).then((decision) => {
+          const state = useGame.getState();
+          if (state.screen !== "ch3") return;
+          setLiveAction(decision.action);
+          state.set({ line: { speaker: "guest", text: decision.line, ms: 2600 }, queue: [] });
+          window.setTimeout(() => {
+            const latest = useGame.getState();
+            if (latest.screen !== "ch3") return;
+            latest.set({ ch3Rounds: completedRound, interactive: true });
+            setBetweenRounds(false);
+          }, 2700);
+        });
       }
     }
   };
@@ -112,7 +151,7 @@ export function Ch3() {
           </div>
           <div className="grid grid-cols-4 gap-2">
             {SYMS.map((sym) => (
-              <button key={sym} onClick={() => press(sym)} disabled={!s.lightsOn} aria-label={sym}
+              <button key={sym} onClick={() => press(sym)} disabled={!s.lightsOn || betweenRounds} aria-label={sym}
                 className="grid aspect-square place-items-center rounded-xl bg-paper-deep shadow-inner transition active:scale-95 disabled:opacity-40">
                 <Symbol s={sym} size={44} color={SYM_COLOR[sym]} />
               </button>
@@ -135,7 +174,8 @@ const PUZZLES: Record<"garden" | "keepsake" | "night", { answer: Sym[]; clue: st
 
 export function Ch4() {
   const s = useGame();
-  const plan = useAdaptiveChapter(4);
+  const incomingPlan = useAdaptiveChapter(4);
+  const plan = useRef(incomingPlan).current;
   const puzzle = PUZZLES[plan.puzzleVariant];
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
@@ -144,6 +184,9 @@ export function Ch4() {
   const [wardrobe, setWardrobe] = useState(0);
   const [wrongTry, setWrongTry] = useState<Sym[] | null>(null); // visual only: the failed attempt, shown briefly
   const aiLineSpoken = useRef(false);
+  const wrongCount = useRef(0);
+  const reactionRequested = useRef(false);
+  const chapterStartedAt = useRef(Date.now());
   const nm = s.name || "sweetheart";
 
   useEffect(() => setInput([]), [plan.puzzleVariant]);
@@ -166,8 +209,23 @@ export function Ch4() {
     const next = [...input, sym];
     if (puzzle.answer[next.length - 1] !== sym) {
       sfx("wrong"); s.mistake(); setInput([]);
+      wrongCount.current += 1;
       setWrongTry(next);
       window.setTimeout(() => setWrongTry(null), 750);
+      if (wrongCount.current === 2 && !reactionRequested.current) {
+        reactionRequested.current = true;
+        const requestPhase = useGame.getState().phaseKey;
+        void runAdaptiveMoment(4, "mistake_streak", "lock-mistakes", {
+          recentMistakes: wrongCount.current,
+          elapsedMs: Date.now() - chapterStartedAt.current,
+        }).then((decision) => {
+          const state = useGame.getState();
+          if (state.screen !== "ch4" || state.phaseKey !== requestPhase) return;
+          if (decision.action === "ease") { setNote(true); state.addCordura(-5); }
+          if (decision.action === "escalate") state.set({ flicker: Date.now(), shadowPass: Date.now() });
+          state.say({ speaker: "guest", text: decision.line, ms: 3000 });
+        });
+      }
       return;
     }
     setWrongTry(null);
@@ -175,6 +233,23 @@ export function Ch4() {
     if (next.length === 3) {
       setSolved(true); sfx("open"); sfx("chime");
       s.say({ speaker: "narrator", text: "Click. A hidden drawer slides out from under the bed." });
+      if (!reactionRequested.current) {
+        reactionRequested.current = true;
+        const requestPhase = useGame.getState().phaseKey;
+        void runAdaptiveMoment(4, "puzzle_solved", "lock-solved", {
+          recentMistakes: wrongCount.current,
+          elapsedMs: Date.now() - chapterStartedAt.current,
+        }).then((decision) => {
+          const state = useGame.getState();
+          if (state.screen !== "ch4" || state.phaseKey !== requestPhase) return;
+          if (decision.action === "ease") state.addCordura(-4);
+          if (decision.action === "escalate") {
+            state.addCordura(4);
+            state.set({ flicker: Date.now(), shadowPass: Date.now() });
+          }
+          state.say({ speaker: "guest", text: decision.line, ms: 3000 });
+        });
+      }
     }
   };
 
@@ -284,7 +359,8 @@ const HIDE_SPOTS = {
 
 export function Ch5() {
   const s = useGame();
-  const plan = useAdaptiveChapter(5);
+  const incomingPlan = useAdaptiveChapter(5);
+  const plan = useRef(incomingPlan).current;
   const toy = s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
   const toyLabel = s.favToy ?? TOY_LABEL[toy];
   const [brush, setBrush] = useState(0); // 0 no brush, 1 holding, 2 done
@@ -292,9 +368,13 @@ export function Ch5() {
   const [pj, setPj] = useState(false);
   const [sawClue, setSaw] = useState(false);
   const [found, setFound] = useState(false);
+  const [livePressure, setLivePressure] = useState(plan.blackoutPressure);
   const lastX = useRef<number | null>(null);
   const ended = useRef(false);
   const aiLineSpoken = useRef(false);
+  const searchStartRequested = useRef(false);
+  const searchMissRequested = useRef(false);
+  const chapterStartedAt = useRef(Date.now());
 
   const hidingSpot = HIDE_SPOTS[plan.hidingPlace];
 
@@ -325,18 +405,40 @@ export function Ch5() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todo.join(), searching, sawClue]);
 
+  useEffect(() => {
+    if (!searching || searchStartRequested.current) return;
+    searchStartRequested.current = true;
+    const requestPhase = useGame.getState().phaseKey;
+    void runAdaptiveMoment(5, "tasks_complete", "bedtime-tasks", {
+      recentMistakes: 0,
+      elapsedMs: Date.now() - chapterStartedAt.current,
+    }).then((decision) => {
+      const state = useGame.getState();
+      if (state.screen !== "ch5" || state.phaseKey !== requestPhase) return;
+      setLivePressure(
+        decision.action === "ease"
+          ? "merciful"
+          : decision.action === "escalate"
+            ? "relentless"
+            : plan.blackoutPressure,
+      );
+      if (decision.action === "escalate") state.set({ flicker: Date.now() });
+      state.say({ speaker: "guest", text: decision.line, ms: 3000 });
+    });
+  }, [searching, plan.blackoutPressure]);
+
   // The house turns the light off on its own after the first two tasks.
   useEffect(() => {
     if (brush < 2 || !pj || found) return;
     s.say({ speaker: "narrator", text: `Where is ${toyLabel}? You can't sleep without it.` });
-    const probability = plan.blackoutPressure === "merciful" ? 0.18 : plan.blackoutPressure === "relentless" ? 0.58 : 0.35;
+    const probability = livePressure === "merciful" ? 0.18 : livePressure === "relentless" ? 0.58 : 0.35;
     const id = window.setInterval(() => {
       const st = useGame.getState();
       if (st.lightsOn && st.interactive && !st.paused && !st.scare && Math.random() < probability) { sfx("switch"); st.set({ lightsOn: false, flicker: Date.now() }); }
     }, 5000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brush, pj, found, plan.blackoutPressure, toyLabel]);
+  }, [brush, pj, found, livePressure, toyLabel]);
 
   // Reading the mirror in the dark requires actually shining the light on it.
   useEffect(() => {
@@ -358,7 +460,26 @@ export function Ch5() {
   const search = (place: keyof typeof HIDE_SPOTS) => {
     if (!s.lightsOn) return;
     if (!sawClue) { s.say({ speaker: "narrator", text: "Nothing there. In the dark, something was trying to show you.", ms: 2200 }); return; }
-    if (place !== plan.hidingPlace) { s.mistake(); sfx("wrong"); s.say({ speaker: "narrator", text: "Empty. The Guest moved it somewhere else.", ms: 1800 }); return; }
+    if (place !== plan.hidingPlace) {
+      s.mistake(); sfx("wrong"); s.say({ speaker: "narrator", text: "Empty. The Guest moved it somewhere else.", ms: 1800 });
+      if (!searchMissRequested.current) {
+        searchMissRequested.current = true;
+        const requestPhase = useGame.getState().phaseKey;
+        const choice = place === "bath" ? "the bathtub" : place === "laundry" ? "the laundry basket" : "the towel";
+        void runAdaptiveMoment(5, "search_miss", "first-search-miss", {
+          recentMistakes: 1,
+          choice,
+          elapsedMs: Date.now() - chapterStartedAt.current,
+        }).then((decision) => {
+          const state = useGame.getState();
+          if (state.screen !== "ch5" || state.phaseKey !== requestPhase) return;
+          if (decision.action === "ease") setLivePressure("merciful");
+          if (decision.action === "escalate") { setLivePressure("relentless"); state.set({ flicker: Date.now() }); }
+          state.say({ speaker: "guest", text: decision.line, ms: 3000 });
+        });
+      }
+      return;
+    }
     setFound(true); sfx("chime");
   };
 

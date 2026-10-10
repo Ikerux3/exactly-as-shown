@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AdaptiveChapter, AdaptivePlan } from "./ai/contracts";
+import type { AdaptiveChapter, AdaptivePlan, RealtimeDecision } from "./ai/contracts";
 import { setMuted as setAudioMuted } from "./audio";
 
 export type Screen =
@@ -64,6 +64,7 @@ type State = {
   muted: boolean;
   facts: Facts;
   adaptations: Partial<Record<AdaptiveChapter, AdaptivePlan>>;
+  adaptiveMoments: Record<string, RealtimeDecision>;
   finalCordura?: number | undefined;
   // checkpoints
   ch1: ToyId[];
@@ -118,6 +119,7 @@ const initial = (): Omit<State, "muted"> => ({
   paused: false,
   facts: { mistakes: 0, darkSeconds: 0, lightToggles: 0, revisits: 0, previousRuns: 0 },
   adaptations: {},
+  adaptiveMoments: {},
   finalCordura: undefined,
   ch1: [],
   ch2Items: [],
@@ -186,14 +188,14 @@ const RESUMABLE: Screen[] = ["ch1", "ch2k", "ch2d", "ch3", "ch4", "ch5"];
 const TOYS: ToyId[] = ["bear", "rabbit", "train", "doll", "elephant"];
 type Save = Pick<
   State,
-  "screen" | "name" | "favColor" | "motherColor" | "favFood" | "favToy" | "favToyId" | "toyOrder" | "cordura" | "facts" | "adaptations" | "ch1" | "ch2Items" | "ch2Placed" | "ch3Rounds"
+  "screen" | "name" | "favColor" | "motherColor" | "favFood" | "favToy" | "favToyId" | "toyOrder" | "cordura" | "facts" | "adaptations" | "adaptiveMoments" | "ch1" | "ch2Items" | "ch2Placed" | "ch3Rounds"
 >;
 
 function writeSave(s: State) {
   const save: Save = {
     screen: s.screen, name: s.name, favColor: s.favColor, motherColor: s.motherColor, favFood: s.favFood,
     favToy: s.favToy, favToyId: s.favToyId, toyOrder: s.toyOrder, cordura: s.cordura, facts: s.facts,
-    adaptations: s.adaptations, ch1: s.ch1, ch2Items: s.ch2Items,
+    adaptations: s.adaptations, adaptiveMoments: s.adaptiveMoments, ch1: s.ch1, ch2Items: s.ch2Items,
     ch2Placed: s.ch2Placed, ch3Rounds: s.ch3Rounds,
   };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* ignore */ }
