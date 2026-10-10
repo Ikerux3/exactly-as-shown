@@ -273,13 +273,14 @@ export function Ch1() {
         {ejected.length ? "A toy escaped! Look around." : s.ch1.length >= 4 && !fourthEscaped.current ? "Turn to another wall…" : "Find toys on every wall."}
       </div>
 
-      {/* Toy 1 — on the floor */}
+      {/* Toy 1 — visible behind a little pile of floor cushions, one easy find on front wall. */}
       <Toy t={r1} x={42} y={66} w={19} />
+      <div className="pointer-events-none absolute left-[34%] top-[73%] z-[21] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40" aria-hidden />
 
       </OnWall>
       <OnWall n={3}>
       {/* Toy 2 — under the sofa cushion */}
-      <Toy t={r2} x={63} y={66} w={18} />
+      {cushionMoved && <Toy t={r2} x={63} y={66} w={18} />}
       <button
         aria-label="Move the cushion"
         onClick={() => {
@@ -315,7 +316,7 @@ export function Ch1() {
       >
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      <Toy t={r3} x={75} y={69} w={18} />
+      {drawerOpen && <Toy t={r3} x={75} y={69} w={18} />}
       </OnWall>
 
       <OnWall n={3}>
