@@ -151,10 +151,10 @@ export function Ch1() {
           const label = first === state.favToyVisualSlot && state.favToy ? state.favToy : TOY_LABEL[first];
           return `You picked up the ${label} first. I'll remember that.`;
         })() },
-        { speaker: "narrator", text: "The lights come back on. Someone is setting the table downstairs.",
+        { speaker: "narrator", text: "The lights come back on. Upstairs, your music box starts playing by itself.",
           onShow: () => { sfx("switch"); useGame.getState().set({ lightsOn: true }); } },
       ]), 1800),
-      window.setTimeout(() => useGame.getState().go("ch2k"), 11000),
+      window.setTimeout(() => useGame.getState().go("ch3"), 11000),
     ];
     return () => timers.forEach(window.clearTimeout);
   }, [s.ch1.length, s.toyEscape?.recovered]);

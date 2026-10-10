@@ -16,10 +16,10 @@ describe("hall between chapters", () => {
     expect(result.current.corridor).toBeNull();
 
     act(() => {
-      useGame.getState().go("ch2k");
+      useGame.getState().go("ch3");
       useGame.getState().say({ speaker: "narrator", text: "queued by the next chapter" });
     });
-    expect(result.current.corridor).toEqual({ from: "ch1", to: "ch2k" });
+    expect(result.current.corridor).toEqual({ from: "ch1", to: "ch3" });
     expect(useGame.getState().paused).toBe(true);
     expect(useGame.getState().line?.text).toBe("queued by the next chapter");
 
@@ -30,10 +30,10 @@ describe("hall between chapters", () => {
 
   it("skips the hall inside a chapter, on restarts and outside the chapters", () => {
     const { result } = renderHook(() => useCorridorTransitions());
-    act(() => useGame.getState().go("ch2k"));
-    act(() => useGame.getState().go("ch2d")); // kitchen → dining is the same chapter
+    act(() => useGame.getState().go("ch3"));
+    act(() => useGame.getState().go("ch3")); // restarting the same chapter
     expect(result.current.corridor).toBeNull();
-    act(() => useGame.getState().go("ch2k")); // a scare sends you back to the checkpoint
+    act(() => useGame.getState().go("ch3")); // a scare sends you back to the checkpoint
     expect(result.current.corridor).toBeNull();
     act(() => useGame.getState().go("title"));
     expect(result.current.corridor).toBeNull();

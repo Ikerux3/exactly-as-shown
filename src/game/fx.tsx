@@ -139,7 +139,7 @@ export function TransitionVeil({ screen }: { screen: Screen }) {
 }
 
 /* ---------- Dev shortcut: hold 1–5 to jump to a chapter ---------- */
-const JUMP: Record<string, Screen> = { "1": "ch1", "2": "ch2k", "3": "ch3", "4": "ch4", "5": "ch5" };
+const JUMP: Record<string, Screen> = { "1": "ch1", "3": "ch3", "4": "ch4", "5": "ch5" };
 export const HOLD_MS = 2000;
 export function useChapterJump() {
   const [holding, setHolding] = useState<string | null>(null);
@@ -149,13 +149,15 @@ export function useChapterJump() {
     const down = (e: KeyboardEvent) => {
       if (e.repeat || !JUMP[e.key] || (e.target as HTMLElement)?.tagName === "INPUT") return;
       key = e.key; setHolding(e.key);
+      const destination = JUMP[e.key];
+      if (!destination) return;
       timer = window.setTimeout(() => {
         const s = useGame.getState();
         unlockAudio(); resetOnce();
         s.newRun();
         s.set({ name: "Lucía", cordura: 20 });
         startMusic();
-        s.go(JUMP[key!]!);
+        s.go(destination);
         setHolding(null);
       }, HOLD_MS);
     };

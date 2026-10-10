@@ -219,6 +219,7 @@ export const useGame = create<State & Actions>((set, get) => ({
   muted: false,
   set: (p) => set(p),
   go: (screen) => {
+    if (screen === "ch2k" || screen === "ch2d") screen = "ch3";
     set({
       screen,
       queue: [],
@@ -473,6 +474,7 @@ export function loadSave(): Save | null {
     ) as Save["adaptiveMoments"];
     return {
       ...s,
+      screen: s.screen === "ch2k" || s.screen === "ch2d" ? "ch3" : s.screen,
       name: sanitizeName(s.name) || "Little one",
       ...(s.favFood ? { favFood: safePlayerText(s.favFood, "your favourite dinner") } : {}),
       ...(s.favToy ? { favToy: safePlayerText(s.favToy, "your favourite toy") } : {}),

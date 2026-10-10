@@ -6,7 +6,7 @@ import { useSubtitles } from "@/game/Shell";
 import { preloadArt } from "@/game/assets";
 import { Final, Intro, Title } from "@/game/scenes/Opening";
 import { Ending } from "@/game/scenes/Endings";
-import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
+import { Ch1 } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
 import { Prologue } from "@/game/scenes/Prologue";
 import { Corridor, useCorridorTransitions } from "@/game/scenes/Corridor";
@@ -53,8 +53,6 @@ function Game() {
       {shown === "intro" && <Intro />}
       {shown === "prologue" && <Prologue />}
       {shown === "ch1" && <Ch1 key={k} />}
-      {shown === "ch2k" && <Ch2Kitchen key={k} />}
-      {shown === "ch2d" && <Ch2Dining key={k} />}
       {shown === "ch3" && <Ch3 key={k} />}
       {shown === "ch4" && <Ch4 key={k} />}
       {shown === "ch5" && <Ch5 key={k} />}
