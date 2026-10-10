@@ -20,6 +20,17 @@ const requestSchema = z.object({
     lightToggles: count,
     revisits: count,
     previousRuns: count,
+    dialogueSkips: count,
+    hintsUsed: count,
+    inspections: count,
+    recoveries: count,
+    currentMistakeStreak: count,
+    maxMistakeStreak: count,
+    completedCheckpoints: count,
+    fastCompletions: count,
+    slowCompletions: count,
+    responseTimesMs: z.array(z.number().int().min(0).max(3_600_000)).max(12),
+    choiceTrail: z.array(z.string().trim().max(40)).max(12),
   }),
   recent: z.object({
     recentMistakes: z.number().int().min(0).max(50),
@@ -62,8 +73,18 @@ function allowedMentions(data: z.infer<typeof requestSchema>): string[] {
   const eventMentions: Record<(typeof REALTIME_EVENTS)[number], Array<string | undefined>> = {
     round_complete: [data.recent.round ? `round ${data.recent.round}` : undefined],
     mistake_streak: [`${mistakes} mistakes`],
-    puzzle_solved: [mistakes > 0 ? `${mistakes} mistakes` : "no mistakes"],
-    tasks_complete: [data.favFood, data.favToy, data.firstToy],
+    puzzle_solved: [
+      mistakes > 0 ? `${mistakes} mistakes` : "no mistakes",
+      data.facts.hintsUsed > 0 ? `${data.facts.hintsUsed} hints` : undefined,
+      data.facts.recoveries > 0 ? `${data.facts.recoveries} recoveries` : undefined,
+    ],
+    tasks_complete: [
+      data.favFood,
+      data.favToy,
+      data.firstToy,
+      data.facts.dialogueSkips >= 3 ? `${data.facts.dialogueSkips} skipped lines` : undefined,
+      data.facts.fastCompletions >= 2 ? `${data.facts.fastCompletions} quick solves` : undefined,
+    ],
     search_miss: [data.recent.choice],
   };
   return eventMentions[data.event].filter(
@@ -96,7 +117,14 @@ export const directRealtimeMomentAI = createServerFn({ method: "POST" })
     ) {
       throw new Error("Unsafe or repeated Gemini response");
     }
-    if ((data.recent.recentMistakes >= 2 || data.cordura >= 75) && parsed.action === "escalate") {
+    if (
+      (data.recent.recentMistakes >= 2 ||
+        data.cordura >= 75 ||
+        data.facts.hintsUsed >= 3 ||
+        data.facts.currentMistakeStreak >= 2 ||
+        data.facts.maxMistakeStreak >= 4) &&
+      parsed.action === "escalate"
+    ) {
       throw new Error("Gemini tried to escalate while the player was struggling");
     }
     return {

@@ -11,11 +11,17 @@ import { directRealtimeMomentAI } from "./realtime.functions";
 const pending = new Map<string, Promise<RealtimeDecision>>();
 
 function actionFor(context: RealtimeContext): RealtimeDecision["action"] {
-  if (context.recent.recentMistakes >= 2 || context.cordura >= 75) return "ease";
+  if (
+    context.recent.recentMistakes >= 2 ||
+    context.facts.currentMistakeStreak >= 2 ||
+    context.facts.hintsUsed >= 3 ||
+    context.cordura >= 75
+  )
+    return "ease";
   if (
     context.recent.recentMistakes === 0 &&
-    context.recent.elapsedMs !== undefined &&
-    context.recent.elapsedMs < 18_000
+    ((context.recent.elapsedMs !== undefined && context.recent.elapsedMs < 18_000) ||
+      context.facts.fastCompletions >= 2)
   ) {
     return "escalate";
   }
@@ -44,15 +50,25 @@ export function offlineRealtimeDecision(context: RealtimeContext): RealtimeDecis
       line = `${mistakes} mistakes. I can show you more, but the room will know that I helped.`;
       break;
     case "puzzle_solved":
-      groundedIn = toy;
-      line =
-        mistakes === 0
-          ? `You opened it cleanly. I thought ${toy} had taught you to recognise my patterns.`
-          : `You opened it after ${mistakes} false starts. ${toy} would have been more patient.`;
+      if (context.facts.hintsUsed > 0) {
+        groundedIn = `${context.facts.hintsUsed} hints`;
+        line = `You used ${context.facts.hintsUsed} hints, then opened it. I remember what makes you look twice.`;
+      } else {
+        groundedIn = mistakes > 0 ? `${mistakes} mistakes` : "no mistakes";
+        line =
+          mistakes === 0
+            ? "No mistakes. The lock barely had time to learn your hands."
+            : `${mistakes} mistakes, then you recovered. The lock remembers both parts.`;
+      }
       break;
     case "tasks_complete":
-      groundedIn = food;
-      line = `You finished bedtime after ${food}. Now the room only needs to return ${toy}.`;
+      if (context.facts.dialogueSkips >= 3) {
+        groundedIn = `${context.facts.dialogueSkips} skipped lines`;
+        line = `${context.facts.dialogueSkips} skipped lines, yet you finished bedtime. You listen with your hands.`;
+      } else {
+        groundedIn = food;
+        line = `You finished bedtime after ${food}. Now the room only needs to return ${toy}.`;
+      }
       break;
     case "search_miss": {
       const choice = context.recent.choice ?? "there";

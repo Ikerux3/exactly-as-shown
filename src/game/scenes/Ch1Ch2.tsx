@@ -33,6 +33,7 @@ export function Ch1() {
     window.setTimeout(() => {
       const st = useGame.getState();
       if (!st.facts.firstToy) st.fact({ firstToy: t });
+      st.observeChoice(TOY_LABEL[t]);
       st.set({ ch1: [...st.ch1, t] });
       setFlying(null);
       sfx("chime");
@@ -45,7 +46,10 @@ export function Ch1() {
     const id = window.setInterval(() => {
       const st = useGame.getState();
       if (st.paused) return;
-      if (st.lightsOn || !st.interactive) { litMs.current = 0; return; }
+      if (st.lightsOn || !st.interactive) {
+        litMs.current = 0;
+        return;
+      }
       setPos4((p) => {
         if (illuminated(p.x, p.y, 2)) {
           litMs.current += 120;
@@ -55,7 +59,8 @@ export function Ch1() {
         litMs.current = Math.max(0, litMs.current - 240);
         if (litMs.current === 0) setFrozen(false);
         const t = target.current;
-        if (Math.hypot(t.x - p.x, t.y - p.y) < 3) target.current = { x: 10 + Math.random() * 75, y: 58 + Math.random() * 30 };
+        if (Math.hypot(t.x - p.x, t.y - p.y) < 3)
+          target.current = { x: 10 + Math.random() * 75, y: 58 + Math.random() * 30 };
         return { x: p.x + Math.sign(t.x - p.x) * 1.1, y: p.y + Math.sign(t.y - p.y) * 0.7 };
       });
     }, 120);
@@ -79,16 +84,29 @@ export function Ch1() {
     if (s.ch1.length === 5 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
-      window.setTimeout(() => { sfx("switch"); useGame.getState().set({ lightsOn: false, flicker: Date.now() }); }, 900);
-      window.setTimeout(() => useGame.getState().say([
-        { speaker: "guest", text: "You tidy so nicely." },
-        { speaker: "guest", text: `You picked up the ${TOY_LABEL[useGame.getState().facts.firstToy ?? r1]} first. I'll remember that.` },
-        {
-          speaker: "narrator",
-          text: "The lights come back on. Someone is setting the table downstairs.",
-          onShow: () => { sfx("switch"); useGame.getState().set({ lightsOn: true }); },
-        },
-      ]), 1800);
+      window.setTimeout(() => {
+        sfx("switch");
+        useGame.getState().set({ lightsOn: false, flicker: Date.now() });
+      }, 900);
+      window.setTimeout(
+        () =>
+          useGame.getState().say([
+            { speaker: "guest", text: "You tidy so nicely." },
+            {
+              speaker: "guest",
+              text: `You picked up the ${TOY_LABEL[useGame.getState().facts.firstToy ?? r1]} first. I'll remember that.`,
+            },
+            {
+              speaker: "narrator",
+              text: "The lights come back on. Someone is setting the table downstairs.",
+              onShow: () => {
+                sfx("switch");
+                useGame.getState().set({ lightsOn: true });
+              },
+            },
+          ]),
+        1800,
+      );
       window.setTimeout(() => useGame.getState().go("ch2k"), 11000);
     }
   }, [s.ch1.length]);
@@ -96,28 +114,78 @@ export function Ch1() {
   const box = { x: 74, y: 86 };
   const flyStyle = (t: ToyId, x: number, y: number, w: number) =>
     flying === t
-      ? { left: `${box.x}%`, top: `${box.y}%`, width: `${w * 0.4}%`, transform: "translate(-50%,-50%) rotate(-12deg)", opacity: 0.2 }
+      ? {
+          left: `${box.x}%`,
+          top: `${box.y}%`,
+          width: `${w * 0.4}%`,
+          transform: "translate(-50%,-50%) rotate(-12deg)",
+          opacity: 0.2,
+        }
       : { left: `${x}%`, top: `${y}%`, width: `${w}%`, transform: "translate(-50%,-50%)" };
 
-  const Toy = ({ t, x, y, w, extra }: { t: ToyId; x: number; y: number; w: number; extra?: string }) =>
+  const Toy = ({
+    t,
+    x,
+    y,
+    w,
+    extra,
+  }: {
+    t: ToyId;
+    x: number;
+    y: number;
+    w: number;
+    extra?: string;
+  }) =>
     got(t) ? null : (
-      <button onClick={() => collect(t)} aria-label={`Pick up the ${TOY_LABEL[t]}`}
-        className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`} style={flyStyle(t, x, y, w)}>
-        <img src={TOY_IMG[t]} alt="" className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]" draggable={false} />
+      <button
+        onClick={() => collect(t)}
+        aria-label={`Pick up the ${TOY_LABEL[t]}`}
+        className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`}
+        style={flyStyle(t, x, y, w)}
+      >
+        <img
+          src={TOY_IMG[t]}
+          alt=""
+          className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]"
+          draggable={false}
+        />
       </button>
     );
 
   return (
     <Stage
-      bg={BG.bgPlayroom} bgPos="15% 50%" chapter={1} chapterCard progress={`Toys ${s.ch1.length}/5`}
+      bg={BG.bgPlayroom}
+      bgPos="15% 50%"
+      chapter={1}
+      chapterCard
+      progress={`Toys ${s.ch1.length}/5`}
       guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}
       clues={
         !got(r5) && (
           <>
-            {[[52, 96], [46, 91], [39, 87], [32, 83], [26, 79]].map(([x, y], i) => (
-              <svg key={i} viewBox="0 0 20 30" className="glow-clue absolute w-[3.5%]" style={{ left: `${x}%`, top: `${y}%`, transform: `rotate(${-50 + (i % 2) * 20}deg)`, animationDelay: `${i * 0.2}s` }} aria-hidden>
+            {[
+              [52, 96],
+              [46, 91],
+              [39, 87],
+              [32, 83],
+              [26, 79],
+            ].map(([x, y], i) => (
+              <svg
+                key={i}
+                viewBox="0 0 20 30"
+                className="glow-clue absolute w-[3.5%]"
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: `rotate(${-50 + (i % 2) * 20}deg)`,
+                  animationDelay: `${i * 0.2}s`,
+                }}
+                aria-hidden
+              >
                 <ellipse cx="10" cy="18" rx="6" ry="10" fill="currentColor" />
-                <circle cx="5" cy="4" r="2.5" fill="currentColor" /><circle cx="10" cy="2.5" r="2.5" fill="currentColor" /><circle cx="15" cy="4" r="2.5" fill="currentColor" />
+                <circle cx="5" cy="4" r="2.5" fill="currentColor" />
+                <circle cx="10" cy="2.5" r="2.5" fill="currentColor" />
+                <circle cx="15" cy="4" r="2.5" fill="currentColor" />
               </svg>
             ))}
           </>
@@ -131,30 +199,101 @@ export function Ch1() {
 
       {/* Toy 2 — under the sofa cushion */}
       {cushionMoved && <Toy t={r2} x={24} y={43} w={14} />}
-      <button aria-label="Move the cushion" onClick={() => { if (cushionMoved) useGame.getState().fact({ revisits: s.facts.revisits + 1 }); setCushion(!cushionMoved); sfx("open"); }}
+      <button
+        aria-label="Move the cushion"
+        onClick={() => {
+          if (cushionMoved) useGame.getState().fact({ revisits: s.facts.revisits + 1 });
+          else s.inspect("sofa cushion");
+          setCushion(!cushionMoved);
+          sfx("open");
+        }}
         className="absolute transition-transform duration-500"
-        style={{ left: "14%", top: "38%", width: "21%", zIndex: cushionMoved ? 5 : 30, transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none" }}>
+        style={{
+          left: "14%",
+          top: "38%",
+          width: "21%",
+          zIndex: cushionMoved ? 5 : 30,
+          transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none",
+        }}
+      >
         <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
       </button>
 
       {/* Toy 3 — in the drawer */}
-      <button aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"} onClick={() => { setDrawer(!drawerOpen); sfx("open"); }} className="absolute" style={{ left: "64%", top: "44%", width: "26%" }}>
+      <button
+        aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"}
+        onClick={() => {
+          if (!drawerOpen) s.inspect("playroom drawer");
+          setDrawer(!drawerOpen);
+          sfx("open");
+        }}
+        className="absolute"
+        style={{ left: "64%", top: "44%", width: "26%" }}
+      >
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
       {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !s.lightsOn && (
-        <button aria-label="Grab the toy that keeps moving" onClick={() => (frozen ? collect(r4) : sfx("wrong"))}
-          className="absolute z-10" style={flying === r4 ? flyStyle(r4, 0, 0, 12) : { left: `${pos4.x}%`, top: `${pos4.y}%`, width: "15%", transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)` }}>
-          <img src={TOY_IMG[r4]} alt="" className="w-full" style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }} draggable={false} />
+        <button
+          aria-label="Grab the toy that keeps moving"
+          onClick={() => {
+            if (frozen) collect(r4);
+            else {
+              sfx("wrong");
+              s.mistake();
+            }
+          }}
+          className="absolute z-10"
+          style={
+            flying === r4
+              ? flyStyle(r4, 0, 0, 12)
+              : {
+                  left: `${pos4.x}%`,
+                  top: `${pos4.y}%`,
+                  width: "15%",
+                  transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)`,
+                }
+          }
+        >
+          <img
+            src={TOY_IMG[r4]}
+            alt=""
+            className="w-full"
+            style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }}
+            draggable={false}
+          />
         </button>
       )}
 
       {/* Toy 5 — under the rug edge */}
-      <button aria-label="Lift the edge of the rug" onClick={() => { setRug(true); sfx("open"); }} className="absolute" style={{ left: "10%", top: "70%", width: "26%", height: "12%" }}>
-        <svg viewBox="0 0 100 40" className="h-full w-full" style={{ transform: rugLifted ? "translateY(-30%) skewX(-18deg)" : "none", transition: "transform .5s", opacity: rugLifted ? 1 : 0 }} aria-hidden>
-          <path d="M4 30 Q50 6 96 30 Q50 40 4 30 Z" fill="var(--sage)" stroke="var(--paper)" strokeDasharray="4 4" />
+      <button
+        aria-label="Lift the edge of the rug"
+        onClick={() => {
+          if (!rugLifted) s.inspect("rug edge");
+          setRug(true);
+          sfx("open");
+        }}
+        className="absolute"
+        style={{ left: "10%", top: "70%", width: "26%", height: "12%" }}
+      >
+        <svg
+          viewBox="0 0 100 40"
+          className="h-full w-full"
+          style={{
+            transform: rugLifted ? "translateY(-30%) skewX(-18deg)" : "none",
+            transition: "transform .5s",
+            opacity: rugLifted ? 1 : 0,
+          }}
+          aria-hidden
+        >
+          <path
+            d="M4 30 Q50 6 96 30 Q50 40 4 30 Z"
+            fill="var(--sage)"
+            stroke="var(--paper)"
+            strokeDasharray="4 4"
+          />
         </svg>
       </button>
       {rugLifted && <Toy t={r5} x={22} y={79} w={15} />}
@@ -167,8 +306,21 @@ export function Ch1() {
 type ItemKind = "plate" | "glass" | "cutlery";
 type Owner = "child" | "mother";
 export type ItemId = `${ItemKind}-${Owner}`;
-const ITEMS: ItemId[] = ["plate-child", "glass-child", "cutlery-child", "plate-mother", "glass-mother", "cutlery-mother"];
-const UNITS: { kind: "door" | "drawer"; x: number; y: number; w: number; contents: (ItemId | "decoy-plate" | "decoy-glass")[] }[] = [
+const ITEMS: ItemId[] = [
+  "plate-child",
+  "glass-child",
+  "cutlery-child",
+  "plate-mother",
+  "glass-mother",
+  "cutlery-mother",
+];
+const UNITS: {
+  kind: "door" | "drawer";
+  x: number;
+  y: number;
+  w: number;
+  contents: (ItemId | "decoy-plate" | "decoy-glass")[];
+}[] = [
   { kind: "door", x: 3, y: 60, w: 21, contents: ["plate-mother", "decoy-plate"] },
   { kind: "door", x: 26, y: 60, w: 21, contents: ["glass-child"] },
   { kind: "door", x: 49, y: 60, w: 21, contents: ["decoy-glass", "cutlery-mother"] },
@@ -184,14 +336,20 @@ function useColors() {
 export function ItemArt({ id, big, className }: { id: string; big?: boolean; className?: string }) {
   const col = useColors();
   const [kind, owner] = id.split("-") as [string, string];
-  const color = owner === "child" ? col.child : owner === "mother" ? col.mother : "var(--paper-deep)";
+  const color =
+    owner === "child" ? col.child : owner === "mother" ? col.mother : "var(--paper-deep)";
   const style = { width: "100%" };
   return (
     <div className={className}>
       {kind === "plate" && <Plate color={color} big={big} style={style} />}
       {kind === "glass" && <Glass color={color} big={big} style={style} />}
       {kind === "cutlery" && <Cutlery color={color} big={big} style={style} />}
-      {kind === "decoy" && (owner === "plate" ? <Plate color="var(--wood-light)" big style={style} /> : <Glass color="var(--wood-light)" big style={style} />)}
+      {kind === "decoy" &&
+        (owner === "plate" ? (
+          <Plate color="var(--wood-light)" big style={style} />
+        ) : (
+          <Glass color="var(--wood-light)" big style={style} />
+        ))}
     </div>
   );
 }
@@ -206,60 +364,133 @@ export function Ch2Kitchen() {
   const take = (it: string) => {
     if (it.startsWith("decoy")) {
       sfx("wrong");
+      s.mistake();
       s.say({ speaker: "narrator", text: "That one's far too big. It isn't for you.", ms: 2000 });
       return;
     }
     sfx("chime");
+    s.observeChoice(it.replace("-", " for "));
     s.set({ ch2Items: [...s.ch2Items, it] });
   };
   return (
     <Stage
-      bg={BG.bgKitchen} bgPos="50% 50%" chapter={2} chapterCard progress={`Tray ${s.ch2Items.length}/6`}
+      bg={BG.bgKitchen}
+      bgPos="50% 50%"
+      chapter={2}
+      chapterCard
+      progress={`Tray ${s.ch2Items.length}/6`}
       clues={UNITS.map((u, i) =>
         u.contents.some((c) => remaining.includes(c as ItemId)) && !open.includes(i) ? (
-          <div key={i} className="glow-clue absolute rounded-md border-2 border-current" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, height: u.kind === "door" ? "17.5%" : "9.7%" }} />
+          <div
+            key={i}
+            className="glow-clue absolute rounded-md border-2 border-current"
+            style={{
+              left: `${u.x}%`,
+              top: `${u.y}%`,
+              width: `${u.w}%`,
+              height: u.kind === "door" ? "17.5%" : "9.7%",
+            }}
+          />
         ) : null,
       )}
     >
       {/* cabinet body the doors and drawers are set into */}
-      <div className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
-        style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }} />
+      <div
+        className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
+        style={{
+          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
+          boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)",
+        }}
+      />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
-        const toggle = () => { sfx("open"); setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]); };
+        const toggle = () => {
+          sfx("open");
+          if (!isOpen) s.inspect(`kitchen ${u.kind} ${i + 1}`);
+          setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]);
+        };
         const aspect = u.kind === "door" ? "4 / 5" : "12 / 7";
         return (
-          <div key={i} className="absolute" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, zIndex: isOpen ? 5 : 1 }}>
+          <div
+            key={i}
+            className="absolute"
+            style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, zIndex: isOpen ? 5 : 1 }}
+          >
             {!isOpen ? (
-              <button aria-label="Open the cupboard" className="block w-full" style={{ aspectRatio: aspect, touchAction: "manipulation" }} onClick={toggle}>
-                <Cupboard kind={u.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
+              <button
+                aria-label="Open the cupboard"
+                className="block w-full"
+                style={{ aspectRatio: aspect, touchAction: "manipulation" }}
+                onClick={toggle}
+              >
+                <Cupboard
+                  kind={u.kind}
+                  open={false}
+                  style={{ width: "100%", height: "100%", display: "block" }}
+                />
               </button>
             ) : (
               <div className="relative w-full" style={{ aspectRatio: aspect }}>
                 {/* the door / drawer front, swung clear of the opening — tap it to close */}
                 {u.kind === "door" ? (
-                  <button aria-label="Close the cupboard" onClick={toggle}
+                  <button
+                    aria-label="Close the cupboard"
+                    onClick={toggle}
                     className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
-                    style={{ backgroundImage: `url(${PROP.door})`, backgroundSize: "cover", backgroundPosition: "right center", filter: "brightness(.7) sepia(.3)", boxShadow: "var(--shadow-contact)" }} />
+                    style={{
+                      backgroundImage: `url(${PROP.door})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "right center",
+                      filter: "brightness(.7) sepia(.3)",
+                      boxShadow: "var(--shadow-contact)",
+                    }}
+                  />
                 ) : (
-                  <button aria-label="Close the drawer" onClick={toggle}
+                  <button
+                    aria-label="Close the drawer"
+                    onClick={toggle}
                     className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
-                    style={{ backgroundImage: `url(${PROP.drawer})`, backgroundSize: "cover", backgroundPosition: "center", filter: "sepia(.3)", boxShadow: "var(--shadow-contact)" }}>
-                  </button>
+                    style={{
+                      backgroundImage: `url(${PROP.drawer})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      filter: "sepia(.3)",
+                      boxShadow: "var(--shadow-contact)",
+                    }}
+                  ></button>
                 )}
                 {/* interior with contents, always on top and tappable */}
-                <div className={`absolute inset-0 flex items-center justify-around gap-1 rounded p-1.5 ${u.kind === "door" ? "flex-col" : ""}`}
-                  style={{ background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))", boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)" }}>
-                  {u.kind === "door" && <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 bg-wood-light" />}
-                  {u.contents.filter((c) => !s.ch2Items.includes(c)).map((c) => (
-                    <button key={c} onClick={() => take(c)} aria-label={c.startsWith("decoy") ? "A very large dish" : `Take ${c.replace("-", " for ")}`}
-                      style={{ minWidth: 44, minHeight: 44, touchAction: "manipulation" }} className={`relative z-10 grid place-items-center ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}>
-                      <ItemArt id={c} big={c.startsWith("decoy")} />
-                    </button>
-                  ))}
-                  {u.contents.every((c) => s.ch2Items.includes(c) || c.startsWith("decoy")) && u.contents.every((c) => !c.startsWith("decoy") || false) && (
-                    <span className="font-hand text-xs text-paper/50">empty</span>
+                <div
+                  className={`absolute inset-0 flex items-center justify-around gap-1 rounded p-1.5 ${u.kind === "door" ? "flex-col" : ""}`}
+                  style={{
+                    background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))",
+                    boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)",
+                  }}
+                >
+                  {u.kind === "door" && (
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 bg-wood-light" />
                   )}
+                  {u.contents
+                    .filter((c) => !s.ch2Items.includes(c))
+                    .map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => take(c)}
+                        aria-label={
+                          c.startsWith("decoy")
+                            ? "A very large dish"
+                            : `Take ${c.replace("-", " for ")}`
+                        }
+                        style={{ minWidth: 44, minHeight: 44, touchAction: "manipulation" }}
+                        className={`relative z-10 grid place-items-center ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}
+                      >
+                        <ItemArt id={c} big={c.startsWith("decoy")} />
+                      </button>
+                    ))}
+                  {u.contents.every((c) => s.ch2Items.includes(c) || c.startsWith("decoy")) &&
+                    u.contents.every((c) => !c.startsWith("decoy") || false) && (
+                      <span className="font-hand text-xs text-paper/50">empty</span>
+                    )}
                 </div>
               </div>
             )}
@@ -267,16 +498,34 @@ export function Ch2Kitchen() {
         );
       })}
       {/* Tray */}
-      <div className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}>
+      <div
+        className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2"
+        style={{
+          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
+          boxShadow: "var(--shadow-contact)",
+        }}
+      >
         {ITEMS.map((i) => (
           <div key={i} className="grid h-full flex-1 place-items-center">
-            {s.ch2Items.includes(i) ? <ItemArt id={i} className="w-[80%] animate-float-up" /> : <div className="h-3 w-3 rounded-full border border-dashed border-paper/50" />}
+            {s.ch2Items.includes(i) ? (
+              <ItemArt id={i} className="w-[80%] animate-float-up" />
+            ) : (
+              <div className="h-3 w-3 rounded-full border border-dashed border-paper/50" />
+            )}
           </div>
         ))}
       </div>
       {s.ch2Items.length === 6 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[54%] z-20 flex justify-center animate-float-up">
-          <button className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]" onClick={() => { sfx("tap"); s.go("ch2d"); }}>Carry the tray to the table</button>
+          <button
+            className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]"
+            onClick={() => {
+              sfx("tap");
+              s.go("ch2d");
+            }}
+          >
+            Carry the tray to the table
+          </button>
         </div>
       )}
     </Stage>
@@ -293,10 +542,16 @@ export function Ch2Dining() {
   const [interpreting, setInterpreting] = useState(false);
   const [third, setThird] = useState(false);
   const ended = useRef(false);
-  useSceneIntro("ch2d", "Set two places: yours and Mommy's. In the dark you can tell which is which.", [
-    { speaker: "narrator", text: "Two places at the long table. They look exactly the same." },
-    ...chooseInterventions(s.facts, 2).filter((i) => i.kind === "line").map((i) => ({ speaker: "guest" as const, text: (i as { text: string }).text })),
-  ]);
+  useSceneIntro(
+    "ch2d",
+    "Set two places: yours and Mommy's. In the dark you can tell which is which.",
+    [
+      { speaker: "narrator", text: "Two places at the long table. They look exactly the same." },
+      ...chooseInterventions(s.facts, 2)
+        .filter((i) => i.kind === "line")
+        .map((i) => ({ speaker: "guest" as const, text: (i as { text: string }).text })),
+    ],
+  );
   const placed = s.ch2Placed as ItemId[];
   const correct = placed.length;
 
@@ -306,6 +561,7 @@ export function Ch2Dining() {
     setInterpreting(true);
     const result = await interpretFavoriteFood(answer);
     const state = useGame.getState();
+    state.observeChoice(result.displayFood);
     state.set({ favFood: result.displayFood, interactive: true });
     setAsking(false);
     setInterpreting(false);
@@ -314,15 +570,26 @@ export function Ch2Dining() {
 
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
-      if (!s.lightsOn) s.say({ speaker: "narrator", text: "You can't see well enough to set the table. Turn the light on.", ms: 2400 });
+      if (!s.lightsOn)
+        s.say({
+          speaker: "narrator",
+          text: "You can't see well enough to set the table. Turn the light on.",
+          ms: 2400,
+        });
       return;
     }
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
     if (sel.endsWith(owner)) {
       sfx("chime");
+      s.success();
       s.set({ ch2Placed: [...placed, sel] });
       setSel(null);
-      if (placed.length + 1 === 3 && !s.favFood) window.setTimeout(() => { useGame.getState().set({ interactive: false }); setAsking(true); sfx("whisper"); }, 600);
+      if (placed.length + 1 === 3 && !s.favFood)
+        window.setTimeout(() => {
+          useGame.getState().set({ interactive: false });
+          setAsking(true);
+          sfx("whisper");
+        }, 600);
     } else {
       sfx("wrong");
       s.mistake();
@@ -335,12 +602,24 @@ export function Ch2Dining() {
     if (correct === 6 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
-      window.setTimeout(() => { sfx("switch"); useGame.getState().set({ flicker: Date.now() }); setThird(true); sfx("creak"); }, 1200);
-      window.setTimeout(() => useGame.getState().say([
-        { speaker: "narrator", text: "There are three places at the table now." },
-        { speaker: "guest", text: `I set one for me. I made your ${useGame.getState().favFood}. Same colour as yours.` },
-        { speaker: "narrator", text: "Upstairs, a music box starts to play." },
-      ]), 2200);
+      window.setTimeout(() => {
+        sfx("switch");
+        useGame.getState().set({ flicker: Date.now() });
+        setThird(true);
+        sfx("creak");
+      }, 1200);
+      window.setTimeout(
+        () =>
+          useGame.getState().say([
+            { speaker: "narrator", text: "There are three places at the table now." },
+            {
+              speaker: "guest",
+              text: `I set one for me. I made your ${useGame.getState().favFood}. Same colour as yours.`,
+            },
+            { speaker: "narrator", text: "Upstairs, a music box starts to play." },
+          ]),
+        2200,
+      );
       window.setTimeout(() => useGame.getState().go("ch3"), 13000);
     }
   }, [correct]);
@@ -349,12 +628,25 @@ export function Ch2Dining() {
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
     const mine = placed.filter((p) => p.endsWith(owner));
     return (
-      <button aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`} onClick={() => place(side)}
-        className="absolute h-[9%] w-[30%] -translate-x-1/2 rounded-[50%]" style={{ left: `${x}%`, top: "54%", background: "oklch(0.92 0.03 85 / .9)", outline: sel ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)", outlineOffset: -6, boxShadow: "var(--shadow-contact)" }}>
+      <button
+        aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`}
+        onClick={() => place(side)}
+        className="absolute h-[9%] w-[30%] -translate-x-1/2 rounded-[50%]"
+        style={{
+          left: `${x}%`,
+          top: "54%",
+          background: "oklch(0.92 0.03 85 / .9)",
+          outline: sel ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)",
+          outlineOffset: -6,
+          boxShadow: "var(--shadow-contact)",
+        }}
+      >
         <div className="absolute inset-0 flex items-center justify-center gap-0.5 px-3">
           {(["cutlery", "plate", "glass"] as ItemKind[]).map((k) => {
             const id = `${k}-${owner}`;
-            return mine.includes(id as ItemId) ? <ItemArt key={k} id={id} className={k === "plate" ? "w-[45%]" : "w-[22%]"} /> : null;
+            return mine.includes(id as ItemId) ? (
+              <ItemArt key={k} id={id} className={k === "plate" ? "w-[45%]" : "w-[22%]"} />
+            ) : null;
           })}
         </div>
       </button>
@@ -363,7 +655,10 @@ export function Ch2Dining() {
 
   return (
     <Stage
-      bg={BG.bgDining} bgPos="50% 50%" chapter={2} progress={`Table ${correct}/6`}
+      bg={BG.bgDining}
+      bgPos="50% 50%"
+      chapter={2}
+      progress={`Table ${correct}/6`}
       guest={{ x: 50, y: 22, h: 46, show: correct >= 1 }}
       clues={
         <>
@@ -371,13 +666,33 @@ export function Ch2Dining() {
             const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
             const x = side === "L" ? 25 : 75;
             return (
-              <div key={side} className="glow-clue absolute -translate-x-1/2 text-center" style={{ left: `${x}%`, top: "45%" }}>
+              <div
+                key={side}
+                className="glow-clue absolute -translate-x-1/2 text-center"
+                style={{ left: `${x}%`, top: "45%" }}
+              >
                 {owner === "child" ? (
-                  <svg viewBox="0 0 40 40" className="mx-auto w-12" aria-hidden><path d="M20 4 L25 15 L37 15 L27 23 L31 35 L20 28 L9 35 L13 23 L3 15 L15 15 Z" fill={col.child} stroke="currentColor" strokeWidth="2" /></svg>
+                  <svg viewBox="0 0 40 40" className="mx-auto w-12" aria-hidden>
+                    <path
+                      d="M20 4 L25 15 L37 15 L27 23 L31 35 L20 28 L9 35 L13 23 L3 15 L15 15 Z"
+                      fill={col.child}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                  </svg>
                 ) : (
-                  <svg viewBox="0 0 40 50" className="mx-auto w-11" aria-hidden><path d="M14 4 L26 4 L28 14 L38 46 L2 46 L12 14 Z" fill={col.mother} stroke="currentColor" strokeWidth="2" /></svg>
+                  <svg viewBox="0 0 40 50" className="mx-auto w-11" aria-hidden>
+                    <path
+                      d="M14 4 L26 4 L28 14 L38 46 L2 46 L12 14 Z"
+                      fill={col.mother}
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                  </svg>
                 )}
-                <span className="font-hand text-sm">{owner === "child" ? (s.name || "you").slice(0, 1) : "M"}</span>
+                <span className="font-hand text-sm">
+                  {owner === "child" ? (s.name || "you").slice(0, 1) : "M"}
+                </span>
               </div>
             );
           })}
@@ -393,21 +708,45 @@ export function Ch2Dining() {
         </div>
       )}
       {/* Tray */}
-      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}>
+      <div
+        className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2"
+        style={{
+          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
+          boxShadow: "var(--shadow-contact)",
+        }}
+      >
         {/* fixed slot width: pieces keep their size as the tray empties */}
-        {(s.ch2Items as ItemId[]).filter((i) => !placed.includes(i)).map((i) => (
-          <button key={i} onClick={() => { sfx("tap"); setSel(sel === i ? null : i); }} aria-label={`Pick ${i}`}
-            className={`h-full w-[15.5%] shrink-0 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}>
-            <ItemArt id={i} className="mx-auto w-[85%]" />
-          </button>
-        ))}
+        {(s.ch2Items as ItemId[])
+          .filter((i) => !placed.includes(i))
+          .map((i) => (
+            <button
+              key={i}
+              onClick={() => {
+                sfx("tap");
+                if (sel !== i) s.observeChoice(i.replace("-", " for "));
+                setSel(sel === i ? null : i);
+              }}
+              aria-label={`Pick ${i}`}
+              className={`h-full w-[15.5%] shrink-0 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}
+            >
+              <ItemArt id={i} className="mx-auto w-[85%]" />
+            </button>
+          ))}
       </div>
       {asking && (
         <div className="absolute inset-x-[6%] top-[14%] z-20 paper animate-float-up p-5">
           <p className="font-display text-lg italic">"What do you like to eat best?"</p>
           <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
-          <form className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); void answerFood(); }}>
-            <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void answerFood();
+            }}
+          >
+            <label className="sr-only" htmlFor="favourite-food">
+              Your favourite food
+            </label>
             <input
               id="favourite-food"
               autoFocus
@@ -418,11 +757,17 @@ export function Ch2Dining() {
               placeholder="Type anything…"
               className="min-w-0 flex-1 rounded border border-ink/30 bg-paper px-3 py-2 font-hand text-sm text-ink outline-none focus:border-crimson"
             />
-            <button type="submit" disabled={!foodInput.trim() || interpreting} className="stitch-btn sage text-sm disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={!foodInput.trim() || interpreting}
+              className="stitch-btn sage text-sm disabled:opacity-50"
+            >
               {interpreting ? "Listening…" : "Tell it"}
             </button>
           </form>
-          <p className="mt-2 text-[10px] opacity-50">If the house cannot reach Gemini, it remembers using local rules.</p>
+          <p className="mt-2 text-[10px] opacity-50">
+            If the house cannot reach Gemini, it remembers using local rules.
+          </p>
         </div>
       )}
     </Stage>

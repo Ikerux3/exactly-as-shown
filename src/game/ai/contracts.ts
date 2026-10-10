@@ -57,6 +57,17 @@ export type AdaptiveContext = {
     lightToggles: number;
     revisits: number;
     previousRuns: number;
+    dialogueSkips: number;
+    hintsUsed: number;
+    inspections: number;
+    recoveries: number;
+    currentMistakeStreak: number;
+    maxMistakeStreak: number;
+    completedCheckpoints: number;
+    fastCompletions: number;
+    slowCompletions: number;
+    responseTimesMs: number[];
+    choiceTrail: string[];
   };
 };
 

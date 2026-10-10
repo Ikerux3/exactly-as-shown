@@ -22,6 +22,17 @@ const requestSchema = z.object({
     lightToggles: count,
     revisits: count,
     previousRuns: count,
+    dialogueSkips: count,
+    hintsUsed: count,
+    inspections: count,
+    recoveries: count,
+    currentMistakeStreak: count,
+    maxMistakeStreak: count,
+    completedCheckpoints: count,
+    fastCompletions: count,
+    slowCompletions: count,
+    responseTimesMs: z.array(z.number().int().min(0).max(3_600_000)).max(12),
+    choiceTrail: z.array(z.string().trim().max(40)).max(12),
   }),
 });
 

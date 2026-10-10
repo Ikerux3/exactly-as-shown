@@ -11,7 +11,24 @@ const base: RealtimeContext = {
   favFood: "pancakes",
   favToy: "wooden train",
   firstToy: "felt rabbit",
-  facts: { mistakes: 0, darkSeconds: 8, lightToggles: 2, revisits: 0, previousRuns: 0 },
+  facts: {
+    mistakes: 0,
+    darkSeconds: 8,
+    lightToggles: 2,
+    revisits: 0,
+    previousRuns: 0,
+    dialogueSkips: 0,
+    hintsUsed: 0,
+    inspections: 0,
+    recoveries: 0,
+    currentMistakeStreak: 0,
+    maxMistakeStreak: 0,
+    completedCheckpoints: 0,
+    fastCompletions: 0,
+    slowCompletions: 0,
+    responseTimesMs: [],
+    choiceTrail: [],
+  },
   recent: { recentMistakes: 0, round: 1, elapsedMs: 8_000 },
   previousLines: [],
 };
@@ -50,5 +67,25 @@ describe("offline realtime director", () => {
     expect(tasks.line).toContain("pancakes");
     expect(tasks.line).toContain("wooden train");
     expect(miss.line).toContain("the bathtub");
+  });
+
+  it("reacts to accumulated behavioural signals", () => {
+    const helped = offlineRealtimeDecision({
+      ...base,
+      chapter: 4,
+      event: "puzzle_solved",
+      facts: { ...base.facts, hintsUsed: 2 },
+      recent: { recentMistakes: 0 },
+    });
+    const skipped = offlineRealtimeDecision({
+      ...base,
+      chapter: 5,
+      event: "tasks_complete",
+      facts: { ...base.facts, dialogueSkips: 4 },
+      recent: { recentMistakes: 0 },
+    });
+    expect(helped.action).toBe("hold");
+    expect(helped.line).toContain("2 hints");
+    expect(skipped.line).toContain("4 skipped lines");
   });
 });

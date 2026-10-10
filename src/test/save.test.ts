@@ -58,4 +58,47 @@ describe("chapter checkpoint save", () => {
     s.go("ch2k");
     expect(useGame.getState().paused).toBe(false);
   });
+
+  it("keeps behavioural memory bounded and records recovery", () => {
+    const s = useGame.getState();
+    s.mistake();
+    s.mistake();
+    s.success(8_500);
+    for (let i = 0; i < 15; i++) s.observeChoice(`choice ${i}`);
+    s.say([
+      { speaker: "narrator", text: "one" },
+      { speaker: "narrator", text: "two" },
+    ]);
+    s.nextLine(true);
+
+    const facts = useGame.getState().facts;
+    expect(facts).toMatchObject({
+      mistakes: 2,
+      maxMistakeStreak: 2,
+      currentMistakeStreak: 0,
+      recoveries: 1,
+      completedCheckpoints: 1,
+      fastCompletions: 1,
+      dialogueSkips: 1,
+    });
+    expect(facts.responseTimesMs).toEqual([8_500]);
+    expect(facts.choiceTrail).toHaveLength(12);
+    expect(facts.choiceTrail[0]).toBe("choice 3");
+  });
+
+  it("fills new behavioural defaults when resuming an older save", () => {
+    const s = useGame.getState();
+    s.set({ name: "Lucia" });
+    s.go("ch3");
+    const oldSave = JSON.parse(localStorage.getItem("mwbb-save-v1")!) as {
+      facts: Record<string, unknown>;
+    };
+    delete oldSave.facts["dialogueSkips"];
+    delete oldSave.facts["choiceTrail"];
+    localStorage.setItem("mwbb-save-v1", JSON.stringify(oldSave));
+
+    expect(s.continueRun()).toBe(true);
+    expect(useGame.getState().facts.dialogueSkips).toBe(0);
+    expect(useGame.getState().facts.choiceTrail).toEqual([]);
+  });
 });

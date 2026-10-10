@@ -7,7 +7,24 @@ const base = {
   favColor: "sage" as const,
   favFood: "spaghetti",
   favToy: "teddy bear",
-  facts: { mistakes: 2, darkSeconds: 20, lightToggles: 5, revisits: 0, previousRuns: 0 },
+  facts: {
+    mistakes: 2,
+    darkSeconds: 20,
+    lightToggles: 5,
+    revisits: 0,
+    previousRuns: 0,
+    dialogueSkips: 0,
+    hintsUsed: 0,
+    inspections: 0,
+    recoveries: 0,
+    currentMistakeStreak: 0,
+    maxMistakeStreak: 0,
+    completedCheckpoints: 0,
+    fastCompletions: 0,
+    slowCompletions: 0,
+    responseTimesMs: [],
+    choiceTrail: [],
+  },
 };
 
 describe("offline adaptive director", () => {
@@ -33,5 +50,20 @@ describe("offline adaptive director", () => {
       hidingPlace: "towel",
       blackoutPressure: "relentless",
     });
+  });
+
+  it("uses timing, hints and mistake streaks as difficulty signals", () => {
+    expect(
+      offlineAdaptivePlan({
+        ...base,
+        facts: { ...base.facts, fastCompletions: 2 },
+      }).difficulty,
+    ).toBe("relentless");
+    expect(
+      offlineAdaptivePlan({
+        ...base,
+        facts: { ...base.facts, hintsUsed: 3, fastCompletions: 4 },
+      }).difficulty,
+    ).toBe("gentle");
   });
 });

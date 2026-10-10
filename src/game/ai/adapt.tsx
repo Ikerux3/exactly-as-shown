@@ -4,8 +4,16 @@ import type { AdaptiveChapter, AdaptiveContext, AdaptivePlan } from "./contracts
 import { directAdaptiveChapterAI } from "./adapt.functions";
 
 export function offlineAdaptivePlan(context: AdaptiveContext): AdaptivePlan {
-  const struggling = context.facts.mistakes >= 4 || context.cordura >= 70;
-  const confident = context.facts.mistakes <= 1 && context.facts.darkSeconds >= 35;
+  const struggling =
+    context.facts.currentMistakeStreak >= 2 ||
+    context.facts.maxMistakeStreak >= 4 ||
+    context.facts.hintsUsed >= 3 ||
+    context.facts.slowCompletions >= 2 ||
+    context.cordura >= 70;
+  const confident =
+    !struggling &&
+    (context.facts.fastCompletions >= 2 ||
+      (context.facts.mistakes <= 1 && context.facts.darkSeconds >= 35));
   const difficulty = struggling ? "gentle" : confident ? "relentless" : "standard";
   const puzzleVariant =
     context.favColor === "turq" || context.favFood?.includes("fish")
