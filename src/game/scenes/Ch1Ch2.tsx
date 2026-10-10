@@ -1,7 +1,7 @@
 import cleanJacketWall from "../../assets/bg-playroom-2-clean.avif";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OnWall, Stage, useWall } from "../Stage";
-import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
+import { PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
 import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, WALLS, toyImageFor } from "../assets";
 import { JumpScare } from "../fx";
 import { Button } from "@/components/ui/button";
@@ -256,12 +256,13 @@ const JUNK_IMG: Record<Junk, string> = {
   "junk-brush": PROP2.toothbrush,
   "junk-box": MUSICBOX,
 };
-const UNITS: { kind: "door" | "drawer"; x: number; y: number; w: number }[] = [
-  { kind: "door", x: 3, y: 60, w: 21 },
-  { kind: "door", x: 26, y: 60, w: 21 },
-  { kind: "door", x: 49, y: 60, w: 21 },
-  { kind: "drawer", x: 73, y: 61, w: 24 },
-  { kind: "drawer", x: 73, y: 77, w: 24 },
+/** Hotspots sit exactly on furniture painted into each kitchen wall (percent of the 2:3 frame). */
+const UNITS: { kind: string; label: string; wall: number; x: number; y: number; w: number; h: number }[] = [
+  { kind: "cupboard", label: "Open the cupboard under the sink", wall: 0, x: 37, y: 50, w: 30, h: 14 },
+  { kind: "fridge", label: "Open the fridge", wall: 1, x: 0, y: 25, w: 25, h: 66 },
+  { kind: "pantry", label: "Open the pantry door", wall: 2, x: 61, y: 33, w: 26, h: 33 },
+  { kind: "shelves", label: "Search the jar shelves", wall: 3, x: 40, y: 17, w: 60, h: 31 },
+  { kind: "cabinet", label: "Open the corner cabinet", wall: 0, x: 67, y: 49, w: 17, h: 15 },
 ];
 
 function shuffle<T>(a: T[]): T[] {
@@ -418,7 +419,7 @@ export function Ch2Kitchen() {
       above={
         <>
           {u && openU !== null && !scare && (
-             <div role="dialog" aria-label="Inside the cupboard" className="absolute inset-0 z-[40] overflow-hidden bg-void animate-float-up">
+             <div role="dialog" aria-label="Looking inside" className="absolute inset-0 z-[40] overflow-hidden bg-void animate-float-up">
                <img src={QOL_ART.kitchenInterior} alt="" className="scene-bg" />
                <div className="absolute inset-0" style={{opacity: s.lightsOn ? 1 : .16}}>
                  {inside.length === 0 && <p className="absolute left-1/2 top-1/2 -translate-x-1/2 font-hand text-paper">empty</p>}
@@ -440,22 +441,17 @@ export function Ch2Kitchen() {
         </>
       }
     >
-      {UNITS.map((unit, i) => {
-        const wallN = KITCHEN_WALLS[i] ?? 0;
-        const isFront = wallN === 0;
-        return (
-          <OnWall key={i} n={wallN}>
-            <button
-              aria-label={unit.kind === "door" ? "Open the cupboard" : "Open the drawer"}
-              onClick={() => openUnit(i, unit.kind)}
-              className="absolute block touch-manipulation active:scale-[0.97]"
-              style={{ left: isFront ? (i === 0 ? "13%" : "56%") : "31%", top: "57%", width: isFront ? "30%" : "38%", aspectRatio: unit.kind === "door" ? "4 / 5" : "12 / 7" }}
-            >
-              <Cupboard kind={unit.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
-            </button>
-          </OnWall>
-        );
-      })}
+      {UNITS.map((unit, i) => (
+        <OnWall key={i} n={unit.wall}>
+          <button
+            type="button"
+            aria-label={unit.label}
+            onClick={() => openUnit(i, unit.kind)}
+            className={`kitchen-spot absolute block touch-manipulation ${s.lightsOn ? "" : "opacity-0"}`}
+            style={{ left: `${unit.x}%`, top: `${unit.y}%`, width: `${unit.w}%`, height: `${unit.h}%` }}
+          />
+        </OnWall>
+      ))}
       {/* what you've gathered so far, pinned to the wall like a note */}
       {got.length > 0 && (
         <div className="pointer-events-none absolute left-[4%] top-[36%] flex max-w-[60%] rotate-[-2deg] items-center gap-1 bg-paper/90 px-2 py-1 shadow-[3px_4px_0_oklch(0_0_0/.5)]">

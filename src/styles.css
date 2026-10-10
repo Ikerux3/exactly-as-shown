@@ -646,3 +646,7 @@
 .cw-lamp-flicker { animation: cw-lamp-flicker 2.3s steps(1) infinite; }
 @keyframes cw-lamp-flicker { 0%, 100% { opacity: 1; } 12% { opacity: .15; } 16% { opacity: 1; } 55% { opacity: .2; } 58% { opacity: .9; } 61% { opacity: .1; } 66% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cw-lamp-flicker { animation: none; } }
+
+/* Kitchen: tap zones drawn over furniture painted in the art — a faint crayon outline, never a pasted box. */
+.kitchen-spot { border: 2px dashed oklch(0.95 0.06 90 / 0.55); border-radius: 6px; background: oklch(0.95 0.06 90 / 0.04); animation: hint-pulse 2.4s ease-in-out infinite; transition: opacity .3s; }
+.kitchen-spot:active { background: oklch(0.95 0.06 90 / 0.18); }
