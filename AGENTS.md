@@ -20,5 +20,8 @@
 - Scenes with their own views (e.g. dining tray/table) pass `noTurn` to Stage; collage jumpscares use `JumpScare` from fx.tsx rendered in Stage `above` — keeps scares local without triggering the phase-restart scare.
 - Apply sanity displacement only to scene artwork, never overlay roots or SVG definitions — prevents blank rooms and moving flashlight masks.
 - Curated preference props resolve through assets.ts and curated cache keys before image generation — known toy preferences stay visually distinct offline without changing the five checkpoint slots.
-- Kitchen close-ups lock Stage navigation and use a full-frame shelf photograph; dining begins at the packing table — keeps object picking and touch placement separate from wall gestures.
-- The studio splash mounts once per app opening before any game scene, with image-load timing, a tap skip and a timeout fallback — chapter changes and menu returns must not replay it or get stuck on a failed image.
+- Kitchen hotspots are invisible tap zones over furniture painted into each wall's art, never pasted furniture props; kitchen close-ups lock Stage navigation and use a full-frame shelf photograph; dining begins at the packing table — keeps object picking and touch placement separate from wall gestures.
+- The studio splash is a fixed-length overlay shown once per app opening on top of the already-mounted game, with a tap skip — it never delays loading, never waits on its image and never replays on chapter changes.
+
+- Stage keeps all four wall backgrounds mounted and toggles visibility — prevents a stale wall flashing while the next image loads.
+- Adaptive chapter plans may arrive late, so a puzzle's solution locks once the player has seen clues or entered input — the AI never changes an answer mid-play.

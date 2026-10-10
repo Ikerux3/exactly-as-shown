@@ -65,7 +65,7 @@ export function currentQuestionContext(
   return {
     kind,
     ...(name ? { name } : {}),
-    favColor: COLOR_LABEL[state.favColor],
+    favColor: `${COLOR_LABEL[state.favColor].toLowerCase()} colour`,
     ...(favToy ? { favToy } : {}),
     previousRuns: state.facts.previousRuns,
     mistakes: state.facts.mistakes,

@@ -58,9 +58,9 @@ const DESTINATION: Record<number, { label: string; room: string; caption: string
 const L = 640;
 const WALK_TO = L - 150;
 const ARRIVE_TO = L - 55;
-const WALK_MS = 5000;
-const ARRIVE_MS = 1300;
-const THROUGH_MS = 700;
+const WALK_MS = 2600;
+const ARRIVE_MS = 900;
+const THROUGH_MS = 450;
 
 type Phase = "start" | "walk" | "arrive" | "through";
 
@@ -82,7 +82,7 @@ export function Corridor({ to, onDone }: { to: Screen; onDone: () => void }) {
       window.setTimeout(() => setPhase("through"), 40 + WALK_MS + ARRIVE_MS),
       window.setTimeout(onDone, 40 + WALK_MS + ARRIVE_MS + THROUGH_MS),
     ];
-    if (ajar) ts.push(window.setTimeout(() => sfx("whisper"), 2600));
+    if (ajar) ts.push(window.setTimeout(() => sfx("whisper"), 1400));
     const steps = window.setInterval(() => sfx("step"), 470);
     ts.push(window.setTimeout(() => window.clearInterval(steps), 40 + WALK_MS + 700));
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDone(); };

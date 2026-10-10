@@ -186,11 +186,11 @@
   .dialogue-panel {
     flex: 1;
     min-width: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
+    scrollbar-width: none;
     padding: 0.55rem 0.9rem;
     text-align: left;
-    font-size: clamp(13px, 3.9cqw, 15.5px);
+    font-size: clamp(12.5px, 3.7cqw, 15px);
     line-height: 1.32;
     border: 1px solid oklch(0.72 0.11 80 / 0.25);
   }
@@ -443,8 +443,8 @@
 }
 
 /* Four-wall room turning */
-@keyframes wall-r { from { transform: translateX(18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
-@keyframes wall-l { from { transform: translateX(-18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
+@keyframes wall-r { from { transform: translateX(12%); opacity: .35 } to { transform: none; opacity: 1 } }
+@keyframes wall-l { from { transform: translateX(-12%); opacity: .35 } to { transform: none; opacity: 1 } }
 .wall-in-r { animation: wall-r .45s cubic-bezier(.2,.8,.2,1) both; }
 .wall-in-l { animation: wall-l .45s cubic-bezier(.2,.8,.2,1) both; }
 .wall-arrow {
@@ -578,10 +578,11 @@
 .dish-drop { animation: dish-drop .9s ease-in both; }
 @keyframes dish-drop { 0%, 15% { transform: none; opacity: 1; } 100% { transform: translateY(65%) rotate(28deg) scale(.7); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .toy-bounce, .swipe-hand, .carry-table, .jumpscare-img, .smile-rise, .dish-shard, .dish-drop { animation: none !important; } }
-.studio-splash { background: var(--studio-background); }
-.studio-logo { animation: studio-intro 2.6s ease-in-out both; }
-@keyframes studio-intro { 0% { opacity: 0; } 22%, 82% { opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .studio-logo { animation: none; } }
+.studio-splash { background: var(--studio-background); animation: studio-out 1.6s ease-in both; }
+.studio-logo { animation: studio-intro 1.6s ease-in-out both; }
+@keyframes studio-intro { 0% { opacity: 0; transform: scale(.97); } 25%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes studio-out { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .studio-logo, .studio-splash { animation: none; } }
 
 /* ===== Between chapters: the upstairs hall (Corridor.tsx). Lengths in cqw = % of the frame width;
    the frame is 100cqw x 150cqw and the hall is --L deep. ===== */
@@ -645,3 +646,7 @@
 .cw-lamp-flicker { animation: cw-lamp-flicker 2.3s steps(1) infinite; }
 @keyframes cw-lamp-flicker { 0%, 100% { opacity: 1; } 12% { opacity: .15; } 16% { opacity: 1; } 55% { opacity: .2; } 58% { opacity: .9; } 61% { opacity: .1; } 66% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cw-lamp-flicker { animation: none; } }
+
+/* Kitchen: tap zones drawn over furniture painted in the art — a faint crayon outline, never a pasted box. */
+.kitchen-spot { border: 2px dashed oklch(0.95 0.06 90 / 0.55); border-radius: 6px; background: oklch(0.95 0.06 90 / 0.04); animation: hint-pulse 2.4s ease-in-out infinite; transition: opacity .3s; }
+.kitchen-spot:active { background: oklch(0.95 0.06 90 / 0.18); }

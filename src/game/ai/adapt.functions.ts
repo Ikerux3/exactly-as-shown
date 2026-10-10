@@ -10,6 +10,9 @@ import {
 import { generateStructuredJSON } from "./provider.server";
 import { containsUnsafeContent } from "../safety";
 
+// Colour keys are internal ids; the model must see plain colour words, never a name like "Rose".
+const COLOUR_WORD = { rose: "pink", sage: "green", honey: "yellow", turq: "blue" } as const;
+
 const count = z.number().int().min(0).max(10_000);
 const requestSchema = z.object({
   chapter: z.union([z.literal(3), z.literal(4), z.literal(5)]),
@@ -74,7 +77,7 @@ export const directAdaptiveChapterAI = createServerFn({ method: "POST" })
     const parsed = responseSchema.parse(
       await generateStructuredJSON({
         system: SYSTEM,
-        prompt: `Next chapter: ${data.chapter}\nValidated player memory and behaviour: ${JSON.stringify(data)}`,
+        prompt: `Next chapter: ${data.chapter}\nValidated player memory and behaviour: ${JSON.stringify({ ...data, favColor: `${COLOUR_WORD[data.favColor]} (a colour, not a person)` })}`,
         schema: jsonSchema,
         temperature: 0.35,
       }),

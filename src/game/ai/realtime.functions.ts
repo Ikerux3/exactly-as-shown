@@ -4,6 +4,9 @@ import { REALTIME_ACTIONS, REALTIME_EVENTS, type RealtimeDecision } from "./cont
 import { generateStructuredJSON } from "./provider.server";
 import { containsUnsafeContent } from "../safety";
 
+// Colour keys are internal ids; the model must see plain colour words, never a name like "Rose".
+const COLOUR_WORD = { rose: "pink", sage: "green", honey: "yellow", turq: "blue" } as const;
+
 const count = z.number().int().min(0).max(10_000);
 const requestSchema = z.object({
   chapter: z.union([z.literal(3), z.literal(4), z.literal(5)]),
@@ -106,7 +109,7 @@ export const directRealtimeMomentAI = createServerFn({ method: "POST" })
     const parsed = responseSchema.parse(
       await generateStructuredJSON({
         system: SYSTEM,
-        prompt: `Validated checkpoint context: ${JSON.stringify(data)}\nAllowed mentions: ${JSON.stringify(mentions)}`,
+        prompt: `Validated checkpoint context: ${JSON.stringify({ ...data, favColor: `${COLOUR_WORD[data.favColor]} (a colour, not a person)` })}\nAllowed mentions: ${JSON.stringify(mentions)}`,
         schema: jsonSchema,
         temperature: 0.68,
       }),

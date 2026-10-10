@@ -62,7 +62,7 @@ export function Ch3() {
 
   useSceneIntro(
     "ch3",
-    "Stop the music box. Watch the pattern in the dark, play it back in the light.",
+    "Watch the pattern in the dark. Repeat it in the light.",
     [
       { speaker: "narrator", text: "Your music box is playing by itself on the nightstand." },
       ...chooseInterventions(s.facts, 3)
@@ -215,18 +215,13 @@ export function Ch3() {
       }
     >
       <OnWall n={0}>
-      {/* The icon on the box teaches how to reveal the melody. */}
-      <div
-        className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper"
-        aria-hidden
-      >
-        💡 ↓ ♪
-      </div>
-      <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
-        for {s.favToy ?? "your toy"}
-        <br />
-        after {s.favFood ?? "dinner"}
-      </div>
+      {s.favToy && s.favFood && (
+        <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
+          for {s.favToy}
+          <br />
+          after {s.favFood}
+        </div>
+      )}
       <img
         src={MUSICBOX}
         alt="Your music box"
@@ -333,7 +328,9 @@ const PUZZLES: Record<
 export function Ch4() {
   const s = useGame();
   const plan = useAdaptiveChapter(4);
-  const puzzle = PUZZLES[plan.puzzleVariant];
+  // The AI plan can arrive late; once the player has seen clues or pressed the lock, the code never changes.
+  const lockedVariant = useRef<keyof typeof PUZZLES | null>(null);
+  const puzzle = PUZZLES[lockedVariant.current ?? plan.puzzleVariant];
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
   const [solved, setSolved] = useState(false);
@@ -371,7 +368,7 @@ export function Ch4() {
     }
   };
 
-  useEffect(() => setInput([]), [plan.puzzleVariant]);
+  if (!lockedVariant.current && (!s.lightsOn || input.length > 0 || note)) lockedVariant.current = plan.puzzleVariant;
   useEffect(() => {
     if (plan.provider !== "gemini" || aiLineSpoken.current) return;
     aiLineSpoken.current = true;
@@ -568,7 +565,7 @@ export function Ch4() {
         }}
       />
       {wardrobe === 2 && (
-        <GuestVoid style={{ left: "55%", top: "22%", height: "60%", transform: "translateX(-50%)" }} intensity={0.9} />
+        <GuestVoid style={{ left: "88%", top: "26%", height: "50%", transform: "translateX(-50%)" }} intensity={0.9} />
       )}
 
       </OnWall>
