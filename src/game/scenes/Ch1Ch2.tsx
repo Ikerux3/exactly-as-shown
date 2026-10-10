@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { OnWall, Stage, illuminated } from "../Stage";
+import { OnWall, Stage, illuminated, useWall } from "../Stage";
 import { KITCHEN_WALLS, TOY_ESCAPE_SPOTS } from "../roomLayout";
 import { BG, PROP, toyImageFor } from "../assets";
 import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
@@ -11,6 +11,21 @@ import { chooseInterventions } from "../guest";
 import { interpretFavoriteFood } from "../ai/food";
 
 /* ---------------- CHAPTER 1 — THE PLAYROOM ---------------- */
+
+/** A child of Stage, so wall-turns are observed from the actual 4-wall context. */
+function WatchWallChange({ onChange }: { onChange: (wall: number) => void }) {
+  const wall = useWall();
+  const previous = useRef(wall);
+  const callback = useRef(onChange);
+  callback.current = onChange;
+  useEffect(() => {
+    if (previous.current !== wall) {
+      previous.current = wall;
+      callback.current(wall);
+    }
+  }, [wall]);
+  return null;
+}
 
 export function Ch1() {
   const s = useGame();
@@ -24,8 +39,8 @@ export function Ch1() {
   const [flying, setFlying] = useState<ToyId | null>(null);
   const [ejected, setEjected] = useState<ToyId[]>([]);
   const rapidCollections = useRef<number[]>([]);
-  const previousLights = useRef(s.lightsOn);
-  const teleportedOnce = useRef<Set<ToyId>>(new Set());
+  const fourthEscaped = useRef(false);
+  const [fourthEscapeSpot, setFourthEscapeSpot] = useState<{ toy: ToyId; wall: number; x: number; y: number } | null>(null);
   const [pos4, setPos4] = useState({ x: 38, y: 71 });
   const [frozen, setFrozen] = useState(false);
   const litMs = useRef(0);
@@ -57,6 +72,7 @@ export function Ch1() {
       } else {
         st.set({ ch1: [...st.ch1, t] });
         setEjected((old) => old.filter((item) => item !== t));
+        setFourthEscapeSpot((spot) => spot?.toy === t ? null : spot);
         sfx("chime");
       }
       setFlying(null);
@@ -64,21 +80,27 @@ export function Ch1() {
     }, 550);
   };
 
-  // Every genuine lights-off can teleport one boxed toy back into the room.
-  // Unlike the one-time catapult, this is a small visible, recoverable interruption.
-  useEffect(() => {
-    const wentDark = previousLights.current && !s.lightsOn;
-    previousLights.current = s.lightsOn;
-    if (!wentDark || !s.interactive) return;
-    // Only the LAST TWO strange toys may briefly escape, never the three easy toys.
-    // Each can be displaced at most once per attempt, not every time the switch changes.
-    const moved = [r4, r5].find((toy) => s.ch1.includes(toy) && !teleportedOnce.current.has(toy));
-    if (!moved) return;
-    teleportedOnce.current.add(moved);
-    setEjected((old) => (old.includes(moved) ? old : [...old, moved]));
-    useGame.getState().set({ ch1: useGame.getState().ch1.filter((item) => item !== moved) });
+  // The ONLY scripted escape: the fourth toy STORED leaves the box after a wall turn.
+  // Switching light states never ejects toys, and this only happens once per attempt.
+  const onWallChanged = (wall: number) => {
+    if (fourthEscaped.current || !useGame.getState().interactive) return;
+    const st = useGame.getState();
+    if (st.ch1.length < 4) return;
+    const toy = st.ch1[3] as ToyId;
+    if (!toy) return;
+    fourthEscaped.current = true;
+    // Always in the wall the player JUST arrived at, away from navigation arrows.
+    const spots = [
+      { x: 28, y: 60 }, { x: 65, y: 67 },
+      { x: 57, y: 62 }, { x: 29, y: 68 },
+    ];
+    const point = spots[wall] ?? spots[0]!;
+    setFourthEscapeSpot({ toy, wall, ...point });
+    setEjected((old) => old.includes(toy) ? old : [...old, toy]);
+    st.set({ ch1: st.ch1.filter((id) => id !== toy) });
     sfx("creak");
-  }, [s.lightsOn, s.interactive, s.ch1, r4, r5]);
+    st.say({ speaker: "narrator", text: "Wait... the fourth toy is on this wall again!", ms: 2000 });
+  };
 
   // Toy 4: moves in darkness, freezes when held in the light.
   useEffect(() => {
@@ -121,7 +143,7 @@ export function Ch1() {
 
   // Done -> lights fail, the Guest speaks.
   useEffect(() => {
-    if (s.ch1.length === 5 && !ended.current) {
+    if (s.ch1.length === 5 && fourthEscaped.current && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
       window.setTimeout(() => {
@@ -241,10 +263,11 @@ export function Ch1() {
         )
       }
     >
-      {/* Returned toys scatter to distinct walls and safe hitboxes, never a pile on the box. */}
+      <WatchWallChange onChange={onWallChanged} />
+      {/* Only the fourth saved toy moves on a wall change (or a single speed catapult). */}
       {ejected.map((toy) => {
         const slot = s.toyOrder.indexOf(toy);
-        const dest = TOY_ESCAPE_SPOTS[Math.max(0, slot)]!;
+        const dest = fourthEscapeSpot?.toy === toy ? fourthEscapeSpot : TOY_ESCAPE_SPOTS[Math.max(0, slot)]!;
         return (
           <OnWall key={toy} n={dest.wall}>
             <button type="button" aria-label={`Pick up the escaped ${labelFor(toy)}`}
@@ -262,7 +285,7 @@ export function Ch1() {
 
       {/* The box is the front-wall collection point. Expelled toys appear across ALL four walls. */}
       <div aria-live="polite" className="pointer-events-none absolute bottom-[5%] left-[3%] rounded bg-void/70 px-2 py-1 text-xs text-paper">
-        {ejected.length ? "The toys escaped! Search the room's four walls." : "Find toys on every wall."}
+        {ejected.length ? "A toy escaped! Look around." : s.ch1.length >= 4 && !fourthEscaped.current ? "Turn to another wall…" : "Find toys on every wall."}
       </div>
 
       {/* Toy 1 — on the floor */}
