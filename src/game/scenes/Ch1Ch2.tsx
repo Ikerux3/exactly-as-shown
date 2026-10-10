@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, illuminated } from "../Stage";
+import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
 import { BG, TOY_IMG, PROP } from "../assets";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
@@ -624,14 +625,14 @@ export function Ch2Dining() {
     const st = useGame.getState();
     if (blackoutTimer.current) return;
     st.set({ forcedBlackout: true, lightsOn: false, flicker: Date.now() });
-    st.addCordura(9); // fixed 3 seconds x 3 points; Stage pauses its normal ticker.
+    st.addCordura(wrongTableBlackoutPenalty()); // Stage pauses its normal ticker.
     sfx("switch");
     blackoutTimer.current = window.setTimeout(() => {
       const latest = useGame.getState();
       if (latest.screen === "ch2d" && !latest.scare)
         latest.set({ forcedBlackout: false, lightsOn: true });
       blackoutTimer.current = null;
-    }, 3000);
+    }, GAMEPLAY_RULES.errorBlackoutSeconds * 1000);
   };
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
