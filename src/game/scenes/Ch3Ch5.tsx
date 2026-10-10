@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Stage, illuminated } from "../Stage";
+import { OnWall, Stage, illuminated } from "../Stage";
 import { BG, MUSICBOX, toyImageFor } from "../assets";
 import { TOY_LABEL, useGame } from "../store";
 import {
@@ -742,6 +742,7 @@ function PajamaCh5() {
   return (
     <Stage
       bg={BG.bgBathroom}
+      spread
       bgPos="50% 50%"
       chapter={5}
       chapterCard
@@ -770,8 +771,15 @@ function PajamaCh5() {
         <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">
           {message}
         </p>
-        <div className="grid grid-cols-3 gap-1">
-          {pile.map((garment) => {
+        <p className="mb-1 text-center text-xs opacity-75">Turn around: the laundry is spread across all four walls.</p>
+        <div className="grid grid-cols-3 gap-2">
+          {([0, 1, 2, 3] as const).map((wall) => (
+            <OnWall key={wall} n={wall}>
+            {pile.filter((garment) => {
+              const kind = PAJAMA_PIECES.findIndex((item) => item.kind === garment.kind);
+              const color = PAJAMA_COLORS.indexOf(garment.color);
+              return (kind + color) % 4 === wall;
+            }).map((garment) => {
             const used = garment.color === s.favColor && worn.includes(garment.kind);
             const away = inBasket.includes(garment.id);
             return (
@@ -783,7 +791,7 @@ function PajamaCh5() {
                 aria-pressed={selected === garment.id}
                 onClick={() => pick(garment)}
                 className={
-                  "flex min-h-12 items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs disabled:opacity-30 " +
+                  "flex min-h-16 touch-manipulation items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs transition-colors duration-100 active:scale-[0.97] disabled:opacity-30 " +
                   (selected === garment.id
                     ? "border-crimson bg-rose/30"
                     : "border-wood/40 bg-paper-deep")
@@ -800,6 +808,8 @@ function PajamaCh5() {
               </button>
             );
           })}
+            </OnWall>
+          ))}
         </div>
         <p className="mt-2 text-center text-xs">
           Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}
