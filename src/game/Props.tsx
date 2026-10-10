@@ -1,7 +1,7 @@
 // Hand-built SVG props in a felt / wood / clay vocabulary.
 import type { CSSProperties } from "react";
 import type React from "react";
-import { CUT, PROP, PROP2 } from "./assets";
+import { CUT, PROP, PROP2, QOL_ART } from "./assets";
 import { HAIR_COLOR, SKIN, type Look } from "./profile";
 
 function Tape({ color }: { color: string }) {
@@ -18,8 +18,8 @@ function Cut({ src, style, ratio, children }: { src: string; style?: CSSProperti
 
 
 
-export function ToyBox({ style, glow }: { style?: CSSProperties; glow?: boolean }) {
-  return <Cut src={PROP.toybox} style={{ ...style, filter: glow ? "drop-shadow(0 0 10px var(--glow))" : undefined }} ratio="4 / 3" />;
+export function ToyBox({ style, glow, open = false }: { style?: CSSProperties; glow?: boolean; open?: boolean }) {
+  return <Cut src={open ? QOL_ART.openToybox : PROP.toybox} style={{ ...style, filter: glow ? "drop-shadow(0 0 10px var(--glow))" : undefined }} ratio="4 / 3" />;
 }
 
 export function Cushion({ style }: { style?: CSSProperties; color?: string }) {
