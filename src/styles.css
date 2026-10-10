@@ -97,6 +97,11 @@
 
   --shadow-contact: 0 6px 10px -4px oklch(0.1 0.02 50 / 0.7);
   --shadow-paper: 0 10px 30px -8px oklch(0.05 0.01 270 / 0.8), 0 2px 0 oklch(0.8 0.04 80) inset;
+  --beam-clear: oklch(0.2 0.03 80 / 0.05);
+  --beam-edge: oklch(0.1 0.03 275 / 0.35);
+  --beam-dark: oklch(0.05 0.02 275 / 0.94);
+  --surface-tray: linear-gradient(175deg, var(--wood-light), var(--wood));
+  --scare-shadow: 0 0 18px var(--void);
 }
 
 @layer base {
@@ -180,7 +185,8 @@
   .dialogue-panel {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.55rem 0.9rem;
     text-align: left;
     font-size: clamp(13px, 3.9cqw, 15.5px);
@@ -320,7 +326,7 @@
 .subtitle.guest {
   background: oklch(0.1 0.01 270); color: oklch(0.85 0.03 20);
   font-style: normal; letter-spacing: 0.08em; text-transform: lowercase;
-  transform: rotate(1.2deg); animation: jitter 0.18s steps(2) infinite;
+  transform: rotate(0.5deg);
 }
 .speaker-tag { font-family: var(--font-crayon); font-size: 15px; letter-spacing: 0.04em; text-transform: none; color: var(--crimson); }
 .stitch-btn {
@@ -403,7 +409,9 @@
 /* Toys and props fidget when the lights are off */
 .lights-off .prop, .lights-off img:not(.scene-bg, .walker, .shadow-hand, .cut-eyes, .face-flash, .guest-cut) { animation: fidget 2.8s ease-in-out infinite; }
 .lights-off .prop:nth-of-type(2n) { animation-duration: 3.7s; animation-delay: -1.2s; }
-.game-frame.warp > * { filter: url(#warp); }
+.game-frame.warp > .scene-bg { filter: url(#warp); }
+/* Masks, SVG definitions, controls and fixed drag layers must never receive displacement. */
+.flashlight-mask { transform: none; animation: none; filter: none; }
 .cut-eyes { position: absolute; mix-blend-mode: screen; filter: grayscale(1) contrast(1.6) brightness(.9) !important; animation: eyes 5s ease-in-out infinite; }
 .shadow-hand { position: absolute; width: 60%; filter: brightness(0) !important; transition: left 2s ease, right 2s ease; animation: creep 3.2s ease-in-out infinite alternate; }
 .face-flash { position: absolute; left: 50%; top: 2%; height: 96%; translate: -50% 0; z-index: 26; pointer-events: none; mix-blend-mode: hard-light;
@@ -463,11 +471,18 @@
 @media (prefers-reduced-motion: reduce) { .cut-shiver { animation: none; } }
 
 /* ---- collage jumpscares ---- */
-.jumpscare { background: oklch(0.04 0.01 20 / .88); animation: js-bg 1.1s steps(5) both; }
-.jumpscare-img { filter: grayscale(.6) contrast(1.8) brightness(1.1) drop-shadow(0 0 18px oklch(0 0 0)); animation: js-in .9s steps(7) both; }
+.jumpscare { background: var(--void); }
+.jumpscare-img { object-fit: contain; max-height: 100%; filter: grayscale(.8) contrast(1.65) drop-shadow(var(--scare-shadow)) !important; animation: scare-strike .7s ease-out both !important; }
+@keyframes scare-strike {
+  0%, 14% { opacity: 0; transform: scale(.98); }
+  15% { opacity: 1; transform: scale(1.13) translate(-2%, 1%); }
+  22% { transform: scale(1.1) translate(1%, -.5%); }
+  32%, 85% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
 @keyframes js-bg { 0% { background: oklch(0.95 0 0) } 12% { background: oklch(0.04 0.01 20 / .9) } 30% { background: oklch(0.35 0.15 25 / .85) } 50%,100% { background: oklch(0.04 0.01 20 / .9) } }
 @keyframes js-in { 0% { transform: scale(.4) rotate(-10deg); opacity: 0 } 14% { transform: scale(1.3) rotate(5deg); opacity: 1 } 28% { transform: scale(1.12) translate(-8px, 5px) rotate(-3deg) } 42% { transform: scale(1.22) translate(7px, -4px) rotate(2deg) } 70% { transform: scale(1.18) translate(-3px, 2px) } 100% { transform: scale(1.2); opacity: 1 } }
-.smile-rise { animation: smile-rise 3.4s ease-in both; }
+.smile-rise { animation: smile-rise 3s ease-in both !important; filter: none; }
 @keyframes smile-rise { 0% { opacity: 0; filter: brightness(.1) } 60% { opacity: .8; filter: brightness(.6) } 100% { opacity: 1; filter: brightness(1.05) } }
 .shatter { animation: shatter .5s steps(4) both; }
 @keyframes shatter { 0% { transform: none } 25% { transform: translate(-10px, 6px) rotate(-2deg) } 50% { transform: translate(9px, -7px) rotate(2deg) } 75% { transform: translate(-6px, 3px) } 100% { transform: none } }
@@ -495,3 +510,29 @@
 }
 .mg01-exit-and-walk { animation: mg01-exit .7s ease-out both, mg01-floor-walk 7s ease-in-out .7s infinite; }
 @media (prefers-reduced-motion: reduce) { .mg01-exit-and-walk { animation: none; } }
+
+/* Quality-of-life: stable controls, photograph shelves and deliberate motion. */
+.shell-bar.top { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
+.shell-bar.bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.dialogue-panel { letter-spacing: 0; transform: none; clip-path: none; border-radius: 2px; }
+.subtitle.guest { letter-spacing: 0; }
+.wall-arrow { width: 40px; height: 52px; opacity: .55; }
+@media (hover: none), (pointer: coarse) { .wall-arrow { opacity: .14; width: 32px; height: 48px; box-shadow: none; background: transparent; color: var(--paper); } .swipe-cue { display: block; } }
+@media (hover: hover) and (pointer: fine) { .swipe-cue { display: none; } .wall-arrow:hover { opacity: .95; } }
+.swipe-cue { filter: drop-shadow(var(--shadow-contact)); }
+.swipe-hand { animation: swipe-gesture 1.5s ease-in-out 3; }
+@keyframes swipe-gesture { 0%, 100% { translate: -14px 0; } 50% { translate: 14px 0; } }
+.toy-bounce { animation: toy-bounce .55s ease-in-out infinite alternate !important; }
+@keyframes toy-bounce { from { translate: 0 0; rotate: -3deg; } to { translate: 0 -5px; rotate: 3deg; } }
+.shelf-item { white-space: normal; }
+.shelf-art .prop { max-height: 100%; }
+.shelf-art { height: 100%; display: grid; place-items: center; }
+.shelf-art > .prop { width: 100%; max-width: 100%; }
+.table-dock { background: var(--surface-tray); box-shadow: var(--shadow-contact); overflow-y: auto; overscroll-behavior: contain; }
+.carry-table { box-shadow: 0 0 0 3px var(--paper), var(--shadow-paper); animation: carry-pulse 1.8s ease-in-out infinite; }
+@keyframes carry-pulse { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 8px var(--honey)); } }
+.dish-shard { animation: dish-shard .9s cubic-bezier(.2,.5,.6,1) both; }
+@keyframes dish-shard { 0%, 8% { transform: none; opacity: 1; } 100% { transform: translate(var(--shard-x), var(--shard-y)) rotate(var(--shard-r)); opacity: .1; } }
+.dish-drop { animation: dish-drop .9s ease-in both; }
+@keyframes dish-drop { 0%, 15% { transform: none; opacity: 1; } 100% { transform: translateY(65%) rotate(28deg) scale(.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .toy-bounce, .swipe-hand, .carry-table, .jumpscare-img, .smile-rise, .dish-shard, .dish-drop { animation: none !important; } }

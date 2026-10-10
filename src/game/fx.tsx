@@ -231,13 +231,13 @@ export function JumpScare({ img, onDone, ms = 1100 }: { img: string; onDone: () 
   const done = useRef(onDone);
   done.current = onDone;
   useEffect(() => {
-    sfx("scare");
+    const sound = window.setTimeout(() => sfx("scare"), 105);
     const t = window.setTimeout(() => done.current(), ms);
-    return () => window.clearTimeout(t);
+    return () => { window.clearTimeout(sound); window.clearTimeout(t); };
   }, [ms]);
   return (
     <div className="jumpscare pointer-events-auto absolute inset-0 z-[60] grid place-items-center overflow-hidden" role="alert" aria-label="Something jumps out">
-      <img src={img} alt="" className="jumpscare-img w-[120%] max-w-none" />
+      <img src={img} alt="" className="jumpscare-img h-[88%] w-[92%] object-contain" />
     </div>
   );
 }

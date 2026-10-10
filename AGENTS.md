@@ -18,3 +18,6 @@
 - The game saves a checkpoint at the start of each chapter (`go()` in the store); the title menu offers Continue from it.
 - Rooms have four walls (WALLS in assets.ts); Stage handles swipe/arrows and scenes opt in with `spread` + `<OnWall n>`, otherwise content stays on the front wall — lets chapters spread puzzles without breaking older scenes.
 - Scenes with their own views (e.g. dining tray/table) pass `noTurn` to Stage; collage jumpscares use `JumpScare` from fx.tsx rendered in Stage `above` — keeps scares local without triggering the phase-restart scare.
+- Apply sanity displacement only to scene artwork, never overlay roots or SVG definitions — prevents blank rooms and moving flashlight masks.
+- Curated preference props resolve through assets.ts and curated cache keys before image generation — known toy preferences stay visually distinct offline without changing the five checkpoint slots.
+- Kitchen close-ups lock Stage navigation and use a full-frame shelf photograph; dining begins at the packing table — keeps object picking and touch placement separate from wall gestures.

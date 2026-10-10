@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CHAPTER_TITLE, useGame, type Line } from "./store";
 import { Ransom } from "./fx";
+import { Button } from "@/components/ui/button";
 
 const done = new Set<string>();
 export function resetOnce() { done.clear(); }
@@ -28,12 +29,12 @@ export function ChapterCard({ n }: { n: number }) {
   }, [n]);
   if (!show) return null;
   return (
-    <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-void/90 animate-out fade-out duration-700 [animation-delay:1.9s] [animation-fill-mode:forwards]">
+    <Button variant="game" size="game" aria-label="Continue to the room" onClick={() => setShow(false)} className="absolute inset-0 z-50 grid h-full w-full place-items-center whitespace-normal bg-void/75 animate-out fade-out duration-700 [animation-delay:1.9s] [animation-fill-mode:forwards]">
       <div className="px-6 text-center animate-float-up">
         <p className="font-crayon text-xl text-crimson">chapter {n}</p>
         <div className="mt-3 text-3xl"><Ransom text={CHAPTER_TITLE[n] ?? ""} seed={n * 13} /></div>
       </div>
-    </div>
+    </Button>
   );
 }
 
