@@ -5,6 +5,7 @@ let musicTimer: number | null = null;
 let muted = false;
 let detune = 0; // cents
 let sparse = 0; // 0..1 probability to drop notes
+let corduraLevel = 0;
 
 const MELODY: [number, number][] = [
   // original lullaby phrase (semitones from C5), duration in beats
@@ -12,6 +13,36 @@ const MELODY: [number, number][] = [
   [2, 1], [4, 1], [5, 1], [4, 1], [2, 1], [0, 3],
   [7, 1], [9, 1], [11, 1], [12, 2], [11, 1], [9, 1], [7, 2], [5, 1], [4, 1], [2, 1], [0, 3],
 ];
+
+export type HarmonicMode = "c-major" | "a-minor" | "c-minor" | "fractured";
+
+/** The tonal story follows Cordura: C major -> relative A minor -> parallel C minor. */
+export function harmonicMode(cordura: number): HarmonicMode {
+  if (cordura < 30) return "c-major";
+  if (cordura < 60) return "a-minor";
+  if (cordura < 85) return "c-minor";
+  return "fractured";
+}
+
+/**
+ * Alter only scale degrees that define the mode. A minor shares C major's notes,
+ * so its change of tonal centre comes from the A pedal below the melody.
+ */
+export function melodySemitone(semitone: number, cordura: number, noteIndex: number): number {
+  if (cordura < 60) return semitone;
+  const octave = Math.floor(semitone / 12) * 12;
+  const pitchClass = ((semitone % 12) + 12) % 12;
+  let altered = pitchClass;
+  if (pitchClass === 11) altered = 10; // B -> Bb: first shadow of C minor
+  if (cordura >= 68 && pitchClass === 4) altered = 3; // E -> Eb: minor third
+  if (cordura >= 76 && pitchClass === 9) altered = 8; // A -> Ab: natural minor sixth
+  if (cordura >= 85 && pitchClass === 7 && noteIndex % 14 === 0) altered = 6; // rare tritone
+  return octave + altered;
+}
+
+export function harmonyPedal(cordura: number): number {
+  return harmonicMode(cordura) === "a-minor" ? 110 : 130.81; // A2 or C3
+}
 
 function ensure() {
   if (typeof window === "undefined") return null;
@@ -37,6 +68,7 @@ export function setMuted(m: boolean) {
 }
 
 export function setUnease(cordura: number, chapter: number) {
+  corduraLevel = Math.max(0, Math.min(100, cordura));
   detune = (cordura / 100) * 45 + chapter * 6;
   sparse = Math.min(0.5, chapter * 0.07 + cordura / 300);
 }
@@ -71,8 +103,12 @@ export function startMusic() {
   const beat = 0.42;
   const tick = () => {
     if (!ctx) return;
-    const [semi, len] = MELODY[i % MELODY.length]!;
-    if (Math.random() > sparse) bell(523.25 * Math.pow(2, semi / 12), ctx.currentTime + 0.02);
+    const noteIndex = i % MELODY.length;
+    const [semi, len] = MELODY[noteIndex]!;
+    const mappedSemi = melodySemitone(semi, corduraLevel, noteIndex);
+    if (Math.random() > sparse) bell(523.25 * Math.pow(2, mappedSemi / 12), ctx.currentTime + 0.02);
+    if (noteIndex === 0 || noteIndex === 8 || noteIndex === 14)
+      bell(harmonyPedal(corduraLevel), ctx.currentTime + 0.02, 0.028, 2.8);
     i++;
     musicTimer = window.setTimeout(tick, beat * len * 1000 * (1 + detune / 400));
   };
