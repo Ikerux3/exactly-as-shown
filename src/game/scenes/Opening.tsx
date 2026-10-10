@@ -304,7 +304,6 @@ export function Intro() {
   useEffect(() => {
     if (initialQuestionRequested.current) return;
     initialQuestionRequested.current = true;
-    let active = true;
     const kind = knownName ? "color" : "name";
     void adaptiveQuestion(
       currentQuestionContext(kind, {
@@ -312,13 +311,9 @@ export function Intro() {
         previousQuestions: [questionText],
       }),
     ).then((next) => {
-      if (!active) return;
       setQuestionText(next.text);
       setQuestionLoading(false);
     });
-    return () => {
-      active = false;
-    };
     // The first question is resolved once, before the player can answer it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
