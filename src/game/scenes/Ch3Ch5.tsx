@@ -654,7 +654,124 @@ const HIDE_SPOTS = {
   towel: { label: "Look behind the towel", x: 5, y: 50, w: 23, h: 19, clueX: 15, clueY: 58 },
 } as const;
 
-export function Ch5() {
+type PajamaKind = "shirt" | "pants" | "socks";
+const PAJAMA_PIECES: { kind: PajamaKind; name: string; icon: string }[] = [
+  { kind: "shirt", name: "shirt", icon: "👕" },
+  { kind: "pants", name: "pants", icon: "👖" },
+  { kind: "socks", name: "socks", icon: "🧦" },
+];
+const PAJAMA_COLORS = ["rose", "sage", "honey", "turq"] as const;
+
+/** v3.1 chapter 5: three pieces in the chosen color, other clothing into the basket. */
+function PajamaCh5() {
+  const s = useGame();
+  const [worn, setWorn] = useState<PajamaKind[]>([]);
+  const [inBasket, setInBasket] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [message, setMessage] = useState("Three matching pieces. Look for your favorite color.");
+  const [wrongChoices, setWrongChoices] = useState(0);
+  const ended = useRef(false);
+  useSceneIntro("ch5", "Choose your pajamas, then tidy the other clothes.", [
+    { speaker: "narrator", text: "Your pajamas are somewhere in this heap. Mommy will be back soon." },
+  ]);
+  const pile = PAJAMA_PIECES.flatMap((piece) =>
+    PAJAMA_COLORS.map((color) => ({ ...piece, color, id: piece.kind + "-" + color })),
+  );
+  const allWorn = worn.length === 3;
+  const otherTotal = PAJAMA_PIECES.length * (PAJAMA_COLORS.length - 1);
+  useEffect(() => {
+    const state = useGame.getState();
+    state.set({ objective: allWorn
+      ? "Put all the other clothes in the basket."
+      : "Find shirt, pants and socks in your favorite color." });
+  }, [allWorn]);
+  useEffect(() => {
+    if (ended.current || !allWorn || inBasket.length !== otherTotal) return;
+    ended.current = true;
+    const state = useGame.getState();
+    state.success();
+    state.set({ interactive: false, objective: "" });
+    state.say({ speaker: "narrator", text: "Everything is put away. Now the house is quiet.", ms: 1500 });
+    const t = window.setTimeout(() => {
+      if (useGame.getState().screen === "ch5") useGame.getState().go("final");
+    }, 2100);
+    return () => window.clearTimeout(t);
+  }, [allWorn, inBasket.length, otherTotal]);
+  const pick = (garment: (typeof pile)[number]) => {
+    if (!s.interactive || !s.lightsOn) return;
+    if (!allWorn) {
+      if (garment.color !== s.favColor) {
+        sfx("wrong");
+        s.mistake();
+        setWrongChoices((n) => n + 1);
+        setMessage("That doesn't match the color you chose earlier.");
+        return;
+      }
+      if (worn.includes(garment.kind)) return;
+      sfx("chime");
+      setWorn((old) => [...old, garment.kind]);
+      setMessage("You put the " + garment.name + " on. Nobody sees you changing.");
+      return;
+    }
+    if (garment.color === s.favColor) return;
+    setSelected((old) => old === garment.id ? null : garment.id);
+    sfx("tap");
+  };
+  const basket = () => {
+    if (!selected || !allWorn || !s.interactive || !s.lightsOn) return;
+    setInBasket((old) => old.includes(selected) ? old : [...old, selected]);
+    setSelected(null);
+    sfx("open");
+  };
+  return (
+    <Stage bg={BG.bgBathroom} bgPos="50% 50%" chapter={5} chapterCard
+      progress={allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"}>
+      <div aria-hidden className="pointer-events-none absolute right-[13%] top-[7%] z-10 text-xl text-crimson opacity-80">
+        {wrongChoices > 0 || inBasket.length >= 3 ? "👁️ 👁️" : ""}
+      </div>
+      <div className="absolute inset-x-[5%] top-[14%] z-10 rounded-lg border-2 border-wood bg-paper/95 p-2 text-ink shadow-xl">
+        <p className="text-center font-display text-[clamp(13px,3.8cqw,18px)] font-semibold">
+          {allWorn ? "Put the rest in the basket" : "Find your matching pajamas"}
+        </p>
+        <div className="mt-1 flex items-center justify-center gap-2 text-xs">
+          <span>Your chosen color:</span>
+          <span className="h-4 w-7 rounded-sm border border-ink/50" style={{ background: "var(--c-" + s.favColor + ")" }} />
+          <span className="font-hand">{s.favColor}</span>
+        </div>
+        <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">{message}</p>
+        <div className="grid grid-cols-3 gap-1">
+          {pile.map((garment) => {
+            const used = garment.color === s.favColor && worn.includes(garment.kind);
+            const away = inBasket.includes(garment.id);
+            return (
+              <button type="button" key={garment.id} disabled={used || away || !s.lightsOn || !s.interactive}
+                aria-label={garment.color + " " + garment.name}
+                aria-pressed={selected === garment.id}
+                onClick={() => pick(garment)}
+                className={"flex min-h-12 items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs disabled:opacity-30 " +
+                  (selected === garment.id ? "border-crimson bg-rose/30" : "border-wood/40 bg-paper-deep")}>
+                <span aria-hidden className="text-base">{garment.icon}</span>
+                <span className="h-3 w-3 shrink-0 rounded-full border border-ink/50" style={{ background: "var(--c-" + garment.color + ")" }} />
+                <span className="sr-only">{garment.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-center text-xs">Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}</p>
+      </div>
+      <button type="button" onClick={basket} disabled={!selected || !s.lightsOn || !s.interactive}
+        aria-label="Place selected clothing into the laundry basket"
+        className="stitch-btn honey absolute bottom-[3%] left-1/2 z-10 min-h-12 w-[72%] -translate-x-1/2 disabled:opacity-50">
+        🧺 {selected ? "Put selected clothing away" : "Laundry basket"}
+      </button>
+    </Stage>
+  );
+}
+
+export function Ch5() { return <PajamaCh5 />; }
+
+/** Archived previous version, kept for reference until QA of the new bedroom/bathroom. */
+export function LegacyCh5() {
   const s = useGame();
   const incomingPlan = useAdaptiveChapter(5);
   const plan = useRef(incomingPlan).current;
