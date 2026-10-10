@@ -265,15 +265,25 @@ export function Stage({
       }
     >
       <WallCtx.Provider value={wall}>
-      <img
-        src={shownBg}
-        alt=""
-        className={`scene-bg ${dir > 0 ? "wall-in-r" : dir < 0 ? "wall-in-l" : ""}`}
-        style={{
-          objectPosition: shownPos,
-          filter: s.lightsOn ? undefined : "saturate(0.3) brightness(0.7) hue-rotate(-20deg)",
-        }}
-      />
+      {/* All four walls stay mounted and decoded; turning only swaps which one is visible,
+          so the previous wall never flashes while the next image loads. */}
+      {(walls ?? [bg]).map((src, i) => {
+        const active = (walls ? i : 0) === (walls ? wall : 0);
+        return (
+          <img
+            key={active ? `bg-on-${wall}` : `bg-${i}`}
+            src={src}
+            alt=""
+            decoding="async"
+            className={`scene-bg ${active && dir > 0 ? "wall-in-r" : active && dir < 0 ? "wall-in-l" : ""}`}
+            style={{
+              objectPosition: walls ? (wallPositions?.[i] ?? (i === 0 ? bgPos : "50% 50%")) : bgPos,
+              opacity: active ? 1 : 0,
+              filter: s.lightsOn ? undefined : "saturate(0.3) brightness(0.7) hue-rotate(-20deg)",
+            }}
+          />
+        );
+      })}
       {/* warm lamp tint */}
       <div
         className="pointer-events-none absolute inset-0"

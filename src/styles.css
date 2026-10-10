@@ -443,8 +443,8 @@
 }
 
 /* Four-wall room turning */
-@keyframes wall-r { from { transform: translateX(18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
-@keyframes wall-l { from { transform: translateX(-18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
+@keyframes wall-r { from { transform: translateX(12%); opacity: .35 } to { transform: none; opacity: 1 } }
+@keyframes wall-l { from { transform: translateX(-12%); opacity: .35 } to { transform: none; opacity: 1 } }
 .wall-in-r { animation: wall-r .45s cubic-bezier(.2,.8,.2,1) both; }
 .wall-in-l { animation: wall-l .45s cubic-bezier(.2,.8,.2,1) both; }
 .wall-arrow {
