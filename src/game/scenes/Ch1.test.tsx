@@ -7,7 +7,7 @@ vi.mock("../store", async () => {
     (listener) => { model.listeners.add(listener); return () => model.listeners.delete(listener); },
     () => model.state,
   ), { getState: () => model.state });
-  return { useGame, TOY_LABEL: { bear: "bear", rabbit: "rabbit", train: "train", doll: "doll", elephant: "elephant" } };
+  return { useGame, saveCheckpoint: vi.fn(), TOY_LABEL: { bear: "bear", rabbit: "rabbit", train: "train", doll: "doll", elephant: "elephant" } };
 });
 vi.mock("../Stage", async () => {
   const React = await import("react");
@@ -31,6 +31,7 @@ vi.mock("../ai/questions", () => ({ adaptiveQuestion: vi.fn(), currentQuestionCo
 vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", WALLS: { room: ["room", "window", "coat", "shelves"] }, PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
 vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => null }));
 import { Ch1 } from "./Ch1Ch2";
+import { saveCheckpoint } from "../store";
 
 function update(patch: any) { model.state = { ...model.state, ...patch }; model.listeners.forEach((fn) => fn()); }
 function pick(name: string) {
@@ -40,6 +41,7 @@ function pick(name: string) {
 function turn(times = 1) { for (let i = 0; i < times; i++) fireEvent.click(screen.getByText("Turn wall")); }
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.mocked(saveCheckpoint).mockClear();
   model.state = {
     screen: "ch1", toyOrder: ["bear", "rabbit", "train", "doll", "elephant"],
     ch1: [], interactive: true, lightsOn: true, paused: false, scare: false, facts: {},
@@ -50,6 +52,15 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); model.listeners.clear(); });
 
 describe("MG01 first pickup escape", () => {
+  it("does not grant another escape to a resumed older save with stored toys", () => {
+    model.state.ch1 = ["bear"];
+    render(<Ch1 />);
+    turn(2);
+    pick("Pick up the elephant");
+    expect(model.state.ch1).toEqual(["bear", "elephant"]);
+    expect(model.state.toyEscape).toBeUndefined();
+    expect(saveCheckpoint).toHaveBeenCalledOnce();
+  });
   it("lets the first pickup on the jacket wall escape from its chest once on that wall", () => {
     render(<Ch1 />);
     turn(2);
@@ -81,6 +92,7 @@ describe("MG01 first pickup escape", () => {
     pick("Pick up the escaped bear");
     expect(model.state.ch1).toEqual(["bear"]);
     expect(model.state.toyEscape.recovered).toBe(true);
+    expect(saveCheckpoint).toHaveBeenCalledTimes(2);
     view.unmount(); render(<Ch1 />);
     expect(screen.queryByRole("button", { name: "Pick up the escaped bear" })).toBeNull();
   });

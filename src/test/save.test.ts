@@ -5,6 +5,7 @@ import {
   loadStoredMemory,
   sanitizeName,
   saveMemory,
+  saveCheckpoint,
   setMemoryForgotten,
   useGame,
 } from "@/game/store";
@@ -32,6 +33,23 @@ describe("chapter checkpoint save", () => {
     expect(r.cordura).toBe(30);
     expect(r.toyOrder).toEqual(order);
     expect(r.ch1).toEqual(order);
+  });
+
+  it("remembers the single toy escape and its recovery when continuing MG01", () => {
+    const s = useGame.getState();
+    s.set({ name: "MJ" });
+    s.go("ch1");
+    s.set({ toyEscape: { toy: "elephant", wall: 2, x: 40, y: 82, escapedAt: 1000, recovered: false } });
+    saveCheckpoint();
+    useGame.setState({ toyEscape: undefined });
+    expect(s.continueRun()).toBe(true);
+    expect(useGame.getState().toyEscape).toMatchObject({ toy: "elephant", wall: 2, recovered: false, escapedAt: 1000 });
+    s.set({ ch1: ["elephant"], toyEscape: { ...useGame.getState().toyEscape!, recovered: true } });
+    saveCheckpoint();
+    useGame.setState({ ch1: [], toyEscape: undefined });
+    expect(s.continueRun()).toBe(true);
+    expect(useGame.getState().ch1).toEqual(["elephant"]);
+    expect(useGame.getState().toyEscape?.recovered).toBe(true);
   });
 
   it("a new game wipes the old save", () => {

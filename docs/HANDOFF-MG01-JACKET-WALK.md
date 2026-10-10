@@ -16,3 +16,11 @@ Pruebas: regresiones de primer muñeco en pared 0 y 2, doble toque, chaqueta/sue
 QA PROBADO: Edge con viewport móvil 390×844 y eventos táctiles, juego real local: chaqueta alineada y apartada, muñeco detrás visible, otro junto a huellas, primer muñeco sale del baúl y camina en pared 2 bajo luz, toque lo guarda (ch1=[elephant]), sin pageerror. Capturas locales qa-jacket-before.png, qa-jacket-after.png, qa-exit.png, qa-walking.png y qa-result.json. El toque del walker se ejecutó sin esperar estabilidad porque está animado. PENDIENTE: móvil físico, despliegue público y recorrido visual completo de otras paredes; no declarar DESPLEGADO.
 Drive no consultado ni modificado, por instrucción expresa de MJ. Handoff en repositorio.
 Siguiente paso: probar móvil físico / URL publicada.
+
+## MJ — corrección de fuga única al continuar (2026-10-10)
+Base: 2513d1142b201727f3a5d1c978a036708a5a46ef. Responsable: Codex; main autorizada.
+VERIFICADO EN CÓDIGO: el guardado previo solo se escribía al entrar en capítulo. La fuga y recuperación de MG01 no se escribían al completarse, por lo que Continuar podía restaurar un estado anterior.
+Cambio: guardar checkpoint tras cada recogida completada, incluyendo fuga y recuperación; no conceder nueva fuga a una partida antigua que ya tiene juguetes guardados. Solo el primer juguete recogido en partida nueva escapa una vez y se mueve en su pared; recuperarlo lo guarda. Sigue repartido entre cuatro paredes, con dos juguetes junto a chaqueta/huellas.
+PROBADO: TypeScript PASS; Vitest 67/67 en 17 archivos PASS; build PASS. Nuevas regresiones para Continue antes/después de recuperar el elefante y guardados anteriores sin toyEscape.
+La causa observada por MJ en su dispositivo no se ha reproducido directamente. QA visual anterior conservada; esta revisión se verificó con tests de persistencia, sin nuevo QA visual ni despliegue público.
+Drive no usado. Siguiente paso: comprobar URL pública actualizada y partida nueva/Continuar en móvil físico.

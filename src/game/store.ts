@@ -385,6 +385,12 @@ type Save = Pick<
   | "toyEscape"
 >;
 
+/** Persist completed puzzle actions without changing scene or restarting the chapter. */
+export function saveCheckpoint() {
+  const state = useGame.getState();
+  if (RESUMABLE.includes(state.screen)) writeSave(state);
+}
+
 function writeSave(s: State) {
   const save: Save = {
     screen: s.screen,

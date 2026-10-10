@@ -3,7 +3,7 @@ import { OnWall, Stage, useWall } from "../Stage";
 import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
 import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, WALLS, toyImageFor } from "../assets";
 import { JumpScare } from "../fx";
-import { TOY_LABEL, useGame, type ToyId } from "../store";
+import { TOY_LABEL, useGame, saveCheckpoint, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
 import { sfx } from "../audio";
@@ -67,7 +67,7 @@ export function Ch1() {
       if (latest.screen === "ch1" && !latest.scare) {
         if (!latest.facts.firstToy) latest.fact({ firstToy: toy });
         latest.observeChoice(toy === latest.favToyVisualSlot && latest.favToy ? latest.favToy : TOY_LABEL[toy]);
-        const firstEscape = !latest.toyEscape;
+        const firstEscape = !latest.toyEscape && latest.ch1.length === 0;
         const recovering = latest.toyEscape?.toy === toy && !latest.toyEscape.recovered;
         if (firstEscape) {
           // Exactly the first collected toy escapes; neither speed, lights nor wall turns eject others.
@@ -81,6 +81,8 @@ export function Ch1() {
           });
           sfx("chime");
         }
+        // Persist the spent escape and recovery immediately, including before leaving this room.
+        saveCheckpoint();
       }
       setFlying(null);
       pickupLock.current = false;
@@ -88,7 +90,7 @@ export function Ch1() {
   };
 
   useEffect(() => {
-    if (s.ch1.length !== 5 || !s.toyEscape?.recovered || ended.current) return;
+    if (s.ch1.length !== 5 || (s.toyEscape && !s.toyEscape.recovered) || ended.current) return;
     ended.current = true;
     s.set({ interactive: false, objective: "" });
     const timers = [
