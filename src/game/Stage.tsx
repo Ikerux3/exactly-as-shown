@@ -44,6 +44,8 @@ type Props = {
   switchHint?: boolean;
   /** Scene places its own props per wall with <OnWall>. Otherwise everything lives on the front wall. */
   spread?: boolean;
+  /** Reports an actual wall turn even when wall content is animated/remounted. */
+  onWallChange?: (wall: number) => void;
 };
 
 export function Stage({
@@ -59,6 +61,7 @@ export function Stage({
   chapterCard,
   switchHint,
   spread,
+  onWallChange,
 }: Props) {
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
@@ -69,6 +72,15 @@ export function Stage({
 
   const walls = WALLS[bg];
   const [wall, setWall] = useState(0);
+  const onWallChangeRef = useRef(onWallChange);
+  onWallChangeRef.current = onWallChange;
+  const previousWallRef = useRef(0);
+  useEffect(() => {
+    if (wall !== previousWallRef.current) {
+      previousWallRef.current = wall;
+      onWallChangeRef.current?.(wall);
+    }
+  }, [wall]);
   const [dir, setDir] = useState(0);
   const swipe = useRef<{ x: number; y: number; t: number } | null>(null);
   const turn = (d: number) => {
