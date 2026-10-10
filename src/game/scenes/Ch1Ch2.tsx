@@ -490,7 +490,7 @@ const itemLabel = (id: ItemId, name: string) => {
 export function Ch2Kitchen() {
   const s = useGame();
   const nm = s.name || "baby";
-  const [open, setOpen] = useState<number[]>([]);
+  const [openU, setOpenU] = useState<number | null>(null);
   const [setup] = useState(() => {
     const order = shuffle(ITEMS);
     const list = order.slice(0, 4);
@@ -520,6 +520,7 @@ export function Ch2Kitchen() {
     if (it.startsWith("junk")) {
       s.mistake();
       s.addCordura(12);
+      setOpenU(null);
       setScare(Math.random() < 0.5 ? SCARE.face1 : SCARE.face2);
       return;
     }
@@ -535,7 +536,6 @@ export function Ch2Kitchen() {
     s.observeChoice(id.replace("-", " for "));
     const next = [...got, id];
     s.set({ ch2Items: next });
-    // Halfway through, the list rewrites itself.
     if (!changed && next.length === 2) {
       setChanged(true);
       const left = list.filter((i) => !next.includes(i));
@@ -552,18 +552,28 @@ export function Ch2Kitchen() {
     }
   };
 
-  const toggle = (i: number, kind: string) => {
+  const openUnit = (i: number, kind: string) => {
     if (!s.interactive || scare) return;
     sfx("open");
-    const isOpen = open.includes(i);
-    if (!isOpen) s.inspect(`kitchen ${kind} ${i + 1}`);
-    setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]);
-    if (!isOpen && i === setup.trap && !trapSprung.current) {
+    s.inspect(`kitchen ${kind} ${i + 1}`);
+    if (i === setup.trap && !trapSprung.current) {
       trapSprung.current = true;
       s.addCordura(8);
-      window.setTimeout(() => setScare(SCARE.face2), 180);
+      setScare(SCARE.face2);
+      window.setTimeout(() => setOpenU(i), 1100);
+      return;
     }
+    setOpenU(i);
   };
+
+  const u = openU === null ? null : UNITS[openU]!;
+  const inside = openU === null ? [] : (setup.contents[openU] ?? []).filter((c) => !got.includes(c as ItemId));
+  const ownerTag = (c: Content) => {
+    if (c.startsWith("junk")) return null;
+    const child = c.endsWith("child");
+    return { color: child ? `var(--c-${s.favColor})` : `var(--c-${s.motherColor})`, text: child ? nm : "Mommy" };
+  };
+  const kindName = (c: Content) => (c.startsWith("plate") ? "plate" : c.startsWith("glass") ? "glass" : c.startsWith("cutlery") ? "fork & spoon" : "");
 
   return (
     <Stage
@@ -588,93 +598,78 @@ export function Ch2Kitchen() {
           {changed && <p className="mt-1 text-xs opacity-70">(she crossed something out)</p>}
         </div>
       }
-      above={scare ? <JumpScare img={scare} onDone={() => setScare(null)} /> : null}
-    >
-      <div
-        className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
-        style={{
-          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
-          boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)",
-        }}
-      />
-      {UNITS.map((u, i) => {
-        const isOpen = open.includes(i);
-        const wallN = KITCHEN_WALLS[i] ?? 0;
-        const isFront = wallN === 0;
-        const aspect = u.kind === "door" ? "4 / 5" : "12 / 7";
-        const left = (setup.contents[i] ?? []).filter((c) => !got.includes(c as ItemId));
-        return (
-          <OnWall key={i} n={wallN}>
-            <div
-              className="absolute"
-              style={{ left: isFront ? `${u.x}%` : "32%", top: `${u.y}%`, width: isFront ? `${u.w}%` : "37%", zIndex: isOpen ? 5 : 1 }}
-            >
-              {!isOpen ? (
-                <button
-                  aria-label="Open the cupboard"
-                  className="block w-full"
-                  style={{ aspectRatio: aspect, touchAction: "manipulation" }}
-                  onClick={() => toggle(i, u.kind)}
-                >
-                  <Cupboard kind={u.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
-                </button>
-              ) : (
-                <div className="relative w-full" style={{ aspectRatio: aspect }}>
-                  {u.kind === "door" ? (
-                    <button
-                      aria-label="Close the cupboard"
-                      onClick={() => toggle(i, u.kind)}
-                      className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
-                      style={{ backgroundImage: `url(${PROP.door})`, backgroundSize: "cover", backgroundPosition: "right center", filter: "brightness(.7) sepia(.3)", boxShadow: "var(--shadow-contact)" }}
-                    />
-                  ) : (
-                    <button
-                      aria-label="Close the drawer"
-                      onClick={() => toggle(i, u.kind)}
-                      className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
-                      style={{ backgroundImage: `url(${PROP.drawer})`, backgroundSize: "cover", backgroundPosition: "center", filter: "sepia(.3)", boxShadow: "var(--shadow-contact)" }}
-                    />
+      above={
+        <>
+          {u && openU !== null && !scare && (
+            <div className="absolute inset-0 z-[40] grid place-items-center bg-void/75 animate-float-up">
+              <div
+                className="relative w-[90%] -rotate-1 p-3"
+                style={{ background: "linear-gradient(oklch(0.3 0.04 55), oklch(0.18 0.03 50))", boxShadow: "0 0 0 6px oklch(0.24 0.04 50), 6px 10px 0 oklch(0 0 0 / .6)", filter: s.lightsOn ? undefined : "brightness(.2)" }}
+              >
+                <span className="absolute -top-3 left-6 h-5 w-20 rotate-3 bg-paper/80" />
+                <p className="mb-2 text-center font-crayon text-xs uppercase tracking-widest text-paper/70">
+                  inside the {u.kind === "door" ? "cupboard" : "drawer"}
+                </p>
+                <div className="relative grid grid-cols-2 gap-3 rounded p-2" style={{ background: "oklch(0.12 0.02 50)", boxShadow: "inset 0 6px 14px oklch(0 0 0 / .8)" }}>
+                  {openU === setup.trap && (
+                    <img src={SCARE.face2} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15 mix-blend-screen grayscale" />
                   )}
-                  <div
-                    className={`absolute inset-0 flex flex-wrap items-center justify-around gap-0.5 rounded p-1 ${u.kind === "door" ? "content-around" : ""}`}
-                    style={{ background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))", boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)" }}
-                  >
-                    {i === setup.trap && (
-                      <img src={SCARE.face2} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-screen grayscale" />
-                    )}
-                    {left.map((c) => (
+                  {inside.length === 0 && <p className="col-span-2 py-8 text-center font-hand text-paper/50">empty</p>}
+                  {inside.map((c) => {
+                    const tag = ownerTag(c);
+                    return (
                       <button
                         key={c}
                         onClick={() => take(c)}
-                        aria-label={c.startsWith("junk") ? "Something that isn't a dish" : `Take ${c.replace("-", " for ")}`}
-                        style={{ minWidth: 40, minHeight: 40, touchAction: "manipulation" }}
-                        className="relative z-10 grid w-[44%] place-items-center"
+                        aria-label={c.startsWith("junk") ? "Something that isn't a dish" : `Take ${itemLabel(c as ItemId, nm)}`}
+                        className="relative grid aspect-square touch-manipulation place-items-center rounded bg-paper/5 p-2 active:scale-95"
                       >
-                        <ItemArt id={c} />
+                        <ItemArt id={c} className="w-[78%]" />
+                        {tag && (
+                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 -rotate-2 whitespace-nowrap px-2 py-0.5 font-hand text-[13px] leading-none text-ink" style={{ background: tag.color }}>
+                            {tag.text}'s {kindName(c)}
+                          </span>
+                        )}
                       </button>
-                    ))}
-                    {left.length === 0 && <span className="font-hand text-xs text-paper/50">empty</span>}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+                <div className="mt-3 flex justify-center">
+                  <button className="stitch-btn text-sm" onClick={() => { sfx("open"); setOpenU(null); }}>Close it</button>
+                </div>
+              </div>
             </div>
+          )}
+          {scare && <JumpScare img={scare} onDone={() => setScare(null)} />}
+        </>
+      }
+    >
+      {UNITS.map((unit, i) => {
+        const wallN = KITCHEN_WALLS[i] ?? 0;
+        const isFront = wallN === 0;
+        return (
+          <OnWall key={i} n={wallN}>
+            <button
+              aria-label={unit.kind === "door" ? "Open the cupboard" : "Open the drawer"}
+              onClick={() => openUnit(i, unit.kind)}
+              className="absolute block touch-manipulation active:scale-[0.97]"
+              style={{ left: isFront ? `${unit.x}%` : "30%", top: isFront ? `${unit.y}%` : "55%", width: isFront ? `${unit.w}%` : "40%", aspectRatio: unit.kind === "door" ? "4 / 5" : "12 / 7" }}
+            >
+              <Cupboard kind={unit.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
+            </button>
           </OnWall>
         );
       })}
-      {/* Tray: only what you've collected — the list itself lives in the dark */}
-      <div
-        className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2"
-        style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}
-      >
-        {got.length === 0 && <span className="w-full text-center font-hand text-sm text-paper/60">the tray is empty</span>}
-        {got.map((i) => (
-          <div key={i} className="grid h-full w-[18%] place-items-center">
-            <ItemArt id={i} className="w-[80%] animate-float-up" />
-          </div>
-        ))}
-      </div>
+      {/* what you've gathered so far, pinned to the wall like a note */}
+      {got.length > 0 && (
+        <div className="pointer-events-none absolute left-[4%] top-[44%] flex max-w-[60%] rotate-[-2deg] items-center gap-1 bg-paper/90 px-2 py-1 shadow-[3px_4px_0_oklch(0_0_0/.5)]">
+          {got.map((i) => (
+            <ItemArt key={i} id={i} className="w-9 animate-float-up" />
+          ))}
+        </div>
+      )}
       {done && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[54%] z-20 flex justify-center animate-float-up">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[4%] z-20 flex justify-center animate-float-up">
           <button
             className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]"
             onClick={() => {
@@ -682,7 +677,7 @@ export function Ch2Kitchen() {
               s.go("ch2d");
             }}
           >
-            Carry the tray to the table
+            Carry everything to the table
           </button>
         </div>
       )}
@@ -705,7 +700,6 @@ const PIECES: Piece[] = [
   { id: "glass-mother", w: 1, h: 1 },
 ];
 const BIG: Piece = { id: "bigplate", w: 4, h: 4 };
-/** One valid packing, scratched into the tablecloth — only visible in the dark. */
 const SOLUTION: Record<string, { x: number; y: number; r: boolean }> = {
   "plate-child": { x: 0, y: 0, r: false },
   "plate-mother": { x: 2, y: 0, r: false },
@@ -717,7 +711,7 @@ const SOLUTION: Record<string, { x: number; y: number; r: boolean }> = {
 };
 type Placed = Record<string, { x: number; y: number; r: boolean }>;
 const dims = (p: Piece, r: boolean) => (r ? { w: p.h, h: p.w } : { w: p.w, h: p.h });
-const GRID_BOX = { left: 15, top: 27, width: 70 }; // % of frame; cells are square
+const GRID_BOX = { left: 12, top: 15, width: 76 }; // % of frame; cells are square
 
 function PieceArt({ p, r }: { p: Piece; r: boolean }) {
   const { w, h } = dims(p, r);
@@ -728,9 +722,9 @@ function PieceArt({ p, r }: { p: Piece; r: boolean }) {
     <div className="pointer-events-none absolute inset-0">
       <div style={inner} className="grid place-items-center">
         {p.id === "bread" ? (
-          <img src={PROP3.bread} alt="" className="prop h-full w-full object-contain" />
+          <img src={PROP3.bread} alt="" draggable={false} className="prop h-full w-full object-contain" />
         ) : p.id === "bigplate" ? (
-          <img src={PROP3.bigplate} alt="" className="prop h-full w-full object-contain" />
+          <img src={PROP3.bigplate} alt="" draggable={false} className="prop h-full w-full object-contain" />
         ) : (
           <ItemArt id={p.id} className={p.id.startsWith("cutlery") ? "h-full w-[70%]" : "w-[88%]"} />
         )}
@@ -739,26 +733,27 @@ function PieceArt({ p, r }: { p: Piece; r: boolean }) {
   );
 }
 
+type Drag = { id: PieceId; r: boolean; px: number; py: number; sx: number; sy: number; moved: boolean; from: { x: number; y: number; r: boolean } | null };
+
 export function Ch2Dining() {
   const s = useGame();
   const nm = s.name || "sweetheart";
   const [view, setView] = useState<"tray" | "table">("tray");
-  const [sel, setSel] = useState<{ id: PieceId; r: boolean } | null>(null);
   const [placed, setPlaced] = useState<Placed>({});
+  const [rot, setRot] = useState<Record<string, boolean>>({});
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const dragRef = useRef<Drag | null>(null);
+  dragRef.current = drag;
+  const gridRef = useRef<HTMLDivElement>(null);
   const [asking, setAsking] = useState(false);
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
-  const [foodQuestion, setFoodQuestion] = useState(
-    () => offlineAdaptiveQuestion(currentQuestionContext("food")).text,
-  );
-  useSpokenPrompt(foodQuestion, "guest", asking);
   const [bigOffered, setBigOffered] = useState(false);
   const [phase, setPhase] = useState<"play" | "crash" | "black" | "smile" | "after">("play");
   const swipe = useRef<{ x: number; y: number } | null>(null);
-  const ended = useRef(false);
   useSceneIntro(
     "ch2d",
-    "Make everything fit on the table. In the dark, the cloth remembers how.",
+    "Drag everything onto the table so it all fits. In the dark, the cloth remembers how.",
     [
       { speaker: "narrator", text: "The table is too small for everything on the tray." },
       { speaker: "mimic", text: `Make it all fit, ${nm}. Mommy hates a messy table.` },
@@ -769,42 +764,40 @@ export function Ch2Dining() {
   );
   const all = bigOffered ? [...PIECES, BIG] : PIECES;
   const pieceOf = (id: PieceId) => all.find((p) => p.id === id)!;
-  const inTray = all.filter((p) => !placed[p.id]);
+  const inDock = all.filter((p) => !placed[p.id] && drag?.id !== p.id);
   const count = PIECES.filter((p) => placed[p.id]).length;
 
-  const occupied = (except?: PieceId) => {
-    const g: (PieceId | null)[][] = Array.from({ length: GRID }, () => Array(GRID).fill(null));
-    for (const [id, pl] of Object.entries(placed)) {
-      if (id === except) continue;
-      const d = dims(pieceOf(id as PieceId), pl.r);
-      for (let y = pl.y; y < pl.y + d.h; y++) for (let x = pl.x; x < pl.x + d.w; x++) g[y]![x] = id as PieceId;
-    }
-    return g;
-  };
-
-  const fits = (p: Piece, r: boolean, x: number, y: number) => {
+  const fitsIn = (pl: Placed, p: Piece, r: boolean, x: number, y: number) => {
     const d = dims(p, r);
-    if (x + d.w > GRID || y + d.h > GRID) return false;
-    const g = occupied(p.id);
-    for (let yy = y; yy < y + d.h; yy++) for (let xx = x; xx < x + d.w; xx++) if (g[yy]![xx]) return false;
+    if (x < 0 || y < 0 || x + d.w > GRID || y + d.h > GRID) return false;
+    for (const [id, q] of Object.entries(pl)) {
+      if (id === p.id) continue;
+      const qd = dims(pieceOf(id as PieceId), q.r);
+      if (x < q.x + qd.w && x + d.w > q.x && y < q.y + qd.h && y + d.h > q.y) return false;
+    }
     return true;
   };
 
+  /** Which cell the dragged piece's top-left would snap to, or null when off the table. */
+  const target = (dr: Drag) => {
+    const rect = gridRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const cell = rect.width / GRID;
+    const d = dims(pieceOf(dr.id), dr.r);
+    const cx = (dr.px - rect.left) / cell;
+    const cy = (dr.py - rect.top) / cell;
+    if (cx < -0.5 || cy < -0.5 || cx > GRID + 0.5 || cy > GRID + 0.5) return null;
+    return { x: Math.round(cx - d.w / 2), y: Math.round(cy - d.h / 2), cell };
+  };
+
   const crash = () => {
-    ended.current = true;
     s.set({ interactive: false, objective: "" });
     setPlaced((pl) => ({ ...pl, bigplate: { x: 0, y: 0, r: false } }));
     setPhase("crash");
     sfx("scare");
     s.addCordura(15);
-    window.setTimeout(() => {
-      setPhase("black");
-      sfx("switch");
-    }, 700);
-    window.setTimeout(() => {
-      setPhase("smile");
-      sfx("whisper");
-    }, 3400);
+    window.setTimeout(() => { setPhase("black"); sfx("switch"); }, 700);
+    window.setTimeout(() => { setPhase("smile"); sfx("whisper"); }, 3400);
     window.setTimeout(() => {
       setPhase("after");
       setPlaced(SOLUTION);
@@ -812,65 +805,10 @@ export function Ch2Dining() {
       useGame.getState().say([
         { speaker: "narrator", text: "The light comes back. The table is set. Perfectly." },
         { speaker: "guest", text: `Thank you, ${nm}. I'll make your ${useGame.getState().favFood || "dinner"}.` },
-        {
-          speaker: "narrator",
-          text: "Upstairs, a music box starts to play.",
-          onDone: () => useGame.getState().go("ch3"),
-        },
+        { speaker: "narrator", text: "Upstairs, a music box starts to play." },
       ]);
     }, 7200);
-  };
-
-  const tapCell = (x: number, y: number) => {
-    if (!s.interactive || phase !== "play") return;
-    if (!s.lightsOn) {
-      s.say({ speaker: "narrator", text: "In the dark you can only look. Turn the light on to move things.", ms: 2400 });
-      return;
-    }
-    const here = occupied()[y]![x];
-    if (!sel) {
-      if (here && here !== "bigplate") {
-        sfx("tap");
-        const pl = placed[here]!;
-        setPlaced((p) => {
-          const n = { ...p };
-          delete n[here];
-          return n;
-        });
-        setSel({ id: here, r: pl.r });
-      }
-      return;
-    }
-    const p = pieceOf(sel.id);
-    if (p.id === "bigplate") {
-      crash();
-      return;
-    }
-    if (!fits(p, sel.r, x, y)) {
-      sfx("wrong");
-      s.mistake();
-      s.say({ speaker: "narrator", text: "It doesn't fit there.", ms: 1400 });
-      return;
-    }
-    sfx("chime");
-    s.success();
-    const next = { ...placed, [p.id]: { x, y, r: sel.r } };
-    setPlaced(next);
-    setSel(null);
-    const n = PIECES.filter((q) => next[q.id]).length;
-    if (n === PIECES.length && !bigOffered) {
-      useGame.getState().set({ interactive: false });
-      window.setTimeout(() => {
-        if (!useGame.getState().favFood) {
-          void adaptiveQuestion(currentQuestionContext("food")).then((question) => {
-            if (useGame.getState().screen !== "ch2d") return;
-            setFoodQuestion(question.text);
-            setAsking(true);
-            sfx("whisper");
-          });
-        } else offerBig();
-      }, 900);
-    } else if (n < PIECES.length) setView("tray");
+    window.setTimeout(() => useGame.getState().go("ch3"), 15500);
   };
 
   const offerBig = () => {
@@ -882,6 +820,94 @@ export function Ch2Dining() {
     st.say({ speaker: "guest", text: "Can you set my plate too?", ms: 4000 });
   };
 
+  const afterPlace = (next: Placed) => {
+    const n = PIECES.filter((q) => next[q.id]).length;
+    if (n === PIECES.length && !bigOffered) {
+      useGame.getState().set({ interactive: false });
+      window.setTimeout(() => {
+        if (!useGame.getState().favFood) {
+          setAsking(true);
+          sfx("whisper");
+        } else offerBig();
+      }, 900);
+    }
+  };
+
+  const canTouch = () => {
+    if (!s.interactive || phase !== "play") return false;
+    if (!s.lightsOn) {
+      s.say({ speaker: "narrator", text: "In the dark you can only look. Turn the light on to move things.", ms: 2400 });
+      return false;
+    }
+    return true;
+  };
+
+  const startDrag = (e: React.PointerEvent, id: PieceId) => {
+    if (!canTouch()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const from = placed[id] ?? null;
+    const r = from ? from.r : !!rot[id];
+    if (from) setPlaced((pl) => { const n = { ...pl }; delete n[id]; return n; });
+    sfx("tap");
+    setDrag({ id, r, px: e.clientX, py: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, from });
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const moved = d.moved || Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 8;
+      setDrag({ ...d, px: e.clientX, py: e.clientY, moved });
+    };
+    const up = () => {
+      const d = dragRef.current;
+      setDrag(null);
+      if (!d) return;
+      const p = pieceOf(d.id);
+      // A tap (no drag) turns the piece.
+      if (!d.moved) {
+        if (p.w !== p.h) {
+          sfx("creak");
+          if (d.from) {
+            const nr = !d.from.r;
+            setPlaced((pl) => (fitsIn(pl, p, nr, d.from!.x, d.from!.y) ? { ...pl, [p.id]: { ...d.from!, r: nr } } : { ...pl, [p.id]: d.from! }));
+          } else setRot((o) => ({ ...o, [p.id]: !o[p.id] }));
+        } else if (d.from) setPlaced((pl) => ({ ...pl, [p.id]: d.from! }));
+        return;
+      }
+      const t = target(d);
+      if (p.id === "bigplate") {
+        if (t) crash();
+        return;
+      }
+      setPlaced((pl) => {
+        if (t && fitsIn(pl, p, d.r, t.x, t.y)) {
+          sfx("chime");
+          useGame.getState().success();
+          const next = { ...pl, [p.id]: { x: t.x, y: t.y, r: d.r } };
+          window.setTimeout(() => afterPlace(next), 0);
+          return next;
+        }
+        if (t) {
+          sfx("wrong");
+          useGame.getState().mistake();
+        }
+        if (!d.from) setRot((o) => ({ ...o, [p.id]: d.r }));
+        return pl; // back to the tray
+      });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, [!!drag]);
+
   const answerFood = async () => {
     const answer = foodInput.trim();
     if (!answer || interpreting) return;
@@ -892,18 +918,8 @@ export function Ch2Dining() {
     state.set({ favFood: result.displayFood });
     setAsking(false);
     setInterpreting(false);
-    state.say({ speaker: "guest", text: result.monsterLine, onDone: offerBig });
-  };
-
-  const pick = (p: Piece) => {
-    if (!s.interactive || phase !== "play") return;
-    if (!s.lightsOn) {
-      s.say({ speaker: "narrator", text: "Too dark to pick anything up.", ms: 1800 });
-      return;
-    }
-    sfx("tap");
-    setSel({ id: p.id, r: false });
-    setView("table");
+    state.say({ speaker: "guest", text: result.monsterLine });
+    window.setTimeout(offerBig, 2600);
   };
 
   const gridStyle: CSSProperties = { left: `${GRID_BOX.left}%`, top: `${GRID_BOX.top}%`, width: `${GRID_BOX.width}%`, aspectRatio: "1" };
@@ -911,6 +927,26 @@ export function Ch2Dining() {
   const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
     left: `${x * cellPct}%`, top: `${y * cellPct}%`, width: `${w * cellPct}%`, height: `${h * cellPct}%`,
   });
+  const tgt = drag && drag.moved ? target(drag) : null;
+  const tgtOk = !!(drag && tgt && (drag.id === "bigplate" || fitsIn(placed, pieceOf(drag.id), drag.r, tgt.x, tgt.y)));
+  const cellPx = gridRef.current ? gridRef.current.getBoundingClientRect().width / GRID : 60;
+
+  /** A tray piece you can grab: tap to turn, drag onto the table. */
+  const DockPiece = ({ p, scale }: { p: Piece; scale: number }) => {
+    const r = !!rot[p.id];
+    const d = dims(p, r);
+    return (
+      <button
+        onPointerDown={(e) => startDrag(e, p.id)}
+        aria-label={`Drag ${p.id.replace("-", " for ")}`}
+        className="relative shrink-0 touch-none select-none"
+        style={{ width: d.w * scale, height: d.h * scale }}
+      >
+        <div className="absolute inset-0 rounded border border-dashed border-paper/30" />
+        <PieceArt p={p} r={r} />
+      </button>
+    );
+  };
 
   return (
     <Stage
@@ -926,7 +962,7 @@ export function Ch2Dining() {
               const sol = SOLUTION[p.id]!;
               const d = dims(p, sol.r);
               return (
-                <div key={p.id} className="glow-clue absolute rounded-sm border-2 border-dashed border-current" style={{ ...box(sol.x, sol.y, d.w, d.h) }}>
+                <div key={p.id} className="glow-clue absolute rounded-sm border-2 border-dashed border-current" style={box(sol.x, sol.y, d.w, d.h)}>
                   <span className="absolute left-1 top-0.5 font-crayon text-[10px]">{p.id.split("-")[0]}</span>
                 </div>
               );
@@ -936,6 +972,20 @@ export function Ch2Dining() {
       }
       above={
         <>
+          {drag && (
+            <div
+              className="pointer-events-none fixed z-[70] opacity-90"
+              style={{
+                left: drag.px - (dims(pieceOf(drag.id), drag.r).w * cellPx) / 2,
+                top: drag.py - (dims(pieceOf(drag.id), drag.r).h * cellPx) / 2,
+                width: dims(pieceOf(drag.id), drag.r).w * cellPx,
+                height: dims(pieceOf(drag.id), drag.r).h * cellPx,
+                filter: "drop-shadow(4px 8px 0 oklch(0 0 0 / .5))",
+              }}
+            >
+              <PieceArt p={pieceOf(drag.id)} r={drag.r} />
+            </div>
+          )}
           {phase === "crash" && <div className="shatter absolute inset-0 z-[55] bg-paper/80 mix-blend-difference" />}
           {(phase === "black" || phase === "smile") && (
             <div className="absolute inset-0 z-[58] grid place-items-center bg-void">
@@ -944,7 +994,7 @@ export function Ch2Dining() {
           )}
           {asking && (
             <div className="absolute inset-x-[6%] top-[14%] z-[45] paper animate-float-up p-5">
-              <p className="font-display text-lg italic">“{foodQuestion}”</p>
+              <p className="font-display text-lg italic">"What do you like to eat best?"</p>
               <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
               <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); void answerFood(); }}>
                 <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
@@ -973,12 +1023,11 @@ export function Ch2Dining() {
         onPointerUp={(e) => {
           const s0 = swipe.current;
           swipe.current = null;
-          if (!s0) return;
+          if (!s0 || dragRef.current) return;
           const dx = e.clientX - s0.x;
           if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(e.clientY - s0.y) * 1.6) { sfx("creak"); setView((v) => (v === "tray" ? "table" : "tray")); }
         }}
       >
-        {/* view tabs */}
         <div className="absolute inset-x-0 top-[3%] z-40 flex justify-center gap-3">
           {(["tray", "table"] as const).map((v) => (
             <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`stitch-btn px-3 py-1 text-xs ${view === v ? "honey" : "opacity-70"}`}>
@@ -989,20 +1038,19 @@ export function Ch2Dining() {
 
         {view === "tray" ? (
           <div className="wall-in-l absolute inset-0">
-            {/* the tray: a battered wooden board with every piece laid out at its real size */}
             <div
-              className="absolute left-[5%] right-[5%] top-[44%] rounded-lg p-2"
+              className="absolute left-[5%] right-[5%] top-[46%] rounded-lg p-3"
               style={{ background: "linear-gradient(oklch(0.34 0.05 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }}
             >
-              <div className="flex flex-wrap items-end justify-center gap-2">
-                {inTray.length === 0 && <span className="py-6 font-hand text-sm text-paper/60">nothing left on the tray</span>}
-                {inTray.map((p) => (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {inDock.length === 0 && <span className="py-6 font-hand text-sm text-paper/60">nothing left on the tray</span>}
+                {inDock.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => pick(p)}
-                    aria-label={`Pick up ${p.id.replace("-", " for ")}`}
-                    className={`relative touch-manipulation ${sel?.id === p.id ? "ring-2 ring-honey" : ""} ${p.id === "bigplate" ? "animate-float-up" : ""}`}
-                    style={{ width: p.id === "bigplate" ? "86%" : `${p.w * 17}%`, aspectRatio: `${p.w} / ${p.h}`, minWidth: 40 }}
+                    onClick={() => { if (canTouch()) { sfx("tap"); setView("table"); } }}
+                    aria-label={`Look at ${p.id.replace("-", " for ")}`}
+                    className={`relative touch-manipulation ${p.id === "bigplate" ? "animate-float-up" : ""}`}
+                    style={{ width: p.id === "bigplate" ? 200 : p.w * 46, height: p.id === "bigplate" ? 200 : p.h * 46 }}
                   >
                     <div className="absolute inset-0 rounded border border-dashed border-paper/30" />
                     <PieceArt p={p} r={false} />
@@ -1010,25 +1058,30 @@ export function Ch2Dining() {
                 ))}
               </div>
             </div>
-            <p className="absolute inset-x-0 top-[41%] text-center font-hand text-xs text-paper/80 drop-shadow">swipe or tap Table to look down at it</p>
+            <button
+              onClick={() => { sfx("creak"); setView("table"); }}
+              className="stitch-btn honey absolute bottom-[5%] left-1/2 -translate-x-1/2 whitespace-nowrap text-sm"
+            >
+              Take the tray to the table →
+            </button>
           </div>
         ) : (
           <div className="wall-in-r absolute inset-0">
             <img src={PROP3.tabletop} alt="" className="scene-bg" style={{ filter: s.lightsOn ? undefined : "saturate(.3) brightness(.7)" }} />
-            <div className="absolute" style={gridStyle}>
-              {/* empty cells */}
-              {Array.from({ length: GRID * GRID }, (_, k) => {
-                const x = k % GRID, y = Math.floor(k / GRID);
-                return (
-                  <button
-                    key={k}
-                    aria-label={`Table spot ${x + 1}, ${y + 1}`}
-                    onClick={() => tapCell(x, y)}
-                    className="absolute touch-manipulation border border-dashed border-paper/30"
-                    style={box(x, y, 1, 1)}
-                  />
-                );
-              })}
+            <div ref={gridRef} className="absolute" style={gridStyle}>
+              {Array.from({ length: GRID * GRID }, (_, k) => (
+                <div key={k} className="absolute border border-dashed border-paper/30" style={box(k % GRID, Math.floor(k / GRID), 1, 1)} />
+              ))}
+              {tgt && drag && (
+                <div
+                  className="absolute z-10 rounded-sm border-[3px]"
+                  style={{
+                    ...box(Math.max(0, tgt.x), Math.max(0, tgt.y), dims(pieceOf(drag.id), drag.r).w, dims(pieceOf(drag.id), drag.r).h),
+                    borderColor: tgtOk ? "var(--sage)" : "var(--crimson)",
+                    background: tgtOk ? "color-mix(in oklab, var(--sage) 25%, transparent)" : "color-mix(in oklab, var(--crimson) 25%, transparent)",
+                  }}
+                />
+              )}
               {Object.entries(placed).map(([id, pl]) => {
                 const p = pieceOf(id as PieceId);
                 if (!p) return null;
@@ -1036,9 +1089,9 @@ export function Ch2Dining() {
                 return (
                   <button
                     key={id}
-                    onClick={() => tapCell(pl.x, pl.y)}
+                    onPointerDown={(e) => startDrag(e, id as PieceId)}
                     aria-label={`Move ${id.replace("-", " for ")}`}
-                    className={`absolute touch-manipulation ${id === "bigplate" && phase === "crash" ? "shatter" : ""}`}
+                    className={`absolute touch-none select-none ${id === "bigplate" && phase === "crash" ? "shatter" : ""}`}
                     style={box(pl.x, pl.y, d.w, d.h)}
                   >
                     <PieceArt p={p} r={pl.r} />
@@ -1046,15 +1099,15 @@ export function Ch2Dining() {
                 );
               })}
             </div>
-            {sel && phase === "play" && (
-              <div className="absolute inset-x-0 bottom-[4%] z-30 flex items-center justify-center gap-2">
-                <div className="paper relative h-14 w-14 rotate-2">
-                  <PieceArt p={pieceOf(sel.id)} r={sel.r} />
+            {/* the tray, docked under the table: drag from here */}
+            {phase === "play" && (
+              <div className="absolute inset-x-[3%] bottom-[2%] top-[69%] rounded-lg p-2" style={{ background: "linear-gradient(oklch(0.3 0.04 55 / .95), oklch(0.18 0.03 50 / .95))", boxShadow: "var(--shadow-contact)" }}>
+                <p className="mb-1 text-center font-hand text-[12px] leading-none text-paper/80">
+                  {inDock.length ? "drag onto the table · tap to turn" : "everything is on the table"}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {inDock.map((p) => <DockPiece key={p.id} p={p} scale={p.id === "bigplate" ? 22 : 34} />)}
                 </div>
-                {sel.id !== "bigplate" && pieceOf(sel.id).w !== pieceOf(sel.id).h && (
-                  <button className="stitch-btn sage text-sm" onClick={() => { sfx("tap"); setSel({ ...sel, r: !sel.r }); }}>Turn it</button>
-                )}
-                <button className="stitch-btn text-sm" onClick={() => { sfx("tap"); setSel(null); setView("tray"); }}>Put back</button>
               </div>
             )}
           </div>
