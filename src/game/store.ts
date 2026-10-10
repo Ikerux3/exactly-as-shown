@@ -152,3 +152,4 @@ export function sanitizeName(raw: string): string {
   if (!clean) return "";
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
+if (typeof window !== "undefined" && import.meta.env.DEV) (window as unknown as { __game: typeof useGame }).__game = useGame;

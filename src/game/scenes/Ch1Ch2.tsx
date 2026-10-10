@@ -111,10 +111,10 @@ export function Ch1() {
       <div className="absolute left-[60%] top-[72%] font-hand text-sm text-paper drop-shadow">{s.ch1.length}/5</div>
 
       {/* Toy 1 — on the floor */}
-      <Toy t={r1} x={40} y={74} w={14} />
+      <Toy t={r1} x={42} y={66} w={19} />
 
       {/* Toy 2 — under the sofa cushion */}
-      <Toy t={r2} x={24} y={44} w={11} />
+      <Toy t={r2} x={24} y={43} w={14} />
       <button aria-label="Move the cushion" onClick={() => { if (cushionMoved) useGame.getState().fact({ revisits: s.facts.revisits + 1 }); setCushion(!cushionMoved); sfx("open"); }}
         className="absolute transition-transform duration-500" style={{ left: "14%", top: "38%", width: "21%", transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none" }}>
         <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
@@ -124,12 +124,12 @@ export function Ch1() {
       <button aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"} onClick={() => { setDrawer(!drawerOpen); sfx("open"); }} className="absolute" style={{ left: "64%", top: "44%", width: "26%" }}>
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={77} y={59} w={10} extra="z-10" />}
+      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} extra="z-10" />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !s.lightsOn && (
         <button aria-label="Grab the toy that keeps moving" onClick={() => (frozen ? collect(r4) : sfx("wrong"))}
-          className="absolute z-10" style={flying === r4 ? flyStyle(r4, 0, 0, 12) : { left: `${pos4.x}%`, top: `${pos4.y}%`, width: "12%", transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)` }}>
+          className="absolute z-10" style={flying === r4 ? flyStyle(r4, 0, 0, 12) : { left: `${pos4.x}%`, top: `${pos4.y}%`, width: "15%", transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)` }}>
           <img src={TOY_IMG[r4]} alt="" className="w-full" style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }} draggable={false} />
         </button>
       )}
@@ -143,7 +143,7 @@ export function Ch1() {
           <path d="M4 30 Q50 6 96 30 Q50 40 4 30 Z" fill="var(--sage)" stroke="var(--paper)" strokeDasharray="4 4" />
         </svg>
       </button>
-      {rugLifted && <Toy t={r5} x={22} y={80} w={11} />}
+      {rugLifted && <Toy t={r5} x={22} y={79} w={15} />}
     </Stage>
   );
 }
