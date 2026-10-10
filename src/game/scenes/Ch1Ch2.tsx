@@ -87,8 +87,9 @@ export function Ch1() {
       });
       const escape = state.toyEscape;
       if (escape && !escape.recovered && Date.now() - (escape.escapedAt ?? 0) > 1000) {
-        const x = escape.x + .9;
-        state.set({ toyEscape: { ...escape, x: x > 94 ? 7 : x, wall: x > 94 ? (escape.wall + 1) % 4 : escape.wall } });
+        // MJ: the single escaped toy stays on its pickup wall; keep Lovable's dark movement bounded.
+        const x = Math.min(escape.x + .9, 70);
+        state.set({ toyEscape: { ...escape, x } });
       }
     }, 180);
     return () => window.clearInterval(id);
@@ -166,7 +167,6 @@ export function Ch1() {
       {Object.entries(roam).map(([t, at]) => !s.ch1.includes(t as ToyId) && <OnWall key={t} n={at.wall}><PlayroomToy toy={t as ToyId} x={at.x} y={at.y} flying={flying} onCollect={collect} /></OnWall>)}
       {s.toyEscape && !s.toyEscape.recovered && (
         <OnWall n={s.toyEscape.wall}>
-          {s.toyEscape.wall !== 0 && Date.now() - (s.toyEscape.escapedAt ?? 0) < 1200 && <ToyBox open style={{position: "absolute", left: "61%", top: "74.5%", width: "30%"}} />}
           <PlayroomToy toy={s.toyEscape.toy} x={s.toyEscape.x} y={s.toyEscape.y}
             flying={flying} walking escapedAt={s.toyEscape.escapedAt} onCollect={collect} />
         </OnWall>
@@ -203,14 +203,14 @@ export function Ch1() {
           <img src={cleanJacketWall} alt="" className="scene-bg" style={{ objectPosition: "25% 50%" }} />
         </div>}
         {toy(r4, 3, alternate ? extraOpen : jacketMoved)}
-         {alternate && <button type="button" aria-label="Look behind the keepsake box" disabled={!canInspect} className="absolute left-[24%] top-[43%] z-40 w-[25%] touch-manipulation" onClick={() => {setExtraOpen(true); sfx("open");}} style={{transform: extraOpen ? "translate(-55%, -35%) rotate(-20deg)" : undefined}}><img src={PROP2.trinketbox} alt="" className="w-full" /></button>}
+         {alternate && <button type="button" aria-label="Look behind the keepsake box" disabled={!canInspect} className="absolute left-[24%] top-[43%] z-40 w-[25%] touch-manipulation" onClick={() => {setExtraOpen(true); setJacket(true); sfx("open");}} style={{transform: extraOpen ? "translate(-55%, -35%) rotate(-20deg)" : undefined}}><img src={PROP2.trinketbox} alt="" className="w-full" /></button>}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] transition-transform duration-500 motion-reduce:transition-none"
           style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
             transformOrigin: "36% 33%", transform: jacketMoved ? "rotate(-36deg)" : undefined }}>
           <img src={WALLS[BG.bgPlayroom]?.[2]} alt="" className="scene-bg" style={{ objectPosition: "25% 50%" }} />
         </div>
         {!jacketMoved && <button type="button" aria-label="Move the jacket" disabled={!canInspect}
-          onClick={() => { s.inspect("jacket"); setJacket(true); sfx("open"); }}
+          onClick={() => { s.inspect("jacket"); setJacket(true); setExtraOpen(true); sfx("open"); }}
           className="absolute z-[46] min-h-12 min-w-12 touch-manipulation focus-visible:outline-4 focus-visible:outline-honey"
           style={{ left: "20%", top: "35%", width: "32%", height: "23%" }}>
           <span className="sr-only">Move the jacket</span>

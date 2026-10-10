@@ -28,7 +28,7 @@ vi.mock("../ai/food", () => ({ interpretFavoriteFood: vi.fn() }));
 vi.mock("../fx", () => ({ JumpScare: () => null }));
 vi.mock("../DialogueVoice", () => ({ useSpokenPrompt: vi.fn() }));
 vi.mock("../ai/questions", () => ({ adaptiveQuestion: vi.fn(), currentQuestionContext: vi.fn(), offlineAdaptiveQuestion: vi.fn() }));
-vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", WALLS: { room: ["room", "window", "coat", "shelves"] }, PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
+vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", WALLS: { room: ["room", "window", "coat", "shelves"] }, QOL_ART: {}, foodImageFor: () => "/food.png", PROP2: { trinketbox: "/keepsake.png" }, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
 vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => <div data-testid="toybox" /> }));
 import { Ch1 } from "./Ch1Ch2";
 import { saveCheckpoint } from "../store";
@@ -52,6 +52,16 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); model.listeners.clear(); });
 
 describe("MG01 first pickup escape", () => {
+  it.each(["Move the jacket", "Look behind the keepsake box"])("reveals the coat-hidden toy in shuffled runs via %s, preserving both interactions", (action) => {
+    model.state.toyOrder = ["rabbit", "bear", "train", "doll", "elephant"];
+    render(<Ch1 />);
+    turn(2);
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    expect(screen.getByRole("button", { name: "Pick up the doll" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Move the jacket" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Look behind the keepsake box" })).toBeInTheDocument();
+  });
+
   it("does not grant another escape to a resumed older save with stored toys", () => {
     model.state.ch1 = ["bear"];
     render(<Ch1 />);
@@ -66,6 +76,12 @@ describe("MG01 first pickup escape", () => {
     turn(2);
     pick("Pick up the elephant");
     expect(model.state.toyEscape).toMatchObject({ toy: "elephant", wall: 2, y: 82, recovered: false });
+    expect(screen.queryByTestId("toybox")).toBeNull();
+    act(() => update({ lightsOn: false }));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(model.state.toyEscape.wall).toBe(2);
+    expect(model.state.toyEscape.x).toBeLessThanOrEqual(70);
+    act(() => update({ lightsOn: true }));
     expect(screen.getByRole("button", { name: "Pick up the escaped elephant" })).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1500));
     turn(4);
@@ -73,6 +89,8 @@ describe("MG01 first pickup escape", () => {
     expect(parseFloat(walker.style.animationDelay)).toBeLessThan(-1);
     pick("Pick up the escaped elephant");
     turn(2);
+    // Lovable lets uncollected toys wander in darkness; find its new wall without resetting that feature.
+    for (let i = 0; i < 4 && !screen.queryByRole("button", { name: "Pick up the bear" }); i++) turn();
     pick("Pick up the bear");
     expect(model.state.ch1).toEqual(["elephant", "bear"]);
     expect(model.state.toyEscape).toMatchObject({ toy: "elephant", recovered: true });
