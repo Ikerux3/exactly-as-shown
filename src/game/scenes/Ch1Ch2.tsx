@@ -24,7 +24,7 @@ export function Ch1() {
   const [ejected, setEjected] = useState<ToyId[]>([]);
   const rapidCollections = useRef<number[]>([]);
   const previousLights = useRef(s.lightsOn);
-  const [pos4, setPos4] = useState({ x: 30, y: 72 });
+  const [pos4, setPos4] = useState({ x: 38, y: 71 });
   const [frozen, setFrozen] = useState(false);
   const litMs = useRef(0);
   const target = useRef({ x: 70, y: 80 });
@@ -87,15 +87,15 @@ export function Ch1() {
       setPos4((p) => {
         if (illuminated(p.x, p.y, 2)) {
           litMs.current += 120;
-          if (litMs.current > 700) setFrozen(true);
+          if (litMs.current > 360) setFrozen(true);
           return p;
         }
         litMs.current = Math.max(0, litMs.current - 240);
         if (litMs.current === 0) setFrozen(false);
         const t = target.current;
         if (Math.hypot(t.x - p.x, t.y - p.y) < 3)
-          target.current = { x: 10 + Math.random() * 75, y: 58 + Math.random() * 30 };
-        return { x: p.x + Math.sign(t.x - p.x) * 1.1, y: p.y + Math.sign(t.y - p.y) * 0.7 };
+          target.current = { x: 28 + Math.random() * 37, y: 61 + Math.random() * 19 };
+        return { x: p.x + Math.sign(t.x - p.x) * 0.36, y: p.y + Math.sign(t.y - p.y) * 0.24 };
       });
     }, 120);
     return () => window.clearInterval(id);
@@ -235,21 +235,36 @@ export function Ch1() {
         )
       }
     >
+      {/* Returned toys scatter to distinct walls and safe hitboxes, never a pile on the box. */}
+      {ejected.map((toy) => {
+        const slot = s.toyOrder.indexOf(toy);
+        const locations = [
+          { wall: 0, x: 26, y: 59 },
+          { wall: 1, x: 27, y: 73 },
+          { wall: 2, x: 68, y: 61 },
+          { wall: 3, x: 62, y: 68 },
+          { wall: 0, x: 80, y: 64 },
+        ];
+        const dest = locations[Math.max(0, slot)]!;
+        return (
+          <OnWall key={toy} n={dest.wall}>
+            <button type="button" aria-label={`Pick up the escaped ${labelFor(toy)}`}
+              onClick={() => collect(toy)}
+              className="absolute z-40 grid min-h-12 min-w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-xl outline-offset-2 transition-transform duration-200 active:scale-95 focus-visible:outline-4 focus-visible:outline-honey"
+              style={{ left: dest.x + "%", top: dest.y + "%", width: "18%", touchAction: "manipulation" }}>
+              <img src={imageFor(toy)} alt="" draggable={false} className="w-full drop-shadow-xl motion-safe:animate-bounce" />
+            </button>
+          </OnWall>
+        );
+      })}
+
       <OnWall n={0}>
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
 
-      {/* Clearly visible toy teleport: previously boxed toys land back on the floor. */}
-      {ejected.map((toy, index) => (
-        <button
-          key={toy}
-          aria-label={`Return the expelled ${labelFor(toy)} to the box`}
-          onClick={() => collect(toy)}
-          className="absolute z-30 w-[16%] transition-transform duration-200 motion-safe:animate-bounce"
-          style={{ left: `${24 + (index % 3) * 18}%`, top: `${76 + Math.floor(index / 3) * 8}%` }}
-        >
-          <img src={imageFor(toy)} alt="" className="w-full drop-shadow-xl" />
-        </button>
-      ))}
+      {/* The box is the front-wall collection point. Expelled toys appear across ALL four walls. */}
+      <div aria-live="polite" className="pointer-events-none absolute bottom-[5%] left-[3%] rounded bg-void/70 px-2 py-1 text-xs text-paper">
+        {ejected.length ? "The toys escaped! Search the room's four walls." : "Find toys on every wall."}
+      </div>
 
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
@@ -302,7 +317,7 @@ export function Ch1() {
         <button
           aria-label="Grab the toy that keeps moving"
           onClick={() => {
-            if (frozen) collect(r4);
+            if (frozen || illuminated(pos4.x, pos4.y, 9)) collect(r4);
             else {
               sfx("wrong");
               s.mistake();
