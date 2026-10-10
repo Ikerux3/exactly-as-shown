@@ -107,6 +107,8 @@ type State = {
   ch2Items: string[];
   ch2Placed: string[];
   ch3Rounds: number;
+  /** MJ v3.1: the rapid toy-box catapult can happen only once in the whole run. */
+  toyCatapultUsed: boolean;
 };
 
 type Actions = {
@@ -183,6 +185,7 @@ const initial = (): Omit<State, "muted"> => ({
   ch2Items: [],
   ch2Placed: [],
   ch3Rounds: 0,
+  toyCatapultUsed: false,
 });
 
 export const useGame = create<State & Actions>((set, get) => ({
@@ -337,6 +340,7 @@ type Save = Pick<
   | "ch2Items"
   | "ch2Placed"
   | "ch3Rounds"
+  | "toyCatapultUsed"
 >;
 
 function writeSave(s: State) {
@@ -357,6 +361,7 @@ function writeSave(s: State) {
     ch2Items: s.ch2Items,
     ch2Placed: s.ch2Placed,
     ch3Rounds: s.ch3Rounds,
+    toyCatapultUsed: s.toyCatapultUsed,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
