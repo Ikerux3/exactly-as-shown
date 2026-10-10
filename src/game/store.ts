@@ -294,6 +294,8 @@ export const useGame = create<State & Actions>((set, get) => ({
       facts: { ...base.facts, ...save.facts },
       adaptations: save.adaptations ?? base.adaptations,
       adaptiveMoments: save.adaptiveMoments ?? base.adaptiveMoments,
+      toyCatapultUsed: save.toyCatapultUsed ?? false,
+      forcedBlackout: false,
       screen: "title",
     });
     get().go(save.screen);
