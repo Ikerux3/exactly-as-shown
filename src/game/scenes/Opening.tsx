@@ -5,6 +5,7 @@ import {
   type ColorKey, type Screen,
 } from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
+import { GAMEPLAY_RULES, applyFinalCordura } from "../gameplayRules";
 import { ChildDoll, GuestVoid, MotherCutout } from "../Props";
 import { loadProfile, type Profile } from "../profile";
 import { CharacterCreator } from "./Creator";
@@ -254,7 +255,7 @@ export function Final() {
     const st = useGame.getState();
     // Unique exception to the standard darkness timer: six seconds add just +5 TOTAL.
     // No Stage is mounted in the finale, so the regular 100% reset cannot run here.
-    const frozen = st.finalCordura ?? Math.min(100, st.cordura + 5);
+    const frozen = applyFinalCordura(st.cordura, st.finalCordura);
     st.set({ interactive: false, lightsOn: false, objective: "", cordura: frozen, finalCordura: frozen });
     sfx("heartbeat");
     const beating = window.setInterval(() => sfx("heartbeat"), 960);
@@ -267,7 +268,7 @@ export function Final() {
         text: (useGame.getState().name || "Little one") + "… I can still see you.",
         ms: 1600,
       });
-    }, 6000);
+    }, GAMEPLAY_RULES.finalBlackoutSeconds * 1000);
     const door = window.setTimeout(() => {
       const state = useGame.getState();
       state.set({ line: undefined, queue: [] });
