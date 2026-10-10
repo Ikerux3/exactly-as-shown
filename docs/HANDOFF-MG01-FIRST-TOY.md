@@ -2,7 +2,9 @@
 Fecha: 10 octubre 2026. Responsable: Codex; autorización de main comunicada por MJ.
 Base revisada: 8816de4a046c96a5565637ac56b079c6c289e4b3. Rama destino: main.
 
-Estado: implementación preparada, publicación y CI se verifican al cierre.
+Estado: EN MAIN; PROBADO EN CI, QA VISUAL/TÁCTIL Y DESPLIEGUE PENDIENTES.
+Commits: 97ac4f766319e1fa7164a1da78c33ed4d2b75dd6 implementación; 8b8fe7665f20c73f68efba035424798ebf3c6430 fixture de pruebas.
+CI final PROBADO: https://github.com/Ikerux3/exactly-as-shown/actions/runs/38048584530, commit 8b8fe7665f20c73f68efba035424798ebf3c6430. TypeScript PASS, Vitest PASS, build producción PASS. QA visual y móviles físicos NO realizada; DESPLEGADO no verificado. Vitest 63/63, 17 archivos, incluidos 3 casos MG01.
 Cambios: retirar catapulta y escape del cuarto; el primer juguete realmente recogido sale una vez en su pared original, camina con luz ON, se guarda definitivamente al recuperarlo. Estado toyEscape persiste en Zustand y checkpoint de capítulo; newRun lo limpia. Cinco juguetes, reparto 1/1/2/1 por pared; dos en pared 2 puerta/chaqueta (revelar chaqueta y huellas). Todos recogibles con luz. Botón estable, lock síncrono, feedback 220 ms, touch targets 48 px, cancelación de timer al desmontar, fallback de imagen custom. Movimiento reducido respetado.
 Archivos: src/game/scenes/Ch1Ch2.tsx (solo imports y MG01; MG02 concurrente preservado literalmente), store.ts (estado/save), roomLayout.ts/test.ts, scenes/Ch1.test.tsx, styles.css (añadido MG01). Assets y resto de niveles no modificados.
 
