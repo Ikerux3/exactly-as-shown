@@ -17,6 +17,8 @@
 - HUD (chapter, progress, Cordura, pause) and the dialogue bar (subtitles / Mommy's list + light switch) live in `src/game/Shell.tsx` bars above and below the art frame — don't overlay UI on the art, so it never hides props or hitboxes.
 - The game saves a checkpoint at the start of each chapter (`go()` in the store); the title menu offers Continue from it.
 - Rooms have four walls (WALLS in assets.ts); Stage handles swipe/arrows and scenes opt in with `spread` + `<OnWall n>`, otherwise content stays on the front wall — lets chapters spread puzzles without breaking older scenes.
+- Stage keeps each room background mounted and switches visibility together with props, without turn animations or prop-root remounts — prevents delayed and mismatched wall changes.
+- Normalize hidden chapter destinations in the store and checkpoint reader, and omit their scene renderers and shortcuts — progression and legacy saves share the same playable sequence.
 - Scenes with their own views (e.g. dining tray/table) pass `noTurn` to Stage; collage jumpscares use `JumpScare` from fx.tsx rendered in Stage `above` — keeps scares local without triggering the phase-restart scare.
 - Apply sanity displacement only to scene artwork, never overlay roots or SVG definitions — prevents blank rooms and moving flashlight masks.
 - Curated preference props resolve through assets.ts and curated cache keys before image generation — known toy preferences stay visually distinct offline without changing the five checkpoint slots.

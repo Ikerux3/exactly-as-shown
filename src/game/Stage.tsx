@@ -102,13 +102,11 @@ export function Stage({
       onWallChangeRef.current?.(wall);
     }
   }, [wall]);
-  const [dir, setDir] = useState(0);
   const swipe = useRef<{ x: number; y: number; t: number } | null>(null);
   const turn = (d: number) => {
     if (!walls || navigationLocked) return;
     const st = useGame.getState();
     if (st.scare || st.paused) return;
-    setDir(d);
     setWall((w) => (w + d + 4) % 4);
     setSwipeCue(false);
     try { localStorage.setItem("mwbb-swipe-seen", "1"); } catch { /* optional preference */ }
@@ -265,15 +263,19 @@ export function Stage({
       }
     >
       <WallCtx.Provider value={wall}>
-      <img
-        src={shownBg}
+      {(walls ?? [bg]).map((wallBg, index) => <img
+        key={wallBg}
+        src={wallBg}
         alt=""
-        className={`scene-bg ${dir > 0 ? "wall-in-r" : dir < 0 ? "wall-in-l" : ""}`}
+        decoding="async"
+        className="scene-bg"
+        aria-hidden={index !== wall}
         style={{
-          objectPosition: shownPos,
+          visibility: index === wall ? "visible" : "hidden",
+          objectPosition: wallPositions?.[index] ?? (index === 0 ? bgPos : "50% 50%"),
           filter: s.lightsOn ? undefined : "saturate(0.3) brightness(0.7) hue-rotate(-20deg)",
         }}
-      />
+      />)}
       {/* warm lamp tint */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -296,7 +298,7 @@ export function Stage({
         />
       )}
 
-      <div key={`w${wall}`} className={`absolute inset-0 z-10 ${dir > 0 ? "wall-in-r" : dir < 0 ? "wall-in-l" : ""}`}>{spread || wall === 0 ? children : null}</div>
+      <div className="absolute inset-0 z-10">{spread || wall === 0 ? children : null}</div>
       <CutoutDefs />
       <SanityFX bg={shownBg} bgPos={shownPos} />
       <Dread chapter={chapter} bg={shownBg} bgPos={shownPos} lit={illuminated} />

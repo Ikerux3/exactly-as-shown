@@ -56,7 +56,7 @@ describe("chapter checkpoint save", () => {
     const s = useGame.getState();
     s.set({ name: "Lucia" });
     s.go("ch2k");
-    expect(loadSave()?.screen).toBe("ch2k");
+    expect(loadSave()?.screen).toBe("ch3");
     s.newRun();
     expect(loadSave()).toBeNull();
   });
@@ -83,6 +83,21 @@ describe("chapter checkpoint save", () => {
     s.set({ name: "Lucia", paused: true });
     s.go("ch2k");
     expect(useGame.getState().paused).toBe(false);
+  });
+
+  it("redirects hidden chapter 2 and its older checkpoints to chapter 3", () => {
+    const s = useGame.getState();
+    s.set({ name: "Lucia" });
+    for (const screen of ["ch2k", "ch2d"] as const) {
+      s.go(screen);
+      expect(useGame.getState().screen).toBe("ch3");
+      const raw = localStorage.getItem("mwbb-save-v1");
+      if (!raw) throw new Error("Missing checkpoint");
+      localStorage.setItem("mwbb-save-v1", JSON.stringify({ ...JSON.parse(raw), screen }));
+      expect(loadSave()?.screen).toBe("ch3");
+      expect(s.continueRun()).toBe(true);
+      expect(useGame.getState().screen).toBe("ch3");
+    }
   });
 
   it("can hide and restore house memory without deleting it", () => {
