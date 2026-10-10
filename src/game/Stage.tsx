@@ -140,7 +140,7 @@ export function Stage({
               <LightSwitch
                 on={s.lightsOn}
                 onToggle={toggle}
-                disabled={!s.interactive || s.scare}
+                disabled={!s.interactive || s.scare || s.forcedBlackout}
                 hint={switchHint && !s.line}
               />
             ) : null
