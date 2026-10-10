@@ -579,6 +579,20 @@ export function Ch2Dining() {
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   const [third, setThird] = useState(false);
+  const [intruders, setIntruders] = useState<number[]>([]);
+  const [intruderCount, setIntruderCount] = useState(0);
+  const previousLight = useRef(s.lightsOn);
+  const blackoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPlacement = useRef(0);
+  useEffect(() => () => { if (blackoutTimer.current) clearTimeout(blackoutTimer.current); }, []);
+  useEffect(() => {
+    const lightsWentOff = previousLight.current && !s.lightsOn;
+    previousLight.current = s.lightsOn;
+    if (!lightsWentOff || !s.interactive || intruderCount >= 3) return;
+    setIntruders((items) => [...items, intruderCount]);
+    setIntruderCount((n) => n + 1);
+    sfx("creak");
+  }, [s.lightsOn, s.interactive, intruderCount]);
   const ended = useRef(false);
   useSceneIntro(
     "ch2d",
@@ -606,6 +620,19 @@ export function Ch2Dining() {
     state.say({ speaker: "guest", text: result.monsterLine });
   };
 
+  const punishWrongPlacement = () => {
+    const st = useGame.getState();
+    if (blackoutTimer.current) return;
+    st.set({ forcedBlackout: true, lightsOn: false, flicker: Date.now() });
+    st.addCordura(9); // fixed 3 seconds x 3 points; Stage pauses its normal ticker.
+    sfx("switch");
+    blackoutTimer.current = window.setTimeout(() => {
+      const latest = useGame.getState();
+      if (latest.screen === "ch2d" && !latest.scare)
+        latest.set({ forcedBlackout: false, lightsOn: true });
+      blackoutTimer.current = null;
+    }, 3000);
+  };
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
       if (!s.lightsOn)
@@ -620,6 +647,8 @@ export function Ch2Dining() {
     if (sel.endsWith(owner)) {
       sfx("chime");
       s.success();
+      if (Date.now() - lastPlacement.current < 1000) sfx("creak");
+      lastPlacement.current = Date.now();
       s.set({ ch2Placed: [...placed, sel] });
       setSel(null);
       if (placed.length + 1 === 3 && !s.favFood)
@@ -631,13 +660,13 @@ export function Ch2Dining() {
     } else {
       sfx("wrong");
       s.mistake();
-      s.say({ speaker: "narrator", text: "That doesn't feel like it belongs there.", ms: 2000 });
       setSel(null);
+      punishWrongPlacement();
     }
   };
 
   useEffect(() => {
-    if (correct === 6 && !ended.current) {
+    if (correct === 6 && intruders.length === 0 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
       window.setTimeout(() => {
@@ -660,7 +689,7 @@ export function Ch2Dining() {
       );
       window.setTimeout(() => useGame.getState().go("ch3"), 13000);
     }
-  }, [correct]);
+  }, [correct, intruders.length]);
 
   const Mat = ({ side, x }: { side: "L" | "R"; x: number }) => {
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
