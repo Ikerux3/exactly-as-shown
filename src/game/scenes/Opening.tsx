@@ -189,7 +189,7 @@ export function Title() {
               show in the dark.
             </li>
             <li>
-              <b className="font-display">Cordura</b> rises in the dark and when something frightens
+              <b className="font-display">Fear</b> rises in the dark and when something frightens
               you. Light brings it back down. If it fills up, you'll have to try that part again.
             </li>
             <li>
@@ -411,7 +411,7 @@ export function Intro() {
               aria-invalid={invalidName}
               aria-describedby={invalidName ? "name-error" : undefined}
               className="mt-1 w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
-              placeholder="e.g. Lucía"
+              placeholder="e.g. Lucy"
               autoComplete="off"
               autoCapitalize="words"
               enterKeyHint="done"

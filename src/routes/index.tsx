@@ -55,7 +55,7 @@ function Game() {
       <TransitionVeil screen={screen} />
       {holding && (
         <div className="paper fixed bottom-4 left-1/2 z-[110] -translate-x-1/2 px-4 py-2 text-sm">
-          Saltando al capítulo {holding}…
+          Skipping to chapter {holding}…
           <div className="mt-1 h-1 bg-crimson" style={{ animation: `grow ${HOLD_MS}ms linear forwards`, transformOrigin: "left" }} />
         </div>
       )}
