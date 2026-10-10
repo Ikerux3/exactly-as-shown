@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { loadSave, sanitizeName, useGame } from "@/game/store";
+import {
+  loadMemory,
+  loadSave,
+  loadStoredMemory,
+  sanitizeName,
+  saveMemory,
+  setMemoryForgotten,
+  useGame,
+} from "@/game/store";
 
 describe("chapter checkpoint save", () => {
   beforeEach(() => {
@@ -57,6 +65,23 @@ describe("chapter checkpoint save", () => {
     s.set({ name: "Lucia", paused: true });
     s.go("ch2k");
     expect(useGame.getState().paused).toBe(false);
+  });
+
+  it("can hide and restore house memory without deleting it", () => {
+    saveMemory({ runs: 3, lastName: "Lucia", lastToy: "train" });
+    expect(setMemoryForgotten(true)).toEqual({ runs: 0, forgotten: true });
+    expect(loadStoredMemory()).toMatchObject({
+      runs: 3,
+      lastName: "Lucia",
+      lastToy: "train",
+      forgotten: true,
+    });
+    expect(loadMemory()).toEqual({ runs: 0, forgotten: true });
+    expect(setMemoryForgotten(false)).toMatchObject({
+      runs: 3,
+      lastName: "Lucia",
+      lastToy: "train",
+    });
   });
 
   it("runs line completion only after advancing the finished line", () => {

@@ -501,13 +501,18 @@ function readRawMemory(): Memory {
     return { runs: 0 };
   }
 }
-export function loadMemory(): Memory {
+/** Full persisted memory for internal updates, even while the player has hidden it. */
+export function loadStoredMemory(): Memory {
   const memory = readRawMemory();
-  if (memory.forgotten) return { runs: 0, forgotten: true };
   return {
     ...memory,
     ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
   };
+}
+export function loadMemory(): Memory {
+  const memory = loadStoredMemory();
+  if (memory.forgotten) return { runs: 0, forgotten: true };
+  return memory;
 }
 export function saveMemory(m: Memory) {
   try {

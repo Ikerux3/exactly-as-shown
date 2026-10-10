@@ -4,7 +4,7 @@
 // Guest kept your toy. Lines go through the store, so they get subtitles and voices.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { BG, CUT, toyImageFor } from "../assets";
-import { TOY_LABEL, loadMemory, saveMemory, useGame, type Line } from "../store";
+import { TOY_LABEL, loadStoredMemory, saveMemory, useGame, type Line } from "../store";
 import { sfx, unlockAudio } from "../audio";
 import { GAMEPLAY_RULES } from "../gameplayRules";
 import { ChildCutout, ChildDoll, MotherCutout } from "../Props";
@@ -172,8 +172,9 @@ export function Ending() {
 
   // The house remembers how this night ended.
   useEffect(() => {
-    const m = loadMemory();
+    const m = loadStoredMemory();
     saveMemory({
+      ...m,
       runs: (m.runs || 0) + 1,
       lastName: s.name,
       lastToy: toyId,
