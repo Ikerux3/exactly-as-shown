@@ -10,7 +10,7 @@ import { chooseInterventions } from "../guest";
 /* ---------------- CHAPTER 3 — THE MUSIC BOX ---------------- */
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
 const LENS = [3, 4, 5, 7];
-const SYM_COLOR: Record<Sym, string> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
+const SYM_COLOR: Partial<Record<Sym, string>> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
 
 export function Ch3() {
   const s = useGame();
