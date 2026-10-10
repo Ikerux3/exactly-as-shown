@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, illuminated } from "../Stage";
-import { BG, TOY_IMG } from "../assets";
+import { BG, TOY_IMG, PROP } from "../assets";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
@@ -223,7 +223,7 @@ export function Ch2Kitchen() {
     >
       {/* cabinet body the doors and drawers are set into */}
       <div className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
-        style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }} />
+        style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }} />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
         const toggle = () => { sfx("open"); setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]); };
@@ -240,12 +240,11 @@ export function Ch2Kitchen() {
                 {u.kind === "door" ? (
                   <button aria-label="Close the cupboard" onClick={toggle}
                     className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
-                    style={{ background: "linear-gradient(90deg, oklch(0.45 0.05 140), var(--sage))", boxShadow: "var(--shadow-contact)" }} />
+                    style={{ backgroundImage: `url(${PROP.door})`, backgroundSize: "cover", backgroundPosition: "right center", filter: "brightness(.7) sepia(.3)", boxShadow: "var(--shadow-contact)" }} />
                 ) : (
                   <button aria-label="Close the drawer" onClick={toggle}
                     className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
-                    style={{ background: "var(--sage)", boxShadow: "var(--shadow-contact)" }}>
-                    <span className="mx-auto block h-1.5 w-1/4 rounded bg-brass" />
+                    style={{ backgroundImage: `url(${PROP.drawer})`, backgroundSize: "cover", backgroundPosition: "center", filter: "sepia(.3)", boxShadow: "var(--shadow-contact)" }}>
                   </button>
                 )}
                 {/* interior with contents, always on top and tappable */}
@@ -254,7 +253,7 @@ export function Ch2Kitchen() {
                   {u.kind === "door" && <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 bg-wood-light" />}
                   {u.contents.filter((c) => !s.ch2Items.includes(c)).map((c) => (
                     <button key={c} onClick={() => take(c)} aria-label={c.startsWith("decoy") ? "A very large dish" : `Take ${c.replace("-", " for ")}`}
-                      className={`relative z-10 ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}>
+                      style={{ minWidth: 44, minHeight: 44, touchAction: "manipulation" }} className={`relative z-10 grid place-items-center ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}>
                       <ItemArt id={c} big={c.startsWith("decoy")} />
                     </button>
                   ))}
@@ -268,7 +267,7 @@ export function Ch2Kitchen() {
         );
       })}
       {/* Tray */}
-      <div className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact)" }}>
+      <div className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}>
         {ITEMS.map((i) => (
           <div key={i} className="grid h-full flex-1 place-items-center">
             {s.ch2Items.includes(i) ? <ItemArt id={i} className="w-[80%] animate-float-up" /> : <div className="h-3 w-3 rounded-full border border-dashed border-paper/50" />}
@@ -394,7 +393,7 @@ export function Ch2Dining() {
         </div>
       )}
       {/* Tray */}
-      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact)" }}>
+      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}>
         {/* fixed slot width: pieces keep their size as the tray empties */}
         {(s.ch2Items as ItemId[]).filter((i) => !placed.includes(i)).map((i) => (
           <button key={i} onClick={() => { sfx("tap"); setSel(sel === i ? null : i); }} aria-label={`Pick ${i}`}
