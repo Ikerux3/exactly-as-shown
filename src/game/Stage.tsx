@@ -55,7 +55,8 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
   useEffect(() => {
     const id = window.setInterval(() => {
       const st = useGame.getState();
-      setUnease(st.cordura, chapter);
+      // Music is visibly/audibly more corrupt when the music-box room is dark.
+      setUnease(Math.min(100, st.cordura + (chapter === 3 && !st.lightsOn ? 40 : 0)), chapter);
       if (!st.interactive || st.scare || st.line || st.paused || st.forcedBlackout) return;
       if (!st.lightsOn) {
         darkAcc.current += 1;
