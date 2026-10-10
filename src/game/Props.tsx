@@ -1,5 +1,6 @@
 // Hand-built SVG props in a felt / wood / clay vocabulary.
 import type { CSSProperties } from "react";
+import { CUT } from "./assets";
 
 const wood = "var(--wood)";
 const woodL = "var(--wood-light)";
@@ -145,27 +146,8 @@ export function Symbol({ s, size = 48, className, color = "currentColor" }: { s:
 
 export function GuestVoid({ style, intensity = 1 }: { style?: CSSProperties; intensity?: number }) {
   return (
-    <svg viewBox="0 0 100 260" style={{ ...style, opacity: intensity, animation: "void-breathe 5s ease-in-out infinite" }} aria-hidden className="pointer-events-none absolute">
-      <defs>
-        <filter id="gv-rough">
-          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="4">
-            <animate attributeName="seed" values="1;6;2;8" dur="3s" repeatCount="indefinite" />
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" scale="12" />
-          <feGaussianBlur stdDeviation="1.4" />
-        </filter>
-        <radialGradient id="gv-in" cx="50%" cy="40%" r="60%">
-          <stop offset="0" stopColor="oklch(0.02 0 0)" />
-          <stop offset="0.8" stopColor="oklch(0.05 0.01 270)" />
-          <stop offset="1" stopColor="oklch(0.12 0.03 270)" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <g filter="url(#gv-rough)">
-        <path d="M50 4 C70 20 76 40 70 70 C88 110 84 170 74 256 L26 256 C16 170 12 110 30 70 C24 40 30 20 50 4 Z" fill="url(#gv-in)" />
-      </g>
-      {/* a sliver of a room that isn't this one */}
-      <path d="M44 120 L56 120 L56 190 L44 190 Z" fill="oklch(0.3 0.04 160 / .12)" />
-    </svg>
+    <img src={CUT.guest} alt="" aria-hidden draggable={false} className="guest-cut pointer-events-none absolute"
+      style={{ width: "auto", ...style, opacity: intensity * ((style?.opacity as number | undefined) ?? 1) }} />
   );
 }
 
