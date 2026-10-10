@@ -15,7 +15,9 @@ import {
   type Screen,
 } from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
-import { GuestVoid, MotherCutout } from "../Props";
+import { ChildDoll, GuestVoid, MotherCutout } from "../Props";
+import { loadProfile, type Profile } from "../profile";
+import { CharacterCreator } from "./Creator";
 import { Ransom } from "../fx";
 import { resetOnce } from "../kit";
 import { interpretFavoriteToy } from "../ai/toy";
@@ -33,17 +35,19 @@ const CHAPTER_OF: Partial<Record<Screen, number>> = {
 
 /* ---------------- TITLE / START MENU ---------------- */
 
-type Panel = "menu" | "how" | "settings";
+type Panel = "menu" | "how" | "settings" | "character";
 
 export function Title() {
   const muted = useGame((s) => s.muted);
   const [mem, setMem] = useState<{ runs: number }>({ runs: 0 });
   const [saved, setSaved] = useState<Screen | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [panel, setPanel] = useState<Panel>("menu");
   const [confirmNew, setConfirmNew] = useState(false);
   useEffect(() => {
     setMem(loadMemory());
     setSaved(loadSave()?.screen ?? null);
+    setProfile(loadProfile());
   }, []);
 
   const newGame = () => {
@@ -130,6 +134,28 @@ export function Title() {
               Open the little house
             </button>
           )}
+          <button
+            type="button"
+            className="stitch-btn ghost flex w-full items-center justify-center gap-2 py-1.5"
+            onClick={() => open("character")}
+          >
+            {profile && (
+              <span className="relative block h-8 w-6 shrink-0 overflow-hidden" aria-hidden>
+                <ChildDoll
+                  look={profile.look}
+                  clothes="oklch(0.55 0.06 240)"
+                  className="absolute left-1/2 top-0 h-[260%] -translate-x-1/2"
+                />
+              </span>
+            )}
+            <span className="truncate">
+              {profile
+                ? profile.name
+                  ? `${profile.name} · your character`
+                  : "Your character"
+                : "Create your character"}
+            </span>
+          </button>
           <div className="grid w-full grid-cols-2 gap-3">
             <button
               type="button"
@@ -171,6 +197,16 @@ export function Title() {
             </li>
           </ul>
         </MenuPanel>
+      )}
+
+      {panel === "character" && (
+        <CharacterCreator
+          profile={profile}
+          onClose={() => {
+            setProfile(loadProfile());
+            setPanel("menu");
+          }}
+        />
       )}
 
       {panel === "settings" && (
@@ -243,8 +279,11 @@ const COLORS: ColorKey[] = ["rose", "sage", "honey", "turq"];
 
 export function Intro() {
   const s = useGame();
-  const [raw, setRaw] = useState("");
-  const [step, setStep] = useState(0);
+  // A character made in the menu already has a name: Mommy uses it instead of asking.
+  const [profile] = useState(() => loadProfile());
+  const knownName = !!profile?.name;
+  const [raw, setRaw] = useState(profile?.name ?? "");
+  const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   const name = sanitizeName(raw);
@@ -294,6 +333,14 @@ export function Intro() {
         color={`var(--c-${s.motherColor})`}
         className="absolute bottom-[4%] right-[7%] h-[38%]"
       />
+      {/* your character, if you made one — dressed in the colour you pick */}
+      {profile && (
+        <ChildDoll
+          look={profile.look}
+          clothes={`var(--c-${s.favColor})`}
+          className="absolute bottom-[4%] left-[14%] h-[27%]"
+        />
+      )}
       <div className="absolute inset-x-[6%] top-[5%] paper animate-float-up p-5">
         {step === 0 && (
           <form
@@ -327,7 +374,9 @@ export function Intro() {
         {step === 1 && (
           <>
             <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
-              "And your favourite colour, {name}? I'll get you a new cup."
+              {knownName
+                ? `"I'm popping out for groceries, ${name}. What's your favourite colour? I'll get you a new cup."`
+                : `"And your favourite colour, ${name}? I'll get you a new cup."`}
             </p>
             <div
               className="mt-4 grid grid-cols-4 gap-3"
@@ -411,41 +460,81 @@ export function Intro() {
 
 export function Final() {
   const s = useGame();
-  const [phase, setPhase] = useState<"blackout" | "door">("blackout");
+  const [phase, setPhase] = useState<"blackout" | "whisper" | "door">("blackout");
   const [canRun, setCanRun] = useState(false);
+  const finalValue = s.finalCordura ?? s.cordura;
+  const intense = finalValue >= 100;
+
   useEffect(() => {
     stopMusic();
-    s.set({ interactive: false, lightsOn: false, objective: "" });
-    sfx("whisper");
-    const t1 = window.setTimeout(() => sfx("whisper"), 2600);
-    const t2 = window.setTimeout(() => {
+    const st = useGame.getState();
+    // Unique exception to the standard darkness timer: six seconds add just +5 TOTAL.
+    // No Stage is mounted in the finale, so the regular 100% reset cannot run here.
+    const frozen = Math.min(100, st.cordura + 5);
+    st.set({
+      interactive: false,
+      lightsOn: false,
+      objective: "",
+      cordura: frozen,
+      finalCordura: frozen,
+    });
+    sfx("heartbeat");
+    const beating = window.setInterval(() => sfx("heartbeat"), 960);
+    const whisper = window.setTimeout(() => {
+      window.clearInterval(beating);
+      setPhase("whisper");
+      sfx(frozen >= 100 ? "scare" : "whisper");
+      useGame.getState().say({
+        speaker: "mimic",
+        text: (useGame.getState().name || "Little one") + "… I can still see you.",
+        ms: 1600,
+      });
+    }, 6000);
+    const door = window.setTimeout(() => {
+      const state = useGame.getState();
+      state.set({ line: undefined, queue: [] });
       setPhase("door");
       sfx("open");
-      useGame.getState().say([
-        {
-          speaker: "narrator",
-          text: "A key turns in the front door. Warm light spills across the floor.",
-        },
+      state.say([
+        { speaker: "narrator", text: "A key turns in the front door. Warm light fills the hall." },
         {
           speaker: "mother",
-          text: `${s.name || "Sweetheart"}? I'm home! I'm so sorry I took so long.`,
+          text: (state.name || "Sweetheart") + "? I'm home! I'm so sorry I took so long.",
           onShow: () => setCanRun(true),
         },
       ]);
-    }, 5000);
+    }, 8000);
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
+      window.clearInterval(beating);
+      window.clearTimeout(whisper);
+      window.clearTimeout(door);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   return (
     <Shell bottom={<DialogueBar />}>
-      {phase === "blackout" ? (
-        <div className="absolute inset-0 grid place-items-center bg-void">
-          <p className="subtitle guest px-4 py-3 text-lg animate-float-up [animation-delay:1.2s]">
-            {s.name || "little one"}…
-          </p>
+      {phase !== "door" ? (
+        <div
+          className="final-heartbeat-shake absolute inset-0 grid place-items-center bg-void"
+          role="status"
+          aria-label="Six seconds of darkness, a frightened heartbeat, and a whisper"
+        >
+          {phase === "whisper" && (
+            <>
+              {intense && (
+                <div
+                  className="absolute left-1/2 top-[30%] flex -translate-x-1/2 gap-9"
+                  aria-hidden
+                >
+                  <span className="h-4 w-7 rounded-[50%] bg-crimson shadow-[0_0_22px_var(--crimson)]" />
+                  <span className="h-4 w-7 rounded-[50%] bg-crimson shadow-[0_0_22px_var(--crimson)]" />
+                </div>
+              )}
+              <p className={"subtitle guest px-4 py-3 text-lg " + (intense ? "text-crimson" : "")}>
+                {s.name || "Little one"}… I can still see you.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>

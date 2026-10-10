@@ -20,6 +20,9 @@ export function Ch1() {
   const [drawerOpen, setDrawer] = useState(false);
   const [rugLifted, setRug] = useState(false);
   const [flying, setFlying] = useState<ToyId | null>(null);
+  const [ejected, setEjected] = useState<ToyId[]>([]);
+  const rapidCollections = useRef<number[]>([]);
+  const previousLights = useRef(s.lightsOn);
   const [pos4, setPos4] = useState({ x: 30, y: 72 });
   const [frozen, setFrozen] = useState(false);
   const litMs = useRef(0);
@@ -36,11 +39,39 @@ export function Ch1() {
       const st = useGame.getState();
       if (!st.facts.firstToy) st.fact({ firstToy: t });
       st.observeChoice(t === st.favToyVisualSlot && st.favToy ? st.favToy : TOY_LABEL[t]);
-      st.set({ ch1: [...st.ch1, t] });
+      const now = Date.now();
+      rapidCollections.current = [
+        ...rapidCollections.current.filter((time) => now - time < 4000),
+        now,
+      ];
+      if (!st.toyCatapultUsed && rapidCollections.current.length >= 3) {
+        // The Guest catapults the hurriedly boxed toys only once per entire run.
+        const expelled = [...st.ch1, t];
+        st.set({ ch1: [], toyCatapultUsed: true });
+        setEjected(expelled);
+        sfx("scare");
+        st.say({ speaker: "guest", text: "Not so fast. Let's play again.", ms: 2000 });
+      } else {
+        st.set({ ch1: [...st.ch1, t] });
+        setEjected((old) => old.filter((item) => item !== t));
+        sfx("chime");
+      }
       setFlying(null);
       sfx("chime");
     }, 550);
   };
+
+  // Every genuine lights-off can teleport one boxed toy back into the room.
+  // Unlike the one-time catapult, this is a small visible, recoverable interruption.
+  useEffect(() => {
+    const wentDark = previousLights.current && !s.lightsOn;
+    previousLights.current = s.lightsOn;
+    if (!wentDark || !s.interactive || s.ch1.length === 0) return;
+    const moved = s.ch1[s.ch1.length - 1]!;
+    setEjected((old) => (old.includes(moved) ? old : [...old, moved]));
+    useGame.getState().set({ ch1: useGame.getState().ch1.filter((item) => item !== moved) });
+    sfx("creak");
+  }, [s.lightsOn, s.interactive, s.ch1.length]);
 
   // Toy 4: moves in darkness, freezes when held in the light.
   useEffect(() => {
@@ -146,7 +177,7 @@ export function Ch1() {
     w: number;
     extra?: string;
   }) =>
-    got(t) ? null : (
+    got(t) || ejected.includes(t) ? null : (
       <button
         onClick={() => collect(t)}
         aria-label={`Pick up the ${labelFor(t)}`}
@@ -204,6 +235,19 @@ export function Ch1() {
     >
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
 
+      {/* Clearly visible toy teleport: previously boxed toys land back on the floor. */}
+      {ejected.map((toy, index) => (
+        <button
+          key={toy}
+          aria-label={`Return the expelled ${labelFor(toy)} to the box`}
+          onClick={() => collect(toy)}
+          className="absolute z-30 w-[16%] transition-transform duration-200 motion-safe:animate-bounce"
+          style={{ left: `${24 + (index % 3) * 18}%`, top: `${76 + Math.floor(index / 3) * 8}%` }}
+        >
+          <img src={imageFor(toy)} alt="" className="w-full drop-shadow-xl" />
+        </button>
+      ))}
+
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
 
@@ -245,7 +289,7 @@ export function Ch1() {
       {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
-      {!got(r4) && !s.lightsOn && (
+      {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
         <button
           aria-label="Grab the toy that keeps moving"
           onClick={() => {
@@ -306,7 +350,7 @@ export function Ch1() {
           />
         </svg>
       </button>
-      {rugLifted && <Toy t={r5} x={22} y={79} w={15} />}
+      {rugLifted && !s.lightsOn && <Toy t={r5} x={22} y={79} w={15} />}
     </Stage>
   );
 }
@@ -551,6 +595,25 @@ export function Ch2Dining() {
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   const [third, setThird] = useState(false);
+  const [intruders, setIntruders] = useState<number[]>([]);
+  const [intruderCount, setIntruderCount] = useState(0);
+  const previousLight = useRef(s.lightsOn);
+  const blackoutTimer = useRef<number | null>(null);
+  const lastPlacement = useRef(0);
+  useEffect(
+    () => () => {
+      if (blackoutTimer.current) clearTimeout(blackoutTimer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    const lightsWentOff = previousLight.current && !s.lightsOn;
+    previousLight.current = s.lightsOn;
+    if (!lightsWentOff || !s.interactive || intruderCount >= 3) return;
+    setIntruders((items) => [...items, intruderCount]);
+    setIntruderCount((n) => n + 1);
+    sfx("creak");
+  }, [s.lightsOn, s.interactive, intruderCount]);
   const ended = useRef(false);
   useSceneIntro(
     "ch2d",
@@ -578,6 +641,19 @@ export function Ch2Dining() {
     state.say({ speaker: "guest", text: result.monsterLine });
   };
 
+  const punishWrongPlacement = () => {
+    const st = useGame.getState();
+    if (blackoutTimer.current) return;
+    st.set({ forcedBlackout: true, lightsOn: false, flicker: Date.now() });
+    st.addCordura(9); // fixed 3 seconds x 3 points; Stage pauses its normal ticker.
+    sfx("switch");
+    blackoutTimer.current = window.setTimeout(() => {
+      const latest = useGame.getState();
+      if (latest.screen === "ch2d" && !latest.scare)
+        latest.set({ forcedBlackout: false, lightsOn: true });
+      blackoutTimer.current = null;
+    }, 3000);
+  };
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
       if (!s.lightsOn)
@@ -592,6 +668,8 @@ export function Ch2Dining() {
     if (sel.endsWith(owner)) {
       sfx("chime");
       s.success();
+      if (Date.now() - lastPlacement.current < 1000) sfx("creak");
+      lastPlacement.current = Date.now();
       s.set({ ch2Placed: [...placed, sel] });
       setSel(null);
       if (placed.length + 1 === 3 && !s.favFood)
@@ -603,13 +681,13 @@ export function Ch2Dining() {
     } else {
       sfx("wrong");
       s.mistake();
-      s.say({ speaker: "narrator", text: "That doesn't feel like it belongs there.", ms: 2000 });
       setSel(null);
+      punishWrongPlacement();
     }
   };
 
   useEffect(() => {
-    if (correct === 6 && !ended.current) {
+    if (correct === 6 && intruders.length === 0 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
       window.setTimeout(() => {
@@ -632,7 +710,7 @@ export function Ch2Dining() {
       );
       window.setTimeout(() => useGame.getState().go("ch3"), 13000);
     }
-  }, [correct]);
+  }, [correct, intruders.length]);
 
   const Mat = ({ side, x }: { side: "L" | "R"; x: number }) => {
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
@@ -709,8 +787,34 @@ export function Ch2Dining() {
         </>
       }
     >
+      {/* Seat colors match the player's answer and the dress from Mom's introduction. */}
+      <div
+        className="pointer-events-none absolute left-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
+        style={{ backgroundColor: childLeft ? col.child : col.mother }}
+      />
+      <div
+        className="pointer-events-none absolute right-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
+        style={{ backgroundColor: childLeft ? col.mother : col.child }}
+      />
       <Mat side="L" x={25} />
       <Mat side="R" x={75} />
+      {/* The Guest's plate, fork and glass appear one per blackout, removable in light. */}
+      {intruders.map((id) => (
+        <button
+          key={id}
+          type="button"
+          disabled={!s.lightsOn || !s.interactive}
+          aria-label={"Remove corrupt " + (["plate", "fork", "glass"][id] ?? "utensil")}
+          onClick={() => {
+            sfx("chime");
+            setIntruders((items) => items.filter((i) => i !== id));
+          }}
+          className="absolute z-20 grid h-[8%] w-[13%] place-items-center rounded-lg border-2 border-crimson bg-void text-2xl text-paper disabled:opacity-50"
+          style={{ left: 34 + id * 15 + "%", top: "33%" }}
+        >
+          {["🍽️", "🍴", "🥛"][id]}
+        </button>
+      ))}
       {third && (
         <div className="absolute left-1/2 top-[52%] w-[22%] -translate-x-1/2 animate-float-up text-center">
           <Plate color={col.child} style={{ width: "100%" }} />

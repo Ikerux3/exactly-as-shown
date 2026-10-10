@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { BG, CUT, toyImageFor } from "../assets";
 import { useGame, type Line } from "../store";
 import { sfx, startMusic } from "../audio";
-import { ChildCutout, MotherCutout } from "../Props";
+import { ChildCutout, ChildDoll, MotherCutout } from "../Props";
+import { loadProfile } from "../profile";
 import { Ransom } from "../fx";
 import { DialogueBar, Shell } from "../Shell";
 
@@ -187,6 +188,8 @@ export function Prologue() {
   const toyImage = useGame((s) => toyImageFor(toyId, s.favToyVisualSlot, s.favToyImage));
   const guestLine = useGame((s) => s.introGuestLine);
   const line = useGame((s) => s.line);
+  // The character made in the menu, if any; otherwise the plain cardboard child.
+  const [look] = useState(() => loadProfile()?.look);
   const [i, setI] = useState(0);
   const iRef = useRef(0);
   const said = useRef<Line | null>(null);
@@ -349,11 +352,21 @@ export function Prologue() {
                   transition: "rotate .8s ease-in-out",
                 }}
               >
-                <ChildCutout
-                  color={`var(--c-${favColor})`}
-                  toy={toyImage}
-                  className="relative h-full"
-                />
+                {look ? (
+                  <ChildDoll
+                    look={look}
+                    view="back"
+                    clothes={`var(--c-${favColor})`}
+                    toy={toyImage}
+                    className="relative h-full"
+                  />
+                ) : (
+                  <ChildCutout
+                    color={`var(--c-${favColor})`}
+                    toy={toyImage}
+                    className="relative h-full"
+                  />
+                )}
               </div>
             </div>
             {/* once she's gone the hallway goes cold */}

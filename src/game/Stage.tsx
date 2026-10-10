@@ -33,7 +33,19 @@ type Props = {
   switchHint?: boolean;
 };
 
-export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, switchEnabled = true, guest, progress, chapterCard, switchHint }: Props) {
+export function Stage({
+  bg,
+  bgPos = "50% 50%",
+  chapter,
+  children,
+  clues,
+  above,
+  switchEnabled = true,
+  guest,
+  progress,
+  chapterCard,
+  switchHint,
+}: Props) {
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
   const dark = useRef<HTMLDivElement>(null);
@@ -56,14 +68,17 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
     const id = window.setInterval(() => {
       const st = useGame.getState();
       setUnease(st.cordura, chapter);
-      if (!st.interactive || st.scare || st.line || st.paused) return;
+      if (!st.interactive || st.scare || st.line || st.paused || st.forcedBlackout) return;
       if (!st.lightsOn) {
         darkAcc.current += 1;
         st.fact({ darkSeconds: st.facts.darkSeconds + 1 });
-        if (darkAcc.current >= 2) { darkAcc.current = 0; st.addCordura(1); }
+        st.addCordura(3);
       } else {
         lightAcc.current += 1;
-        if (lightAcc.current >= 3) { lightAcc.current = 0; st.addCordura(-1); }
+        if (lightAcc.current >= 2) {
+          lightAcc.current = 0;
+          st.addCordura(-1);
+        }
       }
     }, 1000);
     return () => window.clearInterval(id);
@@ -76,8 +91,29 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       sfx("scare");
       window.setTimeout(() => {
         const st = useGame.getState();
-        st.set({ scare: false, cordura: 55, lightsOn: true, phaseKey: st.phaseKey + 1, scareArmed: true, line: undefined, queue: [] });
-        st.say({ speaker: "narrator", text: "You blink. The room is the way it was a moment ago. Try again.", ms: 3200 });
+        const checkpoint = st.screen === "ch2d" ? "ch2k" : st.screen;
+        st.set({
+          screen: checkpoint,
+          scare: false,
+          forcedBlackout: false,
+          cordura: 50,
+          lightsOn: true,
+          phaseKey: st.phaseKey + 1,
+          scareArmed: true,
+          line: undefined,
+          queue: [],
+          interactive: false,
+          ...(checkpoint === "ch1" ? { ch1: [] } : {}),
+          ...(checkpoint === "ch2k" ? { ch2Items: [], ch2Placed: [] } : {}),
+          ...(checkpoint === "ch3" ? { ch3Rounds: 0 } : {}),
+        });
+        lightAcc.current = 0;
+        useGame.getState().go(checkpoint); // writes the level-start checkpoint into the save
+        st.say({
+          speaker: "narrator",
+          text: "You blink. The room is the way it was a moment ago. Try again.",
+          ms: 3200,
+        });
       }, 1900);
     }
   }, [s.cordura, s.scareArmed, s.interactive, s.scare]);
@@ -96,27 +132,69 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       top={<ChapterBar chapter={chapter} progress={progress} />}
       bottom={
         <DialogueBar
-          right={switchEnabled ? <LightSwitch on={s.lightsOn} onToggle={toggle} disabled={!s.interactive || s.scare} hint={switchHint && !s.line} /> : null}
+          right={
+            switchEnabled ? (
+              <LightSwitch
+                on={s.lightsOn}
+                onToggle={toggle}
+                disabled={!s.interactive || s.scare}
+                hint={switchHint && !s.line}
+              />
+            ) : null
+          }
         />
       }
       overlay={
         <>
           {s.scare && (
-            <div className="absolute inset-0 z-50 overflow-hidden bg-void" role="alert" aria-label="Something is here">
-              <GuestVoid style={{ left: "50%", top: "-5%", height: "115%", transform: "translateX(-50%) scale(1.4)" }} />
+            <div
+              className="absolute inset-0 z-50 overflow-hidden bg-void"
+              role="alert"
+              aria-label="Something is here"
+            >
+              <GuestVoid
+                style={{
+                  left: "50%",
+                  top: "-5%",
+                  height: "115%",
+                  transform: "translateX(-50%) scale(1.4)",
+                }}
+              />
             </div>
           )}
           {s.paused && !s.scare && <PauseMenu />}
         </>
       }
     >
-      <img src={bg} alt="" className="scene-bg" style={{ objectPosition: bgPos, filter: s.lightsOn ? undefined : "saturate(0.3) brightness(0.7) hue-rotate(-20deg)" }} />
+      <img
+        src={bg}
+        alt=""
+        className="scene-bg"
+        style={{
+          objectPosition: bgPos,
+          filter: s.lightsOn ? undefined : "saturate(0.3) brightness(0.7) hue-rotate(-20deg)",
+        }}
+      />
       {/* warm lamp tint */}
-      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 30%, oklch(0.85 0.1 80 / 0.12), transparent 70%)" }} />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 30%, oklch(0.85 0.1 80 / 0.12), transparent 70%)",
+        }}
+      />
 
       {/* Shadow pass intervention */}
       {s.shadowPass > 0 && (
-        <div key={s.shadowPass} className="pointer-events-none absolute inset-y-0 z-10 w-1/3" style={{ background: "linear-gradient(90deg, transparent, oklch(0.05 0.01 270 / .55), transparent)", animation: "drift 2.6s ease-in forwards" }} />
+        <div
+          key={s.shadowPass}
+          className="pointer-events-none absolute inset-y-0 z-10 w-1/3"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, oklch(0.05 0.01 270 / .55), transparent)",
+            animation: "drift 2.6s ease-in forwards",
+          }}
+        />
       )}
 
       <div className="absolute inset-0 z-10">{children}</div>
@@ -124,7 +202,16 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       <SanityFX bg={bg} bgPos={bgPos} />
 
       {guest?.show && !s.lightsOn && (
-        <GuestVoid style={{ left: `${guest.x}%`, top: `${guest.y}%`, height: `${guest.h}%`, transform: "translate(-50%, 0)", zIndex: 25 }} intensity={0.95} />
+        <GuestVoid
+          style={{
+            left: `${guest.x}%`,
+            top: `${guest.y}%`,
+            height: `${guest.h}%`,
+            transform: "translate(-50%, 0)",
+            zIndex: 25,
+          }}
+          intensity={0.95}
+        />
       )}
 
       {/* Darkness with a small hand-held light */}
@@ -139,10 +226,16 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       {!s.lightsOn && <div className="pointer-events-none absolute inset-0 z-30">{clues}</div>}
 
       {s.flicker > 0 && (
-        <div key={s.flicker} className="pointer-events-none absolute inset-0 z-30 bg-void" style={{ animation: "flicker 1.2s steps(1) forwards" }} />
+        <div
+          key={s.flicker}
+          className="pointer-events-none absolute inset-0 z-30 bg-void"
+          style={{ animation: "flicker 1.2s steps(1) forwards" }}
+        />
       )}
 
-      <div className="pointer-events-none absolute inset-0 z-[35] [&>*]:pointer-events-auto">{above}</div>
+      <div className="pointer-events-none absolute inset-0 z-[35] [&>*]:pointer-events-auto">
+        {above}
+      </div>
 
       {chapterCard && <ChapterCard n={chapter} />}
     </Shell>

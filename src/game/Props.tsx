@@ -2,6 +2,7 @@
 import type { CSSProperties } from "react";
 import type React from "react";
 import { CUT, PROP } from "./assets";
+import { HAIR_COLOR, SKIN, type Look } from "./profile";
 
 function Tape({ color }: { color: string }) {
   return <span aria-hidden className="pointer-events-none absolute left-1/2 top-[38%] h-[18%] min-h-2 w-[46%] -translate-x-1/2 -rotate-6 opacity-85 mix-blend-multiply" style={{ background: color, boxShadow: "0 1px 2px oklch(0 0 0 / .4)" }} />;
@@ -205,6 +206,97 @@ export function ChildCutout({ color, toy, className, style }: { color: string; t
       </svg>
       {toy && (
         <img src={toy} alt="" draggable={false} className="absolute left-[72%] top-[52%] w-[62%] -rotate-12"
+          style={{ filter: "sepia(.35) contrast(1.1) drop-shadow(2px 3px 0 oklch(0 0 0 / .55))" }} />
+      )}
+    </div>
+  );
+}
+
+/* ---- The player's child as a paper doll: coloured construction paper, same scissor-cut rim ---- */
+const INK = "oklch(0.16 0.02 50)";
+
+function DollHair({ look, view, color }: { look: Look; view: "front" | "back"; color: string }) {
+  const back = view === "back";
+  const tie = "oklch(0.88 0.03 85)";
+  switch (look.hair) {
+    case "short":
+      return back
+        ? <path d="M14.5 31 C13 11 47 11 45.5 31 C45 38 40 41 30 41 C20 41 15 38 14.5 31 Z" fill={color} {...EDGE} />
+        : <path d="M14.5 30 C13 12 47 12 45.5 30 C43 23 37 20 30 21 C23 20 17 23 14.5 30 Z" fill={color} {...EDGE} />;
+    case "bob":
+      return back
+        ? <path d="M13 30 C11 10 49 10 47 30 L47 45 L13 45 Z" fill={color} {...EDGE} />
+        : <path d="M13 30 C11 10 49 10 47 30 L47 45 L40 45 L40 26 C35 21 25 21 20 26 L20 45 L13 45 Z" fill={color} {...EDGE} />;
+    case "curly": {
+      const ring: Array<[number, number]> = [[16, 26], [20, 18], [26, 14], [34, 14], [40, 18], [44, 26], [45, 34], [15, 34]];
+      const fill: Array<[number, number]> = back ? [[30, 24], [24, 32], [36, 32], [30, 38], [22, 40], [38, 40]] : [];
+      return (
+        <g fill={color} {...EDGE}>
+          {[...ring, ...fill].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="6" />)}
+        </g>
+      );
+    }
+    case "pigtails":
+      return (
+        <g>
+          <ellipse cx="11" cy="37" rx="5" ry="9" transform="rotate(-18 11 37)" fill={color} {...EDGE} />
+          <ellipse cx="49" cy="37" rx="5" ry="9" transform="rotate(18 49 37)" fill={color} {...EDGE} />
+          {back
+            ? <path d="M14.5 31 C13 11 47 11 45.5 31 C45 38 40 41 30 41 C20 41 15 38 14.5 31 Z" fill={color} {...EDGE} />
+            : <path d="M14.5 30 C13 12 47 12 45.5 30 C42 22 36 19 30 22 C24 19 18 22 14.5 30 Z" fill={color} {...EDGE} />}
+          <circle cx="15.5" cy="29" r="2.4" fill={tie} />
+          <circle cx="44.5" cy="29" r="2.4" fill={tie} />
+        </g>
+      );
+  }
+}
+
+/** Front view (character creator, intro) or back view (prologue). `clothes` is any CSS colour. */
+export function ChildDoll({ look, clothes, view = "front", toy, className, style }: {
+  look: Look; clothes: string; view?: "front" | "back"; toy?: string | undefined; className?: string; style?: CSSProperties;
+}) {
+  const skin = SKIN[look.skin];
+  const hair = HAIR_COLOR[look.hairColor];
+  const girl = look.body === "girl";
+  const dark = `color-mix(in oklch, ${clothes} 62%, black)`;
+  return (
+    <div className={className} style={{ aspectRatio: "60 / 140", ...style }} aria-hidden>
+      <svg viewBox="0 0 60 140" className="absolute inset-0 h-full w-full overflow-visible" style={{ filter: CARD_SHADOW }}>
+        {/* legs + shoes */}
+        <path d="M21 98 h7 v31 h-7 Z M32 98 h7 v31 h-7 Z" fill={girl ? skin : dark} {...EDGE} />
+        <path d="M19 127 h10 v5 q-5 3 -10 0 Z M31 127 h10 v5 q-5 3 -10 0 Z" fill={INK} {...EDGE} />
+        {/* arms (sleeves) + hands */}
+        <path d="M16 54 L7 87 L13 89 L21 60 Z M44 54 L53 87 L47 89 L39 60 Z" fill={clothes} {...EDGE} />
+        <circle cx="10" cy="90" r="4.3" fill={skin} {...EDGE} />
+        <circle cx="50" cy="90" r="4.3" fill={skin} {...EDGE} />
+        {/* clothes */}
+        {girl
+          ? <path d="M17 52 Q30 46 43 52 L52 107 Q30 112 8 107 Z" fill={clothes} {...EDGE} />
+          : (
+            <>
+              <path d="M16 93 H44 L43 105 H17 Z" fill={dark} {...EDGE} />
+              <path d="M16 52 Q30 46 44 52 L45 96 L15 96 Z" fill={clothes} {...EDGE} />
+            </>
+          )}
+        <path d={girl ? "M20 98 Q30 101 40 98" : "M19 88 L41 88"} stroke="oklch(0.95 0.02 85 / .75)" strokeWidth="1.2" strokeDasharray="2.5 2.5" fill="none" />
+        {/* neck + head */}
+        <rect x="26" y="40" width="8" height="12" fill={skin} />
+        {look.hair === "bob" && view === "front" && <path d="M13 30 L13 45 L47 45 L47 30 Z" fill={hair} {...EDGE} />}
+        <circle cx="30" cy="29" r="15" fill={skin} {...EDGE} />
+        {view === "front" && (
+          <g>
+            <circle cx="24.5" cy="30" r="1.8" fill={INK} />
+            <circle cx="35.5" cy="30" r="1.8" fill={INK} />
+            <circle cx="20.5" cy="34.5" r="2.4" fill="oklch(0.68 0.12 20 / .35)" />
+            <circle cx="39.5" cy="34.5" r="2.4" fill="oklch(0.68 0.12 20 / .35)" />
+            <path d="M27 36.5 Q30 38.5 33 36.5" stroke={INK} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          </g>
+        )}
+        <DollHair look={look} view={view} color={hair} />
+        <rect x="24" y="9" width="12" height="5" fill="oklch(0.88 0.08 90 / .7)" transform="rotate(-8 30 11)" />
+      </svg>
+      {toy && (
+        <img src={toy} alt="" draggable={false} className="absolute left-[64%] top-[56%] w-[60%] -rotate-12"
           style={{ filter: "sepia(.35) contrast(1.1) drop-shadow(2px 3px 0 oklch(0 0 0 / .55))" }} />
       )}
     </div>

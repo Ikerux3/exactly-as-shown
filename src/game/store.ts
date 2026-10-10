@@ -98,6 +98,8 @@ type State = {
   phaseKey: number;
   scare: boolean;
   scareArmed: boolean;
+  /** Scripted 3s error blackout is charged exactly +9 separately from the normal ticker. */
+  forcedBlackout: boolean;
   flicker: number;
   shadowPass: number;
   queue: Line[];
@@ -114,6 +116,8 @@ type State = {
   ch2Items: string[];
   ch2Placed: string[];
   ch3Rounds: number;
+  /** MJ v3.1: the rapid toy-box catapult can happen only once in the whole run. */
+  toyCatapultUsed: boolean;
 };
 
 type Actions = {
@@ -164,6 +168,7 @@ const initial = (): Omit<State, "muted"> => ({
   phaseKey: 0,
   scare: false,
   scareArmed: true,
+  forcedBlackout: false,
   flicker: 0,
   shadowPass: 0,
   queue: [],
@@ -195,6 +200,7 @@ const initial = (): Omit<State, "muted"> => ({
   ch2Items: [],
   ch2Placed: [],
   ch3Rounds: 0,
+  toyCatapultUsed: false,
 });
 
 export const useGame = create<State & Actions>((set, get) => ({
@@ -311,6 +317,8 @@ export const useGame = create<State & Actions>((set, get) => ({
       facts: { ...base.facts, ...save.facts },
       adaptations: save.adaptations ?? base.adaptations,
       adaptiveMoments: save.adaptiveMoments ?? base.adaptiveMoments,
+      toyCatapultUsed: save.toyCatapultUsed ?? false,
+      forcedBlackout: false,
       screen: "title",
     });
     get().go(save.screen);
@@ -363,6 +371,7 @@ type Save = Pick<
   | "ch2Items"
   | "ch2Placed"
   | "ch3Rounds"
+  | "toyCatapultUsed"
 >;
 
 function writeSave(s: State) {
@@ -385,6 +394,7 @@ function writeSave(s: State) {
     ch2Items: s.ch2Items,
     ch2Placed: s.ch2Placed,
     ch3Rounds: s.ch3Rounds,
+    toyCatapultUsed: s.toyCatapultUsed,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
