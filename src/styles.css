@@ -513,12 +513,12 @@
 
 /* Quality-of-life: stable controls, photograph shelves and deliberate motion. */
 .shell-bar.top { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
-.shell-bar.bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.shell-bar.bottom { display: grid; grid-template-columns: minmax(0, 1fr) 3.5rem; }
 .dialogue-panel { letter-spacing: 0; transform: none; clip-path: none; border-radius: 2px; }
 .subtitle.guest { letter-spacing: 0; }
 .wall-arrow { width: 40px; height: 52px; opacity: .55; }
-@media (hover: none), (pointer: coarse) { .wall-arrow { opacity: .14; width: 32px; height: 48px; box-shadow: none; background: transparent; color: var(--paper); } .swipe-cue { display: block; } }
-@media (hover: hover) and (pointer: fine) { .swipe-cue { display: none; } .wall-arrow:hover { opacity: .95; } }
+@media (max-width: 699px), (hover: none), (pointer: coarse) { .wall-arrow { opacity: .14; width: 32px; height: 48px; box-shadow: none; background: transparent; color: var(--paper); } .swipe-cue { display: block; } }
+@media (min-width: 700px) and (hover: hover) and (pointer: fine) { .swipe-cue { display: none; } .wall-arrow:hover { opacity: .95; } }
 .swipe-cue { filter: drop-shadow(var(--shadow-contact)); }
 .swipe-hand { animation: swipe-gesture 1.5s ease-in-out 3; }
 @keyframes swipe-gesture { 0%, 100% { translate: -14px 0; } 50% { translate: 14px 0; } }

@@ -84,9 +84,9 @@ export function LightSwitch({ on, onToggle, disabled, hint }: { on: boolean; onT
       disabled={disabled}
       aria-label={on ? "Turn the lights off" : "Turn the lights on"}
       aria-pressed={on}
-      className={`relative h-full shrink-0 aspect-[3/4] transition-[transform,opacity] active:scale-95 disabled:opacity-40 ${hint && !disabled ? "switch-hint" : ""}`}
+      className={`light-switch relative min-h-12 w-14 shrink-0 self-stretch transition-[transform,opacity] active:scale-95 disabled:opacity-40 ${hint && !disabled ? "switch-hint" : ""}`}
     >
-      <img src={PROP2.switch} alt="" draggable={false} className="h-full w-full object-contain"
+      <img src={PROP2.switch} alt="" draggable={false} className="absolute inset-0 h-full w-full object-contain"
         style={{ filter: `sepia(.35) contrast(1.1) drop-shadow(2px 3px 0 oklch(0 0 0 / .55))${on ? "" : " brightness(.7)"}`, transform: on ? "none" : "scaleY(-1)", transition: "transform .15s" }} />
     </button>
   );

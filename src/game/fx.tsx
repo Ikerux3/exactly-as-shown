@@ -59,10 +59,8 @@ function RansomLetter({ ch, i, seed }: { ch: string; i: number; seed: number }) 
 /* ---------- Sanity overlay: vignette, chromatic split, grain, eyes, heartbeat ---------- */
 export function SanityFX({ bg, bgPos }: { bg: string; bgPos: string }) {
   const c = useGame((s) => s.cordura);
-  const dark = !useGame((s) => s.lightsOn);
   const t = c / 100;
   const split = c >= 45 ? (c - 45) / 55 : 0;
-  const eyes = useMemo(() => Array.from({ length: 5 }, (_, i) => ({ x: 8 + rand(i + 3) * 80, y: 15 + rand(i + 9) * 55, s: 10 + rand(i) * 8, d: rand(i + 5) * 4 })), []);
   return (
     <>
       {split > 0 && (
@@ -76,13 +74,6 @@ export function SanityFX({ bg, bgPos }: { bg: string; bgPos: string }) {
       <div className="pointer-events-none absolute inset-0 z-[22] overflow-hidden" aria-hidden style={{ opacity: 0.4 + t * 0.6 }}>
         <div className="fx-grain" />
       </div>
-      {dark && c >= 55 && (
-        <div className="pointer-events-none absolute inset-0 z-[24]" aria-hidden>
-          {eyes.slice(0, c >= 80 ? 5 : 2).map((e, i) => (
-            <img key={i} src={SCARE.face2} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
-          ))}
-        </div>
-      )}
       <ShadowHands c={c} />
       {c >= 85 && <FaceFlash />}
       <Walkers />
