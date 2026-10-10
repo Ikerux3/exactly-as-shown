@@ -24,9 +24,9 @@ import type { AdaptivePlan, RealtimeAction } from "../ai/contracts";
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
 const LENS = [3, 4, 5, 7];
 const ADAPTIVE_LENS = {
-  gentle: [3, 3, 4, 4],
+  gentle: LENS,
   standard: LENS,
-  relentless: [4, 5, 6, 8],
+  relentless: LENS,
 } as const;
 const DIFFICULTIES: AdaptivePlan["difficulty"][] = ["gentle", "standard", "relentless"];
 const SYM_COLOR: Partial<Record<Sym, string>> = {
@@ -53,6 +53,13 @@ export function Ch3() {
   const [done, setDone] = useState(false);
   const [liveAction, setLiveAction] = useState<RealtimeAction>("hold");
   const [betweenRounds, setBetweenRounds] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => useGame.getState().set({ flicker: Date.now() }), 1200);
+    return () => window.clearTimeout(id);
+  }, []);
+  useEffect(() => {
+    if (round === 3 && !s.lightsOn && s.interactive) sfx("creak");
+  }, [round, s.lightsOn, s.interactive]);
   const aiLineSpoken = useRef(false);
   const roundMistakes = useRef(0);
   const roundStartedAt = useRef(Date.now());
@@ -201,6 +208,15 @@ export function Ch3() {
         )
       }
     >
+      {/* The icon on the box teaches how to reveal the melody. */}
+      <div className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper" aria-hidden>
+        💡 ↓ ♪
+      </div>
+      {!s.lightsOn && round >= 2 && !done && (
+        <div aria-hidden className="pointer-events-none absolute right-[7%] top-[11%] h-[22%] w-[18%] overflow-hidden rounded-t-2xl border border-paper/30 bg-void/80">
+          <div className="absolute left-[35%] top-[21%] h-[70%] w-[34%] rounded-full bg-paper/25 blur-sm" />
+        </div>
+      )}
       <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
         for {s.favToy ?? "your toy"}
         <br />
@@ -297,7 +313,7 @@ export function Ch4() {
   const s = useGame();
   const incomingPlan = useAdaptiveChapter(4);
   const plan = useRef(incomingPlan).current;
-  const puzzle = PUZZLES[plan.puzzleVariant];
+  const puzzle = PUZZLES.garden;
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
   const [solved, setSolved] = useState(false);
@@ -469,9 +485,9 @@ export function Ch4() {
               className="absolute inset-x-[10%] top-[22%] z-20 paper animate-float-up p-5 text-left"
             >
               <p className="font-hand text-xl leading-snug">
-                First, {puzzle.clue[0]}.<br />
-                Then, {puzzle.clue[1]}.<br />
-                Last, {puzzle.clue[2]}.
+                The little box sits between the photograph and the clock.<br />
+                The clock is last.<br />
+                Which symbols did you see on those objects in darkness?
               </p>
               <p className="mt-3 font-hand text-sm opacity-75">
                 You said {s.favToy ?? "your toy"}. You asked for {s.favFood ?? "dinner"}. The room
