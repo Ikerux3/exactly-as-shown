@@ -145,7 +145,7 @@ describe("MG01 first pickup escape", () => {
     expect(new Set(model.state.ch1).size).toBe(5);
     expect(model.state.ch1).toHaveLength(5);
     act(() => vi.advanceTimersByTime(11000));
-    expect(model.state.go).toHaveBeenCalledExactlyOnceWith("ch2k");
+    expect(model.state.go).toHaveBeenCalledExactlyOnceWith("ch3");
   });
 
   it("blocks pickups in darkness/pause, resumes in light without releasing stored toys, cancels pending work on unmount", () => {
