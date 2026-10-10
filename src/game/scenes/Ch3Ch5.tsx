@@ -215,18 +215,13 @@ export function Ch3() {
       }
     >
       <OnWall n={0}>
-      {/* The icon on the box teaches how to reveal the melody. */}
-      <div
-        className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper"
-        aria-hidden
-      >
-        💡 ↓ ♪
-      </div>
-      <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
-        for {s.favToy ?? "your toy"}
-        <br />
-        after {s.favFood ?? "dinner"}
-      </div>
+      {s.favToy && s.favFood && (
+        <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
+          for {s.favToy}
+          <br />
+          after {s.favFood}
+        </div>
+      )}
       <img
         src={MUSICBOX}
         alt="Your music box"
