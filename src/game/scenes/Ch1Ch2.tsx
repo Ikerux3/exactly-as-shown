@@ -272,7 +272,7 @@ export function Ch1() {
       </OnWall>
       <OnWall n={3}>
       {/* Toy 2 — under the sofa cushion */}
-      {cushionMoved && <Toy t={r2} x={24} y={43} w={14} />}
+      <Toy t={r2} x={63} y={66} w={18} />
       <button
         aria-label="Move the cushion"
         onClick={() => {
@@ -308,7 +308,7 @@ export function Ch1() {
       >
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={71} y={67} w={14} />}
+      <Toy t={r3} x={75} y={69} w={18} />
       </OnWall>
 
       <OnWall n={3}>
@@ -317,7 +317,7 @@ export function Ch1() {
         <button
           aria-label="Grab the toy that keeps moving"
           onClick={() => {
-            if (frozen || illuminated(pos4.x, pos4.y, 9)) collect(r4);
+            if (frozen || illuminated(pos4.x, pos4.y, 15)) collect(r4);
             else {
               sfx("wrong");
               s.mistake();
