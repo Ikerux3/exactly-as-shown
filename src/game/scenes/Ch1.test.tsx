@@ -28,7 +28,7 @@ vi.mock("../ai/food", () => ({ interpretFavoriteFood: vi.fn() }));
 vi.mock("../fx", () => ({ JumpScare: () => null }));
 vi.mock("../DialogueVoice", () => ({ useSpokenPrompt: vi.fn() }));
 vi.mock("../ai/questions", () => ({ adaptiveQuestion: vi.fn(), currentQuestionContext: vi.fn(), offlineAdaptiveQuestion: vi.fn() }));
-vi.mock("../assets", () => ({ PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
+vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
 vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => null }));
 import { Ch1 } from "./Ch1Ch2";
 
