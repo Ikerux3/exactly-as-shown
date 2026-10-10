@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { OnWall, Stage, illuminated, useWall } from "../Stage";
+import { OnWall, Stage, illuminated } from "../Stage";
 import { KITCHEN_WALLS, TOY_ESCAPE_SPOTS } from "../roomLayout";
 import { BG, PROP, toyImageFor } from "../assets";
 import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
@@ -11,21 +11,6 @@ import { chooseInterventions } from "../guest";
 import { interpretFavoriteFood } from "../ai/food";
 
 /* ---------------- CHAPTER 1 — THE PLAYROOM ---------------- */
-
-/** A child of Stage, so wall-turns are observed from the actual 4-wall context. */
-function WatchWallChange({ onChange }: { onChange: (wall: number) => void }) {
-  const wall = useWall();
-  const previous = useRef(wall);
-  const callback = useRef(onChange);
-  callback.current = onChange;
-  useEffect(() => {
-    if (previous.current !== wall) {
-      previous.current = wall;
-      callback.current(wall);
-    }
-  }, [wall]);
-  return null;
-}
 
 export function Ch1() {
   const s = useGame();
@@ -226,6 +211,7 @@ export function Ch1() {
     <Stage
       bg={BG.bgPlayroom}
       spread
+      onWallChange={onWallChanged}
       bgPos="15% 50%"
       chapter={1}
       chapterCard
@@ -263,7 +249,6 @@ export function Ch1() {
         )
       }
     >
-      <WatchWallChange onChange={onWallChanged} />
       {/* Only the fourth saved toy moves on a wall change (or a single speed catapult). */}
       {ejected.map((toy) => {
         const slot = s.toyOrder.indexOf(toy);
