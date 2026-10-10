@@ -686,7 +686,7 @@ function PajamaCh5() {
       : "Find shirt, pants and socks in your favorite color." });
   }, [allWorn]);
   useEffect(() => {
-    if (ended.current || !allWorn || inBasket.length !== otherTotal) return;
+    if (ended.current || !allWorn || inBasket.length !== otherTotal) return undefined;
     ended.current = true;
     const state = useGame.getState();
     state.success();
