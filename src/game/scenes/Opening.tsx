@@ -24,7 +24,8 @@ import { interpretFavoriteToy } from "../ai/toy";
 import { generateFavoriteToyImage } from "../ai/toy-image";
 import { DialogueBar, Shell } from "../Shell";
 import { useSpokenPrompt } from "../DialogueVoice";
-import { adaptiveQuestion, currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
+import { currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
+import { applyCustomColor, parseColorWord } from "../colors";
 
 const CHAPTER_OF: Partial<Record<Screen, number>> = {
   ch1: 1,
@@ -295,7 +296,6 @@ function MenuPanel({
 
 /* ---------------- INTRO ---------------- */
 
-const COLORS: ColorKey[] = ["rose", "sage", "honey", "turq"];
 
 export function Intro() {
   const s = useGame();
@@ -307,7 +307,6 @@ export function Intro() {
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   // Mommy never "thinks": questions appear instantly; the AI only polishes the wording in the background.
-  const questionLoading = false;
   const [colorInput, setColorInput] = useState("");
   const stepRef = useRef(step);
   stepRef.current = step;
@@ -426,9 +425,9 @@ export function Intro() {
             <button
               type="submit"
               className="stitch-btn sage mt-4 w-full"
-              disabled={!name || questionLoading}
+              disabled={!name}
             >
-              {questionLoading ? "Mommy is thinking…" : "That's me"}
+              That's me
             </button>
           </form>
         )}

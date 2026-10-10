@@ -84,6 +84,9 @@ type State = {
   screen: Screen;
   name: string;
   favColor: ColorKey;
+  /** The player's own colour word, rendered into the --c-<favColor> slot. */
+  favColorCss?: string | undefined;
+  favColorWord?: string | undefined;
   motherColor: MotherColor;
   favFood?: string | undefined;
   favToy?: string | undefined;
@@ -396,6 +399,8 @@ function writeSave(s: State) {
     screen: s.screen,
     name: s.name,
     favColor: s.favColor,
+    favColorCss: s.favColorCss,
+    favColorWord: s.favColorWord,
     motherColor: s.motherColor,
     favFood: s.favFood,
     favToy: s.favToy,
