@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { AdaptiveChapter, AdaptivePlan } from "./ai/contracts";
 
 export type Screen =
   | "title" | "intro" | "ch1" | "ch2k" | "ch2d" | "ch3" | "ch4" | "ch5" | "final" | "ending";
@@ -34,6 +35,8 @@ type State = {
   favColor: ColorKey;
   motherColor: MotherColor;
   favFood?: string | undefined;
+  favToy?: string | undefined;
+  favToyId?: ToyId | undefined;
   toyOrder: [ToyId, ToyId, ToyId, ToyId, ToyId]; // role index -> toy
   cordura: number;
   lightsOn: boolean;
@@ -49,6 +52,7 @@ type State = {
   objectiveOpen: boolean;
   muted: boolean;
   facts: Facts;
+  adaptations: Partial<Record<AdaptiveChapter, AdaptivePlan>>;
   finalCordura?: number | undefined;
   // checkpoints
   ch1: ToyId[];
@@ -84,6 +88,8 @@ const initial = (): Omit<State, "muted"> => ({
   favColor: "rose",
   motherColor: (["plum", "navy", "mustard"] as MotherColor[])[Math.floor(Math.random() * 3)]!,
   favFood: undefined,
+  favToy: undefined,
+  favToyId: undefined,
   toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]) as State["toyOrder"],
   cordura: 0,
   lightsOn: true,
@@ -98,6 +104,7 @@ const initial = (): Omit<State, "muted"> => ({
   objective: "",
   objectiveOpen: true,
   facts: { mistakes: 0, darkSeconds: 0, lightToggles: 0, revisits: 0, previousRuns: 0 },
+  adaptations: {},
   finalCordura: undefined,
   ch1: [],
   ch2Items: [],

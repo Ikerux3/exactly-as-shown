@@ -22,3 +22,11 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Optional Gemini preference
+
+The game is fully playable offline. To let The Guest interpret free-text answers and direct later minigame variants from the player's accumulated behaviour, copy `.env.example` to `.env` and set a server-only `GEMINI_API_KEY`. `GEMINI_MODEL` is optional; the default is `gemini-3.5-flash-lite`.
+
+Never expose the key through a `VITE_*` variable. If Gemini is missing, slow, or unavailable, the scene automatically uses validated local rules.
+
+The adaptive director can only select validated difficulty curves, puzzle variants, hiding places, blackout pressure and dialogue. It never generates executable game rules, so checkpoints and offline play remain deterministic.

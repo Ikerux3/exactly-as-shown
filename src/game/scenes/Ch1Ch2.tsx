@@ -6,6 +6,7 @@ import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Pr
 import { ChapterCard, useSceneIntro } from "../kit";
 import { sfx } from "../audio";
 import { chooseInterventions } from "../guest";
+import { interpretFavoriteFood } from "../ai/food";
 
 /* ---------------- CHAPTER 1 — THE PLAYROOM ---------------- */
 
@@ -266,14 +267,14 @@ export function Ch2Kitchen() {
   );
 }
 
-const FOODS = ["strawberries", "pancakes", "spaghetti", "tomato soup", "chocolate cake", "fish fingers"];
-
 export function Ch2Dining() {
   const s = useGame();
   const col = useColors();
   const childLeft = ["bear", "train", "elephant"].includes(s.toyOrder[0]);
   const [sel, setSel] = useState<ItemId | null>(null);
   const [asking, setAsking] = useState(false);
+  const [foodInput, setFoodInput] = useState("");
+  const [interpreting, setInterpreting] = useState(false);
   const [third, setThird] = useState(false);
   const ended = useRef(false);
   useSceneIntro("ch2d", "Set two places: yours and Mommy's. In the dark you can tell which is which.", [
@@ -282,6 +283,18 @@ export function Ch2Dining() {
   ]);
   const placed = s.ch2Placed as ItemId[];
   const correct = placed.length;
+
+  const answerFood = async () => {
+    const answer = foodInput.trim();
+    if (!answer || interpreting) return;
+    setInterpreting(true);
+    const result = await interpretFavoriteFood(answer);
+    const state = useGame.getState();
+    state.set({ favFood: result.displayFood, interactive: true });
+    setAsking(false);
+    setInterpreting(false);
+    state.say({ speaker: "guest", text: result.monsterLine });
+  };
 
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
@@ -376,11 +389,23 @@ export function Ch2Dining() {
         <div className="absolute inset-x-[6%] top-[14%] z-20 paper animate-float-up p-5">
           <p className="font-display text-lg italic">"What do you like to eat best?"</p>
           <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {FOODS.map((f) => (
-              <button key={f} className="stitch-btn sage text-sm" onClick={() => { s.set({ favFood: f, interactive: true }); setAsking(false); s.say({ speaker: "guest", text: `${f.charAt(0).toUpperCase() + f.slice(1)}. I'll remember.` }); }}>{f}</button>
-            ))}
-          </div>
+          <form className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); void answerFood(); }}>
+            <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
+            <input
+              id="favourite-food"
+              autoFocus
+              maxLength={120}
+              value={foodInput}
+              onChange={(event) => setFoodInput(event.target.value)}
+              disabled={interpreting}
+              placeholder="Type anything…"
+              className="min-w-0 flex-1 rounded border border-ink/30 bg-paper px-3 py-2 font-hand text-sm text-ink outline-none focus:border-crimson"
+            />
+            <button type="submit" disabled={!foodInput.trim() || interpreting} className="stitch-btn sage text-sm disabled:opacity-50">
+              {interpreting ? "Listening…" : "Tell it"}
+            </button>
+          </form>
+          <p className="mt-2 text-[10px] opacity-50">If the house cannot reach Gemini, it remembers using local rules.</p>
         </div>
       )}
     </Stage>

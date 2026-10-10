@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { BG, TOY_IMG } from "../assets";
-import { COLOR_LABEL, MOTHER_LABEL, loadMemory, sanitizeName, saveMemory, useGame, type ColorKey } from "../store";
+import { COLOR_LABEL, MOTHER_LABEL, TOY_LABEL, loadMemory, sanitizeName, saveMemory, useGame, type ColorKey } from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
 import { GuestVoid } from "../Props";
 import { Ransom } from "../fx";
 import { resetOnce } from "../kit";
+import { interpretFavoriteToy } from "../ai/toy";
 
 export function Title() {
   const s = useGame();
@@ -46,7 +47,29 @@ export function Intro() {
   const s = useGame();
   const [raw, setRaw] = useState("");
   const [step, setStep] = useState(0);
+  const [toyInput, setToyInput] = useState("");
+  const [interpreting, setInterpreting] = useState(false);
   const name = sanitizeName(raw);
+
+  const startGame = async () => {
+    const answer = toyInput.trim();
+    if (!answer || interpreting) return;
+    setInterpreting(true);
+    const result = await interpretFavoriteToy(answer);
+    const toyId = result.category === "other" ? undefined : result.category;
+    const toyOrder = toyId
+      ? ([toyId, ...s.toyOrder.filter((toy) => toy !== toyId)] as typeof s.toyOrder)
+      : s.toyOrder;
+    s.set({ name, favToy: result.displayToy, favToyId: toyId, toyOrder });
+    startMusic();
+    s.go("ch1");
+    s.say([
+      { speaker: "mother", text: `Tidy your toys, set the table, and be in your pyjamas when I'm back, ${name}.` },
+      { speaker: "mother", text: "Lights on if you get scared. I'll be back before you know it." },
+      { speaker: "narrator", text: "The front door closes. Her footsteps fade down the path." },
+      { speaker: "guest", text: result.monsterLine },
+    ]);
+  };
   return (
     <div className="game-frame">
       <img src={BG.bgPlayroom} alt="" className="scene-bg" style={{ objectPosition: "15% 50%" }} />
@@ -82,16 +105,29 @@ export function Intro() {
               ))}
             </div>
             <p className="mt-3 text-sm opacity-70">She buttons her {MOTHER_LABEL[s.motherColor]} coat.</p>
-            <button className="stitch-btn mt-4 w-full" onClick={() => {
-              s.set({ name });
-              startMusic();
-              s.go("ch1");
-              s.say([
-                { speaker: "mother", text: `Tidy your toys, set the table, and be in your pyjamas when I'm back, ${name}.` },
-                { speaker: "mother", text: "Lights on if you get scared. I'll be back before you know it." },
-                { speaker: "narrator", text: "The front door closes. Her footsteps fade down the path." },
-              ]);
-            }}>Bye, Mommy</button>
+            <button className="stitch-btn mt-4 w-full" onClick={() => setStep(2)}>One more thing…</button>
+          </>
+        )}
+        {step === 2 && (
+          <>
+            <p className="font-display text-lg leading-snug">"Which toy is your absolute favourite, {name}?"</p>
+            <p className="mt-1 text-xs opacity-60">Something behind Mommy seems to lean closer.</p>
+            <form className="mt-4 space-y-3" onSubmit={(event) => { event.preventDefault(); void startGame(); }}>
+              <label className="block text-xs uppercase tracking-widest opacity-60" htmlFor="fav-toy">Favourite toy</label>
+              <input
+                id="fav-toy"
+                autoFocus
+                maxLength={120}
+                value={toyInput}
+                onChange={(event) => setToyInput(event.target.value)}
+                disabled={interpreting}
+                placeholder="A teddy, a dinosaur, anything…"
+                className="w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-lg text-ink outline-none focus:border-honey"
+              />
+              <button type="submit" className="stitch-btn w-full" disabled={!toyInput.trim() || interpreting}>
+                {interpreting ? "The house is listening…" : "Bye, Mommy"}
+              </button>
+            </form>
           </>
         )}
       </div>
@@ -146,7 +182,7 @@ export function Ending() {
   const s = useGame();
   const c = s.finalCordura ?? s.cordura;
   const crying = c >= 65;
-  const toy = s.facts.firstToy ?? s.toyOrder[0];
+  const toy = s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
   useEffect(() => {
     const m = loadMemory();
     saveMemory({ runs: (m.runs || 0) + 1, lastName: s.name, lastToy: toy, lastEnding: crying ? "crying" : "composed" });
@@ -165,7 +201,7 @@ export function Ending() {
             ? `Mommy finds ${s.name || "you"} in the hall, crying too hard to speak. She holds on and doesn't ask. She doesn't need to. She can see it in your eyes.`
             : `Mommy finds ${s.name || "you"} in the hall, pale but standing. "Were you good?" You nod. You don't tell her about the room upstairs.`}
         </p>
-        <p className="mt-3 text-sm opacity-70">Behind you, in the room with no light, something sets a fourth place at the table.</p>
+        <p className="mt-3 text-sm opacity-70">Behind you, in the room with no light, something sets out {s.favFood ?? "dinner"} beside {s.favToy ?? `the ${TOY_LABEL[toy]}`}.</p>
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs opacity-60">Cordura at bedtime: {c}</span>
           <button className="stitch-btn sage" onClick={() => { s.newRun(); s.go("title"); }}>Again</button>

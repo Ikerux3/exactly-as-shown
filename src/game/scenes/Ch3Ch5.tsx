@@ -6,19 +6,27 @@ import { Clock, GuestVoid, Key, Pajamas, PhotoFrame, Symbol, Toothbrush, Trinket
 import { ChapterCard, useSceneIntro } from "../kit";
 import { sfx, startMusic, stopMusic } from "../audio";
 import { chooseInterventions } from "../guest";
+import { useAdaptiveChapter } from "../ai/adapt";
 
 /* ---------------- CHAPTER 3 — THE MUSIC BOX ---------------- */
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
 const LENS = [3, 4, 5, 7];
+const ADAPTIVE_LENS = {
+  gentle: [3, 3, 4, 4],
+  standard: LENS,
+  relentless: [4, 5, 6, 8],
+} as const;
 const SYM_COLOR: Partial<Record<Sym, string>> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
 
 export function Ch3() {
   const s = useGame();
+  const plan = useAdaptiveChapter(3);
   const round = s.ch3Rounds;
   const [seq, setSeq] = useState<Sym[]>([]);
   const [show, setShow] = useState<number>(-1);
   const [input, setInput] = useState<Sym[]>([]);
   const [done, setDone] = useState(false);
+  const aiLineSpoken = useRef(false);
 
   useSceneIntro("ch3", "Stop the music box. Watch the pattern in the dark, play it back in the light.", [
     { speaker: "narrator", text: "Your music box is playing by itself on the nightstand." },
@@ -27,9 +35,17 @@ export function Ch3() {
 
   useEffect(() => {
     if (round >= 4) return;
-    setSeq(Array.from({ length: LENS[round]! }, () => SYMS[Math.floor(Math.random() * 4)]!));
+    const bias: Sym = s.favColor === "rose" ? "heart" : s.favColor === "turq" ? "moon" : s.favColor === "honey" ? "star" : "key";
+    const length = ADAPTIVE_LENS[plan.difficulty][round]!;
+    setSeq(Array.from({ length }, (_, index) => index === 0 ? bias : SYMS[Math.floor(Math.random() * 4)]!));
     setInput([]);
-  }, [round]);
+  }, [round, plan.difficulty, s.favColor]);
+
+  useEffect(() => {
+    if (plan.provider !== "gemini" || aiLineSpoken.current) return;
+    aiLineSpoken.current = true;
+    useGame.getState().say({ speaker: "guest", text: plan.guestLine });
+  }, [plan]);
 
   // Pattern loops only in darkness.
   useEffect(() => {
@@ -82,6 +98,9 @@ export function Ch3() {
       )}
     >
       <ChapterCard n={3} title="The Music Box" />
+      <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
+        for {s.favToy ?? "your toy"}<br />after {s.favFood ?? "dinner"}
+      </div>
       <img src={MUSICBOX} alt="Your music box" className="absolute left-[44%] top-[33%] w-[34%] -translate-x-1/2 drop-shadow-[0_10px_8px_oklch(0.1_0.02_50/.8)]"
         style={{ animation: done ? undefined : "void-breathe 1.7s ease-in-out infinite" }} draggable={false} />
       <div className="absolute left-1/2 top-[60%] flex -translate-x-1/2 gap-2" aria-label={`Round ${Math.min(round + 1, 4)} of 4`}>
@@ -109,16 +128,30 @@ export function Ch3() {
 
 /* ---------------- CHAPTER 4 — MOTHER'S ROOM ---------------- */
 const PANEL: Sym[] = ["flower", "star", "moon", "heart", "eye", "key"];
-const ANSWER: Sym[] = ["flower", "moon", "eye"];
+const PUZZLES: Record<"garden" | "keepsake" | "night", { answer: Sym[]; clue: string[]; positions: Array<[number, number]> }> = {
+  garden: { answer: ["flower", "moon", "eye"], clue: ["what blooms", "what sleeps in the sky", "what is always watching"], positions: [[19, 18], [22, 58], [55, 16]] },
+  keepsake: { answer: ["heart", "key", "star"], clue: ["what you keep", "what opens", "what guides you home"], positions: [[19, 18], [22, 58], [55, 16]] },
+  night: { answer: ["moon", "eye", "key"], clue: ["what follows night", "what watches", "what lets you leave"], positions: [[19, 18], [22, 58], [55, 16]] },
+};
 
 export function Ch4() {
   const s = useGame();
+  const plan = useAdaptiveChapter(4);
+  const puzzle = PUZZLES[plan.puzzleVariant];
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
   const [solved, setSolved] = useState(false);
   const [hasKey, setKey] = useState(false);
   const [wardrobe, setWardrobe] = useState(0);
+  const aiLineSpoken = useRef(false);
   const nm = s.name || "sweetheart";
+
+  useEffect(() => setInput([]), [plan.puzzleVariant]);
+  useEffect(() => {
+    if (plan.provider !== "gemini" || aiLineSpoken.current) return;
+    aiLineSpoken.current = true;
+    useGame.getState().say({ speaker: "guest", text: plan.guestLine });
+  }, [plan]);
 
   useSceneIntro("ch4", "Find a way out of Mommy's room.", [
     { speaker: "mimic", text: `${nm}? Sweetheart, come to my room. I'm back early.` },
@@ -131,7 +164,7 @@ export function Ch4() {
     if (!s.lightsOn || solved) return;
     sfx("tap");
     const next = [...input, sym];
-    if (ANSWER[next.length - 1] !== sym) {
+    if (puzzle.answer[next.length - 1] !== sym) {
       sfx("wrong"); s.mistake(); setInput([]);
       return;
     }
@@ -161,16 +194,19 @@ export function Ch4() {
       guest={{ x: 88, y: 14, h: 62, show: true }}
       clues={!solved && (
         <>
-          <div className="glow-clue absolute left-[19%] top-[18%]"><Symbol s="flower" size={46} color="var(--glow)" /></div>
-          <div className="glow-clue absolute left-[22%] top-[58%]"><Symbol s="moon" size={42} color="var(--glow)" /></div>
-          <div className="glow-clue absolute left-[55%] top-[16%]"><Symbol s="eye" size={44} color="var(--glow)" /></div>
+          {puzzle.answer.map((symbol, index) => (
+            <div key={symbol} className="glow-clue absolute" style={{ left: `${puzzle.positions[index]![0]}%`, top: `${puzzle.positions[index]![1]}%` }}>
+              <Symbol s={symbol} size={44} color="var(--glow)" />
+            </div>
+          ))}
         </>
       )}
       above={
         <>
           {note && (
             <button onClick={() => setNote(false)} className="absolute inset-x-[10%] top-[22%] z-20 paper animate-float-up p-5 text-left">
-              <p className="font-hand text-xl leading-snug">First, what blooms.<br />Then, what sleeps in the sky.<br />Last, what is always watching.</p>
+              <p className="font-hand text-xl leading-snug">First, {puzzle.clue[0]}.<br />Then, {puzzle.clue[1]}.<br />Last, {puzzle.clue[2]}.</p>
+              <p className="mt-3 font-hand text-sm opacity-75">You said {s.favToy ?? "your toy"}. You asked for {s.favFood ?? "dinner"}. The room listened.</p>
               <p className="mt-2 text-right font-hand text-sm opacity-70">— M.</p>
             </button>
           )}
@@ -223,40 +259,58 @@ export function Ch4() {
 }
 
 /* ---------------- CHAPTER 5 — BEDTIME ---------------- */
+const HIDE_SPOTS = {
+  bath: { label: "Look in the bathtub", x: 62, y: 54, w: 38, h: 20, clueX: 76, clueY: 61 },
+  laundry: { label: "Look in the laundry basket", x: 66, y: 76, w: 29, h: 18, clueX: 79, clueY: 82 },
+  towel: { label: "Look behind the towel", x: 5, y: 50, w: 23, h: 19, clueX: 15, clueY: 58 },
+} as const;
+
 export function Ch5() {
   const s = useGame();
-  const toy = s.facts.firstToy ?? s.toyOrder[0];
+  const plan = useAdaptiveChapter(5);
+  const toy = s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
+  const toyLabel = s.favToy ?? TOY_LABEL[toy];
   const [brush, setBrush] = useState(0); // 0 no brush, 1 holding, 2 done
   const [scrub, setScrub] = useState(0);
   const [pj, setPj] = useState(false);
-  const [sawMirror, setSaw] = useState(false);
+  const [sawClue, setSaw] = useState(false);
   const [found, setFound] = useState(false);
   const lastX = useRef<number | null>(null);
   const ended = useRef(false);
+  const aiLineSpoken = useRef(false);
+
+  const hidingSpot = HIDE_SPOTS[plan.hidingPlace];
 
   useSceneIntro("ch5", "Get ready for bed: teeth, pyjamas, and your toy.", [
     { speaker: "narrator", text: "The bathroom. Mommy will be home any minute. Be in bed when she is." },
     ...chooseInterventions(s.facts, 5).filter((i) => i.kind === "line").map((i) => ({ speaker: "guest" as const, text: (i as { text: string }).text })),
   ], () => startMusic());
 
+  useEffect(() => {
+    if (plan.provider !== "gemini" || aiLineSpoken.current) return;
+    aiLineSpoken.current = true;
+    useGame.getState().say({ speaker: "guest", text: plan.guestLine });
+  }, [plan]);
+
   // The house turns the light off on its own after the first two tasks.
   useEffect(() => {
     if (brush < 2 || !pj || found) return;
-    s.say({ speaker: "narrator", text: `Where is your ${TOY_LABEL[toy]}? You can't sleep without it.` });
+    s.say({ speaker: "narrator", text: `Where is ${toyLabel}? You can't sleep without it.` });
+    const probability = plan.blackoutPressure === "merciful" ? 0.18 : plan.blackoutPressure === "relentless" ? 0.58 : 0.35;
     const id = window.setInterval(() => {
       const st = useGame.getState();
-      if (st.lightsOn && st.interactive && Math.random() < 0.35) { sfx("switch"); st.set({ lightsOn: false, flicker: Date.now() }); }
+      if (st.lightsOn && st.interactive && Math.random() < probability) { sfx("switch"); st.set({ lightsOn: false, flicker: Date.now() }); }
     }, 5000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brush, pj, found]);
+  }, [brush, pj, found, plan.blackoutPressure, toyLabel]);
 
   // Reading the mirror in the dark requires actually shining the light on it.
   useEffect(() => {
-    if (s.lightsOn || sawMirror || brush < 2 || !pj) return;
-    const id = window.setInterval(() => { if (illuminated(35, 26, 4)) setSaw(true); }, 200);
+    if (s.lightsOn || sawClue || brush < 2 || !pj) return;
+    const id = window.setInterval(() => { if (illuminated(hidingSpot.clueX, hidingSpot.clueY, 5)) setSaw(true); }, 200);
     return () => window.clearInterval(id);
-  }, [s.lightsOn, sawMirror, brush, pj]);
+  }, [s.lightsOn, sawClue, brush, pj, hidingSpot]);
 
   const onScrub = (e: React.PointerEvent) => {
     if (brush !== 1) return;
@@ -268,9 +322,10 @@ export function Ch5() {
     lastX.current = e.clientX;
   };
 
-  const tub = () => {
+  const search = (place: keyof typeof HIDE_SPOTS) => {
     if (!s.lightsOn) return;
-    if (!sawMirror) { s.say({ speaker: "narrator", text: "Just the bath. Empty.", ms: 1800 }); return; }
+    if (!sawClue) { s.say({ speaker: "narrator", text: "Nothing there. In the dark, something was trying to show you.", ms: 2200 }); return; }
+    if (place !== plan.hidingPlace) { s.mistake(); sfx("wrong"); s.say({ speaker: "narrator", text: "Empty. The Guest moved it somewhere else.", ms: 1800 }); return; }
     setFound(true); sfx("chime");
   };
 
@@ -279,7 +334,7 @@ export function Ch5() {
       ended.current = true;
       const c = useGame.getState().cordura;
       s.set({ finalCordura: c, interactive: false, objective: "" });
-      s.say([{ speaker: "narrator", text: `It was in the bath the whole time. Your ${TOY_LABEL[toy]} is cold and a little damp.` }]);
+      s.say([{ speaker: "narrator", text: `${toyLabel} was ${plan.hidingPlace === "bath" ? "in the bath, cold and damp" : plan.hidingPlace === "laundry" ? "under the laundry, wrapped too carefully" : "behind the towel, still warm"}.` }]);
       window.setTimeout(() => { sfx("switch"); useGame.getState().go("final"); }, 4500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,10 +344,9 @@ export function Ch5() {
     <Stage
       bg={BG.bgBathroom} bgPos="50% 50%" chapter={5}
       clues={brush === 2 && pj && !found && (
-        <div className="absolute left-[23%] top-[12%] h-[29%] w-[24%] overflow-hidden rounded-[50%]">
-          <img src={TOY_IMG[toy]} alt="" className="absolute bottom-[6%] left-[38%] w-[46%] opacity-80" style={{ filter: "saturate(.4) brightness(1.2) drop-shadow(0 0 8px var(--glow))" }} />
-          <svg viewBox="0 0 100 60" className="absolute bottom-0 left-[18%] w-[90%] opacity-70" aria-hidden><path d="M2 30 Q50 18 98 30 L90 58 L10 58 Z" fill="oklch(0.85 0.03 200 / .5)" /></svg>
-          <GuestVoid style={{ left: "6%", top: "0%", height: "110%" }} intensity={0.8} />
+        <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${hidingSpot.clueX}%`, top: `${hidingSpot.clueY}%`, width: "18%" }}>
+          <img src={TOY_IMG[toy]} alt="" className="w-full opacity-80" style={{ filter: "saturate(.4) brightness(1.2) drop-shadow(0 0 8px var(--glow))" }} />
+          <GuestVoid style={{ left: "5%", top: "-70%", height: "180%" }} intensity={0.8} />
         </div>
       )}
     >
@@ -313,12 +367,13 @@ export function Ch5() {
           <Pajamas color={`var(--c-${s.favColor})`} style={{ position: "static", width: "100%" }} />
         </button>
       )}
-      {/* the bathtub */}
-      <button aria-label="Look in the bathtub" className="absolute left-[62%] top-[54%] h-[20%] w-[38%]" onClick={tub} disabled={brush < 2 || !pj} />
+      {(Object.entries(HIDE_SPOTS) as Array<[keyof typeof HIDE_SPOTS, (typeof HIDE_SPOTS)[keyof typeof HIDE_SPOTS]]>).map(([id, spot]) => (
+        <button key={id} aria-label={spot.label} className="absolute" style={{ left: `${spot.x}%`, top: `${spot.y}%`, width: `${spot.w}%`, height: `${spot.h}%` }} onClick={() => search(id)} disabled={brush < 2 || !pj} />
+      ))}
       <div className="absolute left-[5%] top-[66%] space-y-1 font-hand text-sm text-paper drop-shadow">
         <p className={brush === 2 ? "line-through opacity-60" : ""}>☐ teeth</p>
         <p className={pj ? "line-through opacity-60" : ""}>☐ pyjamas</p>
-        <p className={found ? "line-through opacity-60" : ""}>☐ {TOY_LABEL[toy]}</p>
+        <p className={found ? "line-through opacity-60" : ""}>☐ {toyLabel}</p>
       </div>
     </Stage>
   );
