@@ -79,7 +79,7 @@ export function SanityFX({ bg, bgPos }: { bg: string; bgPos: string }) {
       {dark && c >= 55 && (
         <div className="pointer-events-none absolute inset-0 z-[24]" aria-hidden>
           {eyes.slice(0, c >= 80 ? 5 : 2).map((e, i) => (
-            <img key={i} src={CUT.eyes} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
+            <img key={i} src={SCARE.face2} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
           ))}
         </div>
       )}
