@@ -1,5 +1,6 @@
 import type { FoodCategory, FoodInterpretation } from "./contracts";
 import { interpretFavoriteFoodAI } from "./guest.functions";
+import { containsUnsafeContent } from "../safety";
 
 const CATEGORY_LABEL: Record<FoodCategory, string> = {
   fruit: "strawberries",
@@ -22,6 +23,15 @@ const MATCHERS: Array<[FoodCategory, RegExp]> = [
 
 export function offlineFoodInterpretation(answer: string): FoodInterpretation {
   const normalized = answer.normalize("NFKC").toLowerCase().slice(0, 80);
+  if (containsUnsafeContent(normalized)) {
+    return {
+      category: "other",
+      displayFood: CATEGORY_LABEL.other,
+      monsterLine: "Let's leave that off the table.",
+      fallbackUsed: true,
+      provider: "offline",
+    };
+  }
   const category = MATCHERS.find(([, pattern]) => pattern.test(normalized))?.[0] ?? "other";
   const displayFood = CATEGORY_LABEL[category];
   const opening = displayFood.charAt(0).toUpperCase() + displayFood.slice(1);
@@ -36,6 +46,7 @@ export function offlineFoodInterpretation(answer: string): FoodInterpretation {
 
 export async function interpretFavoriteFood(answer: string): Promise<FoodInterpretation> {
   const fallback = offlineFoodInterpretation(answer);
+  if (containsUnsafeContent(answer)) return fallback;
   try {
     return await Promise.race([
       interpretFavoriteFoodAI({ data: { answer } }),

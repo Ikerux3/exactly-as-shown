@@ -288,6 +288,7 @@ export function Intro() {
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
   const name = sanitizeName(raw);
+  const invalidName = !!raw.trim() && !name;
   const confirmName = () => {
     if (name) {
       sfx("tap");
@@ -361,12 +362,19 @@ export function Intro() {
               value={raw}
               maxLength={14}
               onChange={(e) => setRaw(e.target.value)}
+              aria-invalid={invalidName}
+              aria-describedby={invalidName ? "name-error" : undefined}
               className="mt-1 w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
               placeholder="e.g. Lucía"
               autoComplete="off"
               autoCapitalize="words"
               enterKeyHint="done"
             />
+            {invalidName && (
+              <p id="name-error" className="mt-1 text-xs text-crimson" role="alert">
+                That name can't be used.
+              </p>
+            )}
             <button type="submit" className="stitch-btn sage mt-4 w-full" disabled={!name}>
               That's me
             </button>

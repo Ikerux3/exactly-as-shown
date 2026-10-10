@@ -20,4 +20,14 @@ describe("offline food interpretation", () => {
     expect(result.monsterLine).not.toContain("script");
     expect(result.fallbackUsed).toBe(true);
   });
+
+  it("filters profanity before a recognised food can be selected", () => {
+    const result = offlineFoodInterpretation("fucking pancakes");
+    expect(result).toMatchObject({
+      category: "other",
+      displayFood: "your favourite dinner",
+      provider: "offline",
+    });
+    expect(result.monsterLine).not.toContain("fuck");
+  });
 });

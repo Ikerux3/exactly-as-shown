@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { loadSave, useGame } from "@/game/store";
+import { loadSave, sanitizeName, useGame } from "@/game/store";
 
 describe("chapter checkpoint save", () => {
   beforeEach(() => {
@@ -118,5 +118,48 @@ describe("chapter checkpoint save", () => {
     expect(save?.favToyVisualSlot).toBe("train");
     expect(save?.favToyAssetKey).toBe("v1-example");
     expect(raw).not.toContain("very-large-image");
+  });
+
+  it("rejects profane names while preserving ordinary names", () => {
+    expect(sanitizeName("f.u.c.k")).toBe("");
+    expect(sanitizeName("Cassandra")).toBe("Cassandra");
+    expect(sanitizeName("Lucía")).toBe("Lucía");
+  });
+
+  it("cleans unsafe text and generated assets from an older checkpoint", () => {
+    const s = useGame.getState();
+    s.set({ name: "Lucia" });
+    s.go("ch3");
+    const oldSave = JSON.parse(localStorage.getItem("mwbb-save-v1")!) as Record<string, unknown>;
+    oldSave["favToy"] = "f.u.c.k robot";
+    oldSave["favToyAssetKey"] = "unsafe-image";
+    oldSave["adaptations"] = {
+      3: {
+        difficulty: "standard",
+        puzzleVariant: "garden",
+        hidingPlace: "bath",
+        blackoutPressure: "watchful",
+        guestLine: "shit",
+        fallbackUsed: false,
+        provider: "gemini",
+      },
+    };
+    oldSave["adaptiveMoments"] = {
+      bad: {
+        action: "hold",
+        line: "f.u.c.k",
+        groundedIn: "robot",
+        fallbackUsed: false,
+        provider: "gemini",
+      },
+    };
+    localStorage.setItem("mwbb-save-v1", JSON.stringify(oldSave));
+
+    expect(loadSave()).toMatchObject({
+      favToy: "your favourite toy",
+      favToyAssetKey: undefined,
+      adaptations: {},
+      adaptiveMoments: {},
+    });
   });
 });

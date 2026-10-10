@@ -7,6 +7,7 @@ import {
   type ToyInterpretation,
 } from "./contracts";
 import { generateStructuredJSON } from "./provider.server";
+import { containsUnsafeContent } from "../safety";
 
 const requestSchema = z.object({
   answer: z.string().trim().min(1).max(120),
@@ -40,13 +41,20 @@ const jsonSchema = {
   },
 };
 
-const unsafe =
-  /\b(kill|murder|suicide|sex|porn|fuck|shit|puta|puto|matar|suicid|sexo|porno|mierda)\w*/iu;
 const clean = (value: string) => value.replace(/[<>"“”]/g, "").trim();
 
 export const interpretFavoriteFoodAI = createServerFn({ method: "POST" })
   .validator((data: unknown) => requestSchema.parse(data))
   .handler(async ({ data }): Promise<FoodInterpretation> => {
+    if (containsUnsafeContent(data.answer)) {
+      return {
+        category: "other",
+        displayFood: "your favourite dinner",
+        monsterLine: "Let's leave that off the table.",
+        fallbackUsed: true,
+        provider: "offline",
+      };
+    }
     const parsed = responseSchema.parse(
       await generateStructuredJSON({
         system: SYSTEM,
@@ -57,7 +65,7 @@ export const interpretFavoriteFoodAI = createServerFn({ method: "POST" })
 
     const displayFood = clean(parsed.displayFood);
     const monsterLine = clean(parsed.monsterLine);
-    if (unsafe.test(displayFood) || unsafe.test(monsterLine))
+    if (containsUnsafeContent(displayFood) || containsUnsafeContent(monsterLine))
       throw new Error("Unsafe Gemini response");
 
     return {
@@ -104,6 +112,16 @@ If the answer is unsafe or nonsense, use category "other", displayToy "your favo
 export const interpretFavoriteToyAI = createServerFn({ method: "POST" })
   .validator((data: unknown) => requestSchema.parse(data))
   .handler(async ({ data }): Promise<ToyInterpretation> => {
+    if (containsUnsafeContent(data.answer)) {
+      return {
+        category: "other",
+        displayToy: "your favourite toy",
+        monsterLine: "Let's choose a different toy.",
+        customVisual: false,
+        fallbackUsed: true,
+        provider: "offline",
+      };
+    }
     const parsed = toyResponseSchema.parse(
       await generateStructuredJSON({
         system: TOY_SYSTEM,
@@ -113,7 +131,7 @@ export const interpretFavoriteToyAI = createServerFn({ method: "POST" })
     );
     const displayToy = clean(parsed.displayToy);
     const monsterLine = clean(parsed.monsterLine);
-    if (unsafe.test(displayToy) || unsafe.test(monsterLine))
+    if (containsUnsafeContent(displayToy) || containsUnsafeContent(monsterLine))
       throw new Error("Unsafe Gemini response");
     const customVisual = parsed.category === "other" && parsed.customVisual;
     return {

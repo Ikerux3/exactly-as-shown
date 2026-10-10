@@ -24,4 +24,13 @@ describe("offline toy interpretation", () => {
       customVisual: true,
     });
   });
+
+  it("does not generate or remember a profane custom toy", () => {
+    expect(offlineToyInterpretation("f.u.c.k robot")).toMatchObject({
+      category: "other",
+      displayToy: "your favourite toy",
+      customVisual: false,
+      provider: "offline",
+    });
+  });
 });

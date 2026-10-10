@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { REALTIME_ACTIONS, REALTIME_EVENTS, type RealtimeDecision } from "./contracts";
 import { generateStructuredJSON } from "./provider.server";
+import { containsUnsafeContent } from "../safety";
 
 const count = z.number().int().min(0).max(10_000);
 const requestSchema = z.object({
@@ -65,9 +66,6 @@ Write one quiet English sentence of at most 18 words. No gore, profanity, explic
 To make adaptation perceptible, copy exactly one supplied allowed mention into both mention and line. Do not repeat a previous line.
 Return only the requested JSON.`;
 
-const unsafe =
-  /\b(kill|murder|suicide|sex|porn|fuck|shit|puta|puto|matar|suicid|sexo|porno|mierda)\w*/iu;
-
 function allowedMentions(data: z.infer<typeof requestSchema>): string[] {
   const mistakes = data.recent.recentMistakes;
   const eventMentions: Record<(typeof REALTIME_EVENTS)[number], Array<string | undefined>> = {
@@ -95,6 +93,15 @@ function allowedMentions(data: z.infer<typeof requestSchema>): string[] {
 export const directRealtimeMomentAI = createServerFn({ method: "POST" })
   .validator((data: unknown) => requestSchema.parse(data))
   .handler(async ({ data }): Promise<RealtimeDecision> => {
+    const playerText = [
+      data.name,
+      data.favFood,
+      data.favToy,
+      data.firstToy,
+      data.recent.choice,
+      ...data.facts.choiceTrail,
+    ].filter((value): value is string => !!value);
+    if (playerText.some(containsUnsafeContent)) throw new Error("Unsafe player memory");
     const mentions = allowedMentions(data);
     const parsed = responseSchema.parse(
       await generateStructuredJSON({
@@ -112,7 +119,7 @@ export const directRealtimeMomentAI = createServerFn({ method: "POST" })
       throw new Error("Gemini response was not grounded in a visible player fact");
     }
     if (
-      unsafe.test(line) ||
+      containsUnsafeContent(line) ||
       data.previousLines.some((old) => old.toLocaleLowerCase() === line.toLocaleLowerCase())
     ) {
       throw new Error("Unsafe or repeated Gemini response");

@@ -18,8 +18,10 @@ const PREVIEW_CLOTHES = "oklch(0.55 0.06 240)";
 export function CharacterCreator({ profile, onClose }: { profile: Profile | null; onClose: () => void }) {
   const [look, setLook] = useState<Look>(profile?.look ?? DEFAULT_LOOK);
   const [raw, setRaw] = useState(profile?.name ?? "");
+  const name = sanitizeName(raw);
+  const invalidName = !!raw.trim() && !name;
   const pick = (patch: Partial<Look>) => { sfx("tap"); setLook((l) => ({ ...l, ...patch })); };
-  const done = () => { saveProfile({ name: sanitizeName(raw), look }); sfx("chime"); onClose(); };
+  const done = () => { if (invalidName) return; saveProfile({ name, look }); sfx("chime"); onClose(); };
 
   return (
     <div className="absolute inset-0" role="dialog" aria-label="Your character">
@@ -39,10 +41,12 @@ export function CharacterCreator({ profile, onClose }: { profile: Profile | null
         <div className="paper space-y-2 px-4 py-3">
           <Row label="Name" htmlFor="cc-name">
             <input id="cc-name" value={raw} maxLength={14} onChange={(e) => setRaw(e.target.value)}
+              aria-invalid={invalidName} aria-describedby={invalidName ? "cc-name-error" : undefined}
               placeholder="Mommy will ask you" autoComplete="off" autoCapitalize="words" enterKeyHint="done"
               onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               className="w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-2.5 py-1.5 font-hand text-lg text-ink outline-none focus:border-honey" />
           </Row>
+          {invalidName && <p id="cc-name-error" className="text-right text-xs text-crimson" role="alert">That name can't be used.</p>}
           <Row label="I'm a">
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Boy or girl">
               {BODIES.map((b) => (
@@ -77,7 +81,7 @@ export function CharacterCreator({ profile, onClose }: { profile: Profile | null
           </Row>
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button type="button" className="stitch-btn py-2" onClick={() => { sfx("tap"); onClose(); }}>Back</button>
-            <button type="button" className="stitch-btn honey py-2" onClick={done}>That's me</button>
+            <button type="button" className="stitch-btn honey py-2" onClick={done} disabled={invalidName}>That's me</button>
           </div>
           {profile && (
             <button type="button" className="mx-auto block font-hand text-xs leading-none underline opacity-60"

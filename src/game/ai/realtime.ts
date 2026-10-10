@@ -1,4 +1,5 @@
 import { TOY_LABEL, useGame } from "../store";
+import { safePlayerText } from "../safety";
 import type {
   AdaptiveChapter,
   RealtimeContext,
@@ -30,8 +31,8 @@ function actionFor(context: RealtimeContext): RealtimeDecision["action"] {
 
 export function offlineRealtimeDecision(context: RealtimeContext): RealtimeDecision {
   const action = actionFor(context);
-  const toy = context.favToy ?? context.firstToy ?? "your favourite toy";
-  const food = context.favFood ?? "dinner";
+  const toy = safePlayerText(context.favToy ?? context.firstToy, "your favourite toy");
+  const food = safePlayerText(context.favFood, "dinner");
   const round = context.recent.round ?? 1;
   const mistakes = context.recent.recentMistakes;
   let groundedIn = toy;
@@ -71,7 +72,7 @@ export function offlineRealtimeDecision(context: RealtimeContext): RealtimeDecis
       }
       break;
     case "search_miss": {
-      const choice = context.recent.choice ?? "there";
+      const choice = safePlayerText(context.recent.choice, "there");
       groundedIn = choice;
       line = `You chose ${choice}. I learned where you look first, so ${toy} is somewhere else.`;
       break;
@@ -90,19 +91,30 @@ function contextFor(
   const state = useGame.getState();
   const previousLines = Object.values(state.adaptiveMoments)
     .slice(-4)
-    .map((moment) => moment.line);
+    .map((moment) => safePlayerText(moment.line, "The room remembers."));
+  const safeName = state.name ? safePlayerText(state.name, "Little one") : undefined;
+  const safeFood = state.favFood
+    ? safePlayerText(state.favFood, "your favourite dinner")
+    : undefined;
+  const safeToy = state.favToy ? safePlayerText(state.favToy, "your favourite toy") : undefined;
+  const safeChoice = recent.choice ? safePlayerText(recent.choice, "a previous choice") : undefined;
   return {
     chapter,
     checkpoint,
     event,
     cordura: state.cordura,
     favColor: state.favColor,
-    ...(state.name ? { name: state.name } : {}),
-    ...(state.favFood ? { favFood: state.favFood } : {}),
-    ...(state.favToy ? { favToy: state.favToy } : {}),
+    ...(safeName ? { name: safeName } : {}),
+    ...(safeFood ? { favFood: safeFood } : {}),
+    ...(safeToy ? { favToy: safeToy } : {}),
     ...(state.facts.firstToy ? { firstToy: TOY_LABEL[state.facts.firstToy] } : {}),
-    facts: { ...state.facts },
-    recent,
+    facts: {
+      ...state.facts,
+      choiceTrail: state.facts.choiceTrail.map((choice) =>
+        safePlayerText(choice, "a previous choice"),
+      ),
+    },
+    recent: { ...recent, ...(safeChoice ? { choice: safeChoice } : {}) },
     previousLines,
   };
 }

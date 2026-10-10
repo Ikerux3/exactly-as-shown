@@ -1,5 +1,6 @@
 import type { ToyCategory, ToyInterpretation } from "./contracts";
 import { interpretFavoriteToyAI } from "./guest.functions";
+import { containsUnsafeContent } from "../safety";
 
 const TOY_LABEL: Record<ToyCategory, string> = {
   bear: "teddy bear",
@@ -30,6 +31,16 @@ const CUSTOM_MATCHERS: Array<[string, RegExp]> = [
 
 export function offlineToyInterpretation(answer: string): ToyInterpretation {
   const normalized = answer.normalize("NFKC").toLowerCase().slice(0, 80);
+  if (containsUnsafeContent(normalized)) {
+    return {
+      category: "other",
+      displayToy: TOY_LABEL.other,
+      monsterLine: "Let's choose a different toy.",
+      customVisual: false,
+      fallbackUsed: true,
+      provider: "offline",
+    };
+  }
   const category = MATCHERS.find(([, pattern]) => pattern.test(normalized))?.[0] ?? "other";
   const customDisplay = CUSTOM_MATCHERS.find(([, pattern]) => pattern.test(normalized))?.[0];
   const displayToy =
@@ -47,6 +58,7 @@ export function offlineToyInterpretation(answer: string): ToyInterpretation {
 
 export async function interpretFavoriteToy(answer: string): Promise<ToyInterpretation> {
   const fallback = offlineToyInterpretation(answer);
+  if (containsUnsafeContent(answer)) return fallback;
   try {
     return await Promise.race([
       interpretFavoriteToyAI({ data: { answer } }),

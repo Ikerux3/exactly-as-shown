@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGame } from "../store";
+import { safePlayerText } from "../safety";
 import type { AdaptiveChapter, AdaptiveContext, AdaptivePlan } from "./contracts";
 import { directAdaptiveChapterAI } from "./adapt.functions";
 
@@ -32,7 +33,7 @@ export function offlineAdaptivePlan(context: AdaptiveContext): AdaptivePlan {
     : context.facts.lightToggles > 10
       ? "relentless"
       : "watchful";
-  const remembered = context.favToy ?? context.favFood ?? "what you chose";
+  const remembered = safePlayerText(context.favToy ?? context.favFood, "what you chose");
   return {
     difficulty,
     puzzleVariant,
@@ -46,13 +47,22 @@ export function offlineAdaptivePlan(context: AdaptiveContext): AdaptivePlan {
 
 function currentContext(chapter: AdaptiveChapter): AdaptiveContext {
   const state = useGame.getState();
+  const favFood = state.favFood
+    ? safePlayerText(state.favFood, "your favourite dinner")
+    : undefined;
+  const favToy = state.favToy ? safePlayerText(state.favToy, "your favourite toy") : undefined;
   return {
     chapter,
     cordura: state.cordura,
     favColor: state.favColor,
-    ...(state.favFood ? { favFood: state.favFood } : {}),
-    ...(state.favToy ? { favToy: state.favToy } : {}),
-    facts: { ...state.facts },
+    ...(favFood ? { favFood } : {}),
+    ...(favToy ? { favToy } : {}),
+    facts: {
+      ...state.facts,
+      choiceTrail: state.facts.choiceTrail.map((choice) =>
+        safePlayerText(choice, "a previous choice"),
+      ),
+    },
   };
 }
 

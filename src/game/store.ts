@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { AdaptiveChapter, AdaptivePlan, RealtimeDecision } from "./ai/contracts";
 import { restoreFavoriteToyImage } from "./ai/toy-image";
 import { setMuted as setAudioMuted } from "./audio";
+import { containsUnsafeContent, safePlayerText } from "./safety";
 
 export type Screen =
   | "title"
@@ -280,7 +281,7 @@ export const useGame = create<State & Actions>((set, get) => ({
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 40);
-      if (!clean) return {};
+      if (!clean || containsUnsafeContent(clean)) return {};
       return { facts: { ...s.facts, choiceTrail: [...s.facts.choiceTrail, clean].slice(-12) } };
     }),
   useHint: () => set((s) => ({ facts: { ...s.facts, hintsUsed: s.facts.hintsUsed + 1 } })),
@@ -431,7 +432,41 @@ export function loadSave(): Save | null {
       Array.isArray(s.ch2Items) &&
       Array.isArray(s.ch2Placed) &&
       typeof s.ch3Rounds === "number";
-    return valid ? s : null;
+    if (!valid) return null;
+    const blockedToy = !!s.favToy && containsUnsafeContent(s.favToy);
+    const adaptations = Object.fromEntries(
+      Object.entries(s.adaptations ?? {}).filter(
+        ([, plan]) => plan && !containsUnsafeContent(plan.guestLine),
+      ),
+    ) as Save["adaptations"];
+    const adaptiveMoments = Object.fromEntries(
+      Object.entries(s.adaptiveMoments ?? {}).filter(
+        ([, moment]) =>
+          moment &&
+          !containsUnsafeContent(moment.line) &&
+          !containsUnsafeContent(moment.groundedIn),
+      ),
+    ) as Save["adaptiveMoments"];
+    return {
+      ...s,
+      name: sanitizeName(s.name) || "Little one",
+      ...(s.favFood ? { favFood: safePlayerText(s.favFood, "your favourite dinner") } : {}),
+      ...(s.favToy ? { favToy: safePlayerText(s.favToy, "your favourite toy") } : {}),
+      favToyAssetKey: blockedToy ? undefined : s.favToyAssetKey,
+      adaptations,
+      adaptiveMoments,
+      facts: {
+        ...s.facts,
+        choiceTrail: Array.isArray(s.facts.choiceTrail)
+          ? s.facts.choiceTrail
+              .filter(
+                (choice): choice is string =>
+                  typeof choice === "string" && !containsUnsafeContent(choice),
+              )
+              .slice(-12)
+          : [],
+      },
+    };
   } catch {
     return null;
   }
@@ -447,14 +482,24 @@ export type Memory = {
 export function loadMemory(): Memory {
   if (typeof window === "undefined") return { runs: 0 };
   try {
-    return JSON.parse(localStorage.getItem(MEM_KEY) || "") as Memory;
+    const memory = JSON.parse(localStorage.getItem(MEM_KEY) || "") as Memory;
+    return {
+      ...memory,
+      ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
+    };
   } catch {
     return { runs: 0 };
   }
 }
 export function saveMemory(m: Memory) {
   try {
-    localStorage.setItem(MEM_KEY, JSON.stringify(m));
+    localStorage.setItem(
+      MEM_KEY,
+      JSON.stringify({
+        ...m,
+        ...(m.lastName ? { lastName: sanitizeName(m.lastName) || "Little one" } : {}),
+      }),
+    );
   } catch {
     /* ignore */
   }
@@ -472,7 +517,7 @@ export function sanitizeName(raw: string): string {
     .replace(/[^\p{L}\s'-]/gu, "")
     .trim()
     .slice(0, 14);
-  if (!clean) return "";
+  if (!clean || containsUnsafeContent(clean)) return "";
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 if (typeof window !== "undefined" && import.meta.env.DEV)
