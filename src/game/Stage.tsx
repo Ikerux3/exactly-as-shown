@@ -155,11 +155,11 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       {s.line && (
         <button
           onClick={() => s.nextLine()}
-          className={`subtitle absolute bottom-[16%] left-[5%] right-[5%] z-40 px-4 py-3 text-left text-[15px] leading-snug animate-float-up ${s.line.speaker === "guest" ? "guest" : ""}`}
+          className={`subtitle absolute bottom-[16%] left-[5%] right-[5%] z-40 px-4 py-3 text-left text-[15px] leading-snug animate-float-up ${(s.line.speaker === "guest" || s.line.speaker === "mimic") ? "guest" : ""}`}
         >
           {s.line.speaker !== "narrator" && (
             <span className="mb-0.5 block font-hand text-xs uppercase tracking-widest opacity-70">
-              {s.line.speaker === "mother" ? "Mommy" : s.line.speaker === "guest" ? "…" : "You"}
+              {s.line.speaker === "mother" || s.line.speaker === "mimic" ? "Mommy" : s.line.speaker === "guest" ? "…" : "You"}
             </span>
           )}
           {s.line.text}

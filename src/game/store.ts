@@ -17,7 +17,7 @@ export const TOY_LABEL: Record<ToyId, string> = {
   bear: "teddy bear", rabbit: "felt rabbit", train: "wooden train", doll: "rag doll", elephant: "knitted elephant",
 };
 
-export type Line = { speaker: "mother" | "guest" | "child" | "narrator"; text: string; ms?: number };
+export type Line = { speaker: "mother" | "guest" | "mimic" | "child" | "narrator"; text: string; ms?: number };
 
 export type Facts = {
   firstToy?: ToyId;
