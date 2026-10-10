@@ -1,3 +1,5 @@
+import type { Screen } from "./store";
+
 /** MJ v3.1 deterministic rules shared by desktop and touch gameplay. */
 export const GAMEPLAY_RULES = {
   darkPerSecond: 3,
@@ -22,7 +24,7 @@ export function applyFinalCordura(current: number, alreadyFrozen?: number): numb
 }
 
 /** Table is one minigame spanning kitchen + dining. Reset it at the kitchen. */
-export function checkpointScreen(screen: string): string {
+export function checkpointScreen(screen: Screen): Screen {
   return screen === "ch2d" ? "ch2k" : screen;
 }
 
