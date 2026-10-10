@@ -7,4 +7,4 @@
 - [x] Regression tests and desktop/mobile interaction checks.
 - [x] Verify the interrupted quality-of-life patch and resolve remaining regressions.
 - [x] MUFI opening splash and uploaded eye favicon, with browser verification.
-- [ ] Remove delayed wall changes, hide chapter 2 from progression and saves, remove visible scrollbars, verify and publish.
+- [x] Remove delayed wall changes, hide chapter 2 from progression and saves, remove visible scrollbars, verify and request publication.
