@@ -489,18 +489,25 @@ export type Memory = {
   lastName?: string;
   lastToy?: ToyId;
   lastEnding?: "composed" | "crying";
+  /** The player asked the house to forget them; data is kept but hidden. */
+  forgotten?: boolean;
 };
-export function loadMemory(): Memory {
+function readRawMemory(): Memory {
   if (typeof window === "undefined") return { runs: 0 };
   try {
     const memory = JSON.parse(localStorage.getItem(MEM_KEY) || "") as Memory;
-    return {
-      ...memory,
-      ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
-    };
+    return { ...memory, runs: memory.runs || 0 };
   } catch {
     return { runs: 0 };
   }
+}
+export function loadMemory(): Memory {
+  const memory = readRawMemory();
+  if (memory.forgotten) return { runs: 0, forgotten: true };
+  return {
+    ...memory,
+    ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
+  };
 }
 export function saveMemory(m: Memory) {
   try {
@@ -515,12 +522,17 @@ export function saveMemory(m: Memory) {
     /* ignore */
   }
 }
+/** Toggle whether the house recognises the player. Returns the visible memory. */
+export function setMemoryForgotten(forgotten: boolean): Memory {
+  const raw = readRawMemory();
+  const next: Memory = { ...raw };
+  if (forgotten) next.forgotten = true;
+  else delete next.forgotten;
+  saveMemory(next);
+  return loadMemory();
+}
 export function forgetMemory() {
-  try {
-    localStorage.removeItem(MEM_KEY);
-  } catch {
-    /* ignore */
-  }
+  setMemoryForgotten(true);
 }
 
 export function sanitizeName(raw: string): string {

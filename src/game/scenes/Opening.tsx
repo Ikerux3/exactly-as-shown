@@ -40,7 +40,7 @@ type Panel = "menu" | "how" | "settings" | "character";
 
 export function Title() {
   const muted = useGame((s) => s.muted);
-  const [mem, setMem] = useState<{ runs: number }>({ runs: 0 });
+  const [mem, setMem] = useState<{ runs: number; forgotten?: boolean | undefined }>({ runs: 0 });
   const [saved, setSaved] = useState<Screen | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [panel, setPanel] = useState<Panel>("menu");
@@ -228,14 +228,16 @@ export function Title() {
             <button
               type="button"
               className="stitch-btn w-full"
-              disabled={mem.runs === 0}
+              aria-pressed={!mem.forgotten}
               onClick={() => {
-                forgetMemory();
-                setMem({ runs: 0 });
-                sfx("whisper");
+                const next = setMemoryForgotten(!mem.forgotten);
+                setMem(next);
+                sfx(next.forgotten ? "whisper" : "chime");
               }}
             >
-              {mem.runs === 0 ? "The house doesn't know you" : "Make the house forget you"}
+              {mem.forgotten
+                ? "The house forgot you — let it remember"
+                : "The house remembers you — make it forget"}
             </button>
             <p className="text-xs leading-snug opacity-70">
               The house remembers your past visits on this device, and the game keeps your place at
