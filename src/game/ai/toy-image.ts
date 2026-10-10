@@ -20,12 +20,16 @@ export async function generateFavoriteToyImage(
     const result = await Promise.race([
       generateFavoriteToyImageAI({ data: { description } }),
       new Promise<never>((_, reject) =>
-        window.setTimeout(() => reject(new Error("Toy image generation timed out")), 25_000),
+        window.setTimeout(() => reject(new Error("Toy image generation timed out")), 47_000),
       ),
     ]);
     await cacheFavoriteToyAsset(key, result.dataUrl);
     return { key, imageUrl: result.dataUrl };
-  } catch {
+  } catch (error) {
+    console.warn(
+      "[toy-image] Custom prop generation unavailable:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     return undefined;
   }
 }

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import trainReference from "@/assets/toy-train.png?inline";
-import dollReference from "@/assets/toy-doll.png?inline";
+import trainReference from "@/assets/toy-train.png?base64";
+import dollReference from "@/assets/toy-doll.png?base64";
 import { containsPromptControl, containsUnsafeContent } from "../safety";
 
 const requestSchema = z.object({
@@ -54,7 +54,7 @@ Isolate the complete toy on a transparent background, centred with generous padd
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
         },
-        signal: AbortSignal.timeout(24_000),
+        signal: AbortSignal.timeout(45_000),
         body: JSON.stringify({
           contents: [
             {
