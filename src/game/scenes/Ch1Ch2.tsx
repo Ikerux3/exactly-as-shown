@@ -748,6 +748,10 @@ export function Ch2Dining() {
   const [asking, setAsking] = useState(false);
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
+  const [foodQuestion, setFoodQuestion] = useState(
+    () => offlineAdaptiveQuestion(currentQuestionContext("food")).text,
+  );
+  useSpokenPrompt(foodQuestion, "guest", asking);
   const [bigOffered, setBigOffered] = useState(false);
   const [phase, setPhase] = useState<"play" | "crash" | "black" | "smile" | "after">("play");
   const swipe = useRef<{ x: number; y: number } | null>(null);
@@ -808,10 +812,13 @@ export function Ch2Dining() {
       useGame.getState().say([
         { speaker: "narrator", text: "The light comes back. The table is set. Perfectly." },
         { speaker: "guest", text: `Thank you, ${nm}. I'll make your ${useGame.getState().favFood || "dinner"}.` },
-        { speaker: "narrator", text: "Upstairs, a music box starts to play." },
+        {
+          speaker: "narrator",
+          text: "Upstairs, a music box starts to play.",
+          onDone: () => useGame.getState().go("ch3"),
+        },
       ]);
     }, 7200);
-    window.setTimeout(() => useGame.getState().go("ch3"), 15500);
   };
 
   const tapCell = (x: number, y: number) => {
@@ -855,8 +862,12 @@ export function Ch2Dining() {
       useGame.getState().set({ interactive: false });
       window.setTimeout(() => {
         if (!useGame.getState().favFood) {
-          setAsking(true);
-          sfx("whisper");
+          void adaptiveQuestion(currentQuestionContext("food")).then((question) => {
+            if (useGame.getState().screen !== "ch2d") return;
+            setFoodQuestion(question.text);
+            setAsking(true);
+            sfx("whisper");
+          });
         } else offerBig();
       }, 900);
     } else if (n < PIECES.length) setView("tray");
@@ -881,8 +892,7 @@ export function Ch2Dining() {
     state.set({ favFood: result.displayFood });
     setAsking(false);
     setInterpreting(false);
-    state.say({ speaker: "guest", text: result.monsterLine });
-    window.setTimeout(offerBig, 2600);
+    state.say({ speaker: "guest", text: result.monsterLine, onDone: offerBig });
   };
 
   const pick = (p: Piece) => {
@@ -934,7 +944,7 @@ export function Ch2Dining() {
           )}
           {asking && (
             <div className="absolute inset-x-[6%] top-[14%] z-[45] paper animate-float-up p-5">
-              <p className="font-display text-lg italic">"What do you like to eat best?"</p>
+              <p className="font-display text-lg italic">“{foodQuestion}”</p>
               <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
               <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); void answerFood(); }}>
                 <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
