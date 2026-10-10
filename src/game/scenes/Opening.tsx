@@ -437,42 +437,45 @@ export function Intro() {
             <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
               “{questionText}”
             </p>
-            <div
-              className="mt-4 grid grid-cols-4 gap-3"
-              role="radiogroup"
-              aria-label="Favourite colour"
+            <form
+              className="mt-4 space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                confirmColor();
+              }}
             >
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={s.favColor === c}
-                  onClick={() => {
-                    sfx("tap");
-                    s.set({ favColor: c });
-                  }}
-                  aria-label={COLOR_LABEL[c]}
-                  className={`aspect-square rounded-full shadow-md transition ${s.favColor === c ? "scale-105 ring-4 ring-ink ring-offset-2 ring-offset-paper" : ""}`}
+              <label className="block text-xs uppercase tracking-widest opacity-60" htmlFor="fav-color">
+                Favourite colour
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  id="fav-color"
+                  autoFocus
+                  maxLength={24}
+                  value={colorInput}
+                  onChange={(e) => setColorInput(e.target.value)}
+                  placeholder="Red, purple, rojo…"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  className="min-w-0 flex-1 rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
+                />
+                <span
+                  aria-hidden
+                  className="h-11 w-11 shrink-0 rotate-[-6deg] rounded-full shadow-md transition-colors"
                   style={{
-                    background: `var(--c-${c})`,
-                    outline: "2px dashed oklch(1 0 0 / .6)",
+                    background: parseColorWord(colorInput)?.css ?? "transparent",
+                    outline: "2px dashed var(--ink)",
                     outlineOffset: -5,
                   }}
                 />
-              ))}
-            </div>
-            <p className="mt-3 text-sm opacity-70">
-              <span className="font-display">{COLOR_LABEL[s.favColor]}</span> it is. She buttons her{" "}
-              {MOTHER_LABEL[s.motherColor]} coat.
-            </p>
-            <button
-              className="stitch-btn mt-4 w-full"
-              onClick={() => void prepareToyQuestion()}
-              disabled={questionLoading}
-            >
-              {questionLoading ? "Mommy is thinking…" : "One more thing…"}
-            </button>
+              </div>
+              {colorInput.trim() && !parseColorWord(colorInput) && (
+                <p className="text-xs opacity-70">Mommy doesn't know that colour. Try another word.</p>
+              )}
+              <button type="submit" className="stitch-btn w-full" disabled={!parseColorWord(colorInput)}>
+                One more thing…
+              </button>
+            </form>
           </>
         )}
         {step === 2 && (
