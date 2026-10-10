@@ -1,6 +1,6 @@
 // Shared screen chrome: a fixed 2:3 art frame with a HUD bar above it and a dialogue bar
 // below it, so subtitles, objectives and controls never cover the scene art or its hitboxes.
-import { useEffect, type ReactNode, type Ref } from "react";
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import { Brain, Pause } from "lucide-react";
 import { CHAPTER_TITLE, useGame } from "./store";
 import { stopMusic } from "./audio";
@@ -34,12 +34,23 @@ export function Shell({
   onFrameUp,
   children,
 }: ShellProps) {
+  const tap = useRef<{ x: number; y: number } | null>(null);
   return (
     <div className={`game-shell ${bars ? "" : "no-bars"}`}>
       <div className="shell-bar top">{bars && top}</div>
       <div
         ref={frameRef}
         className={`game-frame ${frameClassName}`}
+        onPointerDownCapture={(e) => { tap.current = { x: e.clientX, y: e.clientY }; }}
+        onClickCapture={(e) => {
+          const target = e.target as Element;
+          const start = tap.current;
+          tap.current = null;
+          const state = useGame.getState();
+          if (!start || !state.line || state.line.voiceOnly || state.paused || state.scare) return;
+          if (target.closest("button, input, textarea, select, [role='dialog'], [role='button']")) return;
+          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 12) state.nextLine(true);
+        }}
         onPointerMove={onFramePointer}
         onPointerDown={(e) => {
           onFramePointer?.(e);
