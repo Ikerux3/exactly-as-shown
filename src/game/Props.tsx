@@ -16,9 +16,6 @@ function Cut({ src, style, ratio, children }: { src: string; style?: CSSProperti
 }
 
 
-const wood = "var(--wood)";
-const woodL = "var(--wood-light)";
-const brass = "var(--brass)";
 
 export function ToyBox({ style, glow }: { style?: CSSProperties; glow?: boolean }) {
   return <Cut src={PROP.toybox} style={{ ...style, filter: glow ? "drop-shadow(0 0 10px var(--glow))" : undefined }} ratio="4 / 3" />;
