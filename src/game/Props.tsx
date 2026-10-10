@@ -92,7 +92,7 @@ export function Cupboard({ open, style, kind }: { open: boolean; style?: CSSProp
   );
 }
 
-export function Plate({ color, big, style }: { color: string; big?: boolean; style?: CSSProperties }) {
+export function Plate({ color, big, style }: { color: string; big?: boolean | undefined; style?: CSSProperties }) {
   return (
     <svg viewBox="0 0 100 60" style={style} aria-hidden>
       <ellipse cx="50" cy="34" rx={big ? 48 : 40} ry={big ? 24 : 20} fill="oklch(0.2 0.02 50 / .35)" />
@@ -102,7 +102,7 @@ export function Plate({ color, big, style }: { color: string; big?: boolean; sty
     </svg>
   );
 }
-export function Glass({ color, big, style }: { color: string; big?: boolean; style?: CSSProperties }) {
+export function Glass({ color, big, style }: { color: string; big?: boolean | undefined; style?: CSSProperties }) {
   return (
     <svg viewBox="0 0 60 90" style={style} aria-hidden>
       <path d={big ? "M4 6 L56 6 L50 86 L10 86 Z" : "M12 14 L48 14 L44 84 L16 84 Z"} fill="oklch(0.95 0.02 220 / .55)" stroke="var(--paper)" strokeWidth="2" />
@@ -111,7 +111,7 @@ export function Glass({ color, big, style }: { color: string; big?: boolean; sty
     </svg>
   );
 }
-export function Cutlery({ color, big, style }: { color: string; big?: boolean; style?: CSSProperties }) {
+export function Cutlery({ color, big, style }: { color: string; big?: boolean | undefined; style?: CSSProperties }) {
   const s = big ? 1.5 : 1;
   return (
     <svg viewBox="0 0 70 100" style={style} aria-hidden>

@@ -6,7 +6,7 @@ let muted = false;
 let detune = 0; // cents
 let sparse = 0; // 0..1 probability to drop notes
 
-const MELODY = [
+const MELODY: [number, number][] = [
   // original lullaby phrase (semitones from C5), duration in beats
   [7, 1], [4, 1], [5, 1], [7, 2], [9, 1], [7, 1], [5, 1], [4, 2],
   [2, 1], [4, 1], [5, 1], [4, 1], [2, 1], [0, 3],
@@ -71,7 +71,7 @@ export function startMusic() {
   const beat = 0.42;
   const tick = () => {
     if (!ctx) return;
-    const [semi, len] = MELODY[i % MELODY.length];
+    const [semi, len] = MELODY[i % MELODY.length]!;
     if (Math.random() > sparse) bell(523.25 * Math.pow(2, semi / 12), ctx.currentTime + 0.02);
     i++;
     musicTimer = window.setTimeout(tick, beat * len * 1000 * (1 + detune / 400));
@@ -105,7 +105,7 @@ export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare
   const t = c.currentTime + 0.01;
   switch (kind) {
     case "tap": bell(880, t, 0.06, 0.25); break;
-    case "note": bell(523.25 * Math.pow(2, [0, 4, 7, 11][n % 4] / 12), t, 0.2, 1.2); break;
+    case "note": bell(523.25 * Math.pow(2, [0, 4, 7, 11][n % 4]! / 12), t, 0.2, 1.2); break;
     case "chime": bell(784, t, 0.12); bell(1046, t + 0.12, 0.1); break;
     case "wrong": bell(311, t, 0.1, 0.6); break;
     case "open": noise(0.25, 900, 0.25, 2); break;

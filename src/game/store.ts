@@ -17,10 +17,10 @@ export const TOY_LABEL: Record<ToyId, string> = {
   bear: "teddy bear", rabbit: "felt rabbit", train: "wooden train", doll: "rag doll", elephant: "knitted elephant",
 };
 
-export type Line = { speaker: "mother" | "guest" | "mimic" | "child" | "narrator"; text: string; ms?: number };
+export type Line = { speaker: "mother" | "guest" | "mimic" | "child" | "narrator"; text: string; ms?: number | undefined };
 
 export type Facts = {
-  firstToy?: ToyId;
+  firstToy?: ToyId | undefined;
   mistakes: number;
   darkSeconds: number;
   lightToggles: number;
@@ -33,8 +33,8 @@ type State = {
   name: string;
   favColor: ColorKey;
   motherColor: MotherColor;
-  favFood?: string;
-  toyOrder: ToyId[]; // role index -> toy
+  favFood?: string | undefined;
+  toyOrder: [ToyId, ToyId, ToyId, ToyId, ToyId]; // role index -> toy
   cordura: number;
   lightsOn: boolean;
   interactive: boolean;
@@ -44,12 +44,12 @@ type State = {
   flicker: number;
   shadowPass: number;
   queue: Line[];
-  line?: Line;
+  line?: Line | undefined;
   objective: string;
   objectiveOpen: boolean;
   muted: boolean;
   facts: Facts;
-  finalCordura?: number;
+  finalCordura?: number | undefined;
   // checkpoints
   ch1: ToyId[];
   ch2Items: string[];
@@ -84,7 +84,7 @@ const initial = (): Omit<State, "muted"> => ({
   favColor: "rose",
   motherColor: (["plum", "navy", "mustard"] as MotherColor[])[Math.floor(Math.random() * 3)],
   favFood: undefined,
-  toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]),
+  toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]) as State["toyOrder"],
   cordura: 0,
   lightsOn: true,
   interactive: false,
