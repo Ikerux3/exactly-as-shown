@@ -817,8 +817,12 @@ function PajamaCh5() {
     setSelected(null);
     sfx("open");
   };
-  const SLOTS = [
-    { x: 6, y: 64 }, { x: 38, y: 70 }, { x: 68, y: 62 }, { x: 16, y: 80 }, { x: 50, y: 82 }, { x: 74, y: 78 },
+  // Each wall has its own resting places so the four views never look alike.
+  const SLOTS: { x: number; y: number }[][] = [
+    [{ x: 6, y: 64 }, { x: 38, y: 70 }, { x: 64, y: 56 }],
+    [{ x: 58, y: 74 }, { x: 14, y: 58 }, { x: 34, y: 80 }],
+    [{ x: 70, y: 66 }, { x: 40, y: 54 }, { x: 10, y: 76 }],
+    [{ x: 22, y: 70 }, { x: 62, y: 80 }, { x: 46, y: 60 }],
   ];
   const byWall = ([0, 1, 2, 3] as const).map((wall) =>
     pile.filter((g) => pajamaWall(PAJAMA_PIECES.findIndex((i) => i.kind === g.kind), PAJAMA_COLORS.indexOf(g.color)) === wall),
@@ -839,7 +843,7 @@ function PajamaCh5() {
           <span className="absolute -top-2 left-1/2 h-4 w-14 -translate-x-1/2 rotate-2" style={{ background: "var(--c-" + s.favColor + ")", opacity: 0.85 }} />
           <p className="font-hand text-[clamp(13px,4cqw,17px)] leading-tight" aria-live="polite">{message}</p>
           <p className="mt-0.5 font-crayon text-[10px] uppercase tracking-widest opacity-60">
-            {allWorn ? `${leftOver} left on the floor` : `wearing ${worn.length}/3`} · turn around
+            {allWorn ? `${leftOver} left on the floor · basket is at the front` : `wearing ${worn.length}/3`} · turn around
           </p>
         </div>
       </div>
@@ -849,7 +853,7 @@ function PajamaCh5() {
             const used = g.color === s.favColor && worn.includes(g.kind);
             const away = inBasket.includes(g.id);
             if (used || away) return null;
-            const slot = SLOTS[i % SLOTS.length]!;
+            const slot = SLOTS[wall]![i % 3]!;
             const img = PROP3[g.kind];
             const tint = "var(--c-" + g.color + ")";
             return (
@@ -885,7 +889,8 @@ function PajamaCh5() {
           })}
         </OnWall>
       ))}
-      {/* the laundry basket follows you round the room */}
+      {/* the laundry basket stands by the front wall */}
+      <OnWall n={0}>
       <button
         type="button"
         onClick={basket}
@@ -899,6 +904,7 @@ function PajamaCh5() {
         <img src={PROP3.basket} alt="" className="prop relative w-full" />
         {inBasket.length > 0 && <span className="absolute bottom-[8%] left-1/2 -translate-x-1/2 font-crayon text-xs text-paper drop-shadow">{inBasket.length}</span>}
       </button>
+      </OnWall>
     </Stage>
   );
 }
