@@ -1,15 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BG, toyImageFor } from "../assets";
+import { BG } from "../assets";
 import {
   CHAPTER_TITLE,
   COLOR_LABEL,
   MOTHER_LABEL,
-  TOY_LABEL,
   forgetMemory,
   loadMemory,
   loadSave,
   sanitizeName,
-  saveMemory,
   useGame,
   type ColorKey,
   type Screen,
@@ -573,87 +571,6 @@ export function Final() {
           )}
         </>
       )}
-    </Shell>
-  );
-}
-
-/* ---------------- ENDING ---------------- */
-
-export function Ending() {
-  const s = useGame();
-  const c = s.finalCordura ?? s.cordura;
-  const crying = c >= 65;
-  const toy = s.favToyVisualSlot ?? s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
-  useEffect(() => {
-    const m = loadMemory();
-    saveMemory({
-      runs: (m.runs || 0) + 1,
-      lastName: s.name,
-      lastToy: toy,
-      lastEnding: crying ? "crying" : "composed",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const again = () => {
-    unlockAudio();
-    sfx("chime");
-    resetOnce();
-    s.newRun();
-    s.go("intro");
-  };
-  return (
-    <Shell bars={false}>
-      <img
-        src={BG.bgHallway}
-        alt=""
-        className="scene-bg"
-        style={{ objectPosition: "55% 50%", filter: "saturate(1.1)" }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at 60% 45%, oklch(0.85 0.12 75 / .35), transparent 60%)",
-        }}
-      />
-      <GuestVoid style={{ left: "1%", top: "6%", height: "74%" }} intensity={0.5} />
-      {/* your toy stays behind, in the room with no light */}
-      <img
-        src={toyImageFor(toy, s.favToyVisualSlot, s.favToyImage)}
-        alt=""
-        className="absolute left-[12%] top-[34%] w-[15%] drop-shadow-xl"
-        style={{ filter: "brightness(.55) saturate(.6)" }}
-      />
-      <div className="absolute inset-x-[6%] bottom-[5%] paper animate-float-up p-5">
-        <p className="font-hand text-xs uppercase tracking-widest opacity-60">
-          {crying ? "Ending — Tears" : "Ending — Brave"}
-        </p>
-        <p className="mt-2 font-display text-[clamp(15px,4.4cqw,17px)] leading-snug">
-          {crying
-            ? `Mommy finds ${s.name || "you"} in the hall, crying too hard to speak. She holds on and doesn't ask. She doesn't need to. She can see it in your eyes.`
-            : `Mommy finds ${s.name || "you"} in the hall, pale but standing. "Were you good?" You nod. You don't tell her about the room upstairs.`}
-        </p>
-        <p className="mt-3 text-sm opacity-70">
-          Behind you, in the room with no light, something sets out {s.favFood ?? "dinner"} beside{" "}
-          {s.favToy ?? `the ${TOY_LABEL[toy]}`}.
-        </p>
-        <p className="mt-3 text-xs opacity-60">Cordura at bedtime: {c}</p>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            className="stitch-btn"
-            onClick={() => {
-              s.newRun();
-              s.go("title");
-            }}
-          >
-            Menu
-          </button>
-          <button type="button" className="stitch-btn sage" onClick={again}>
-            Play again
-          </button>
-        </div>
-      </div>
     </Shell>
   );
 }

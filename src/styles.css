@@ -450,3 +450,12 @@
 .wall-arrow.left-1 { rotate: -3deg; }
 .wall-arrow.right-1 { rotate: 3deg; }
 .wall-arrow:active { scale: .92; opacity: 1; }
+
+/* ===== Ending films: little puppet gestures ===== */
+.cut-nod { animation: cut-nod 0.5s ease-in-out 2; }
+.cut-shiver { animation: cut-shiver 0.13s linear infinite alternate; }
+.paper-tear { position: absolute; width: 9%; aspect-ratio: 2 / 3; opacity: 0; animation: tear-fall 1.25s ease-in infinite; }
+@keyframes cut-nod { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(2.5%) rotate(1deg); } }
+@keyframes cut-shiver { from { transform: rotate(-1.4deg); } to { transform: rotate(1.4deg) translateX(1%); } }
+@keyframes tear-fall { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(260%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cut-shiver { animation: none; } }
