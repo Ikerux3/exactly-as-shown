@@ -32,3 +32,12 @@ export function preloadArt() {
   // Let the title screen paint first, then fetch the rest in the background.
   setTimeout(load, 600);
 }
+import cutPlate from "@/assets/cut-plate.png";
+import cutGlass from "@/assets/cut-glass.png";
+import cutCutlery from "@/assets/cut-cutlery.png";
+import cutDoor from "@/assets/cut-door.jpg";
+import cutDrawer from "@/assets/cut-drawer.jpg";
+import cutToybox from "@/assets/cut-toybox.png";
+import cutCushion from "@/assets/cut-cushion.png";
+import cutClock from "@/assets/cut-clock.png";
+export const PROP = { plate: cutPlate, glass: cutGlass, cutlery: cutCutlery, door: cutDoor, drawer: cutDrawer, toybox: cutToybox, cushion: cutCushion, clock: cutClock };
