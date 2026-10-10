@@ -51,7 +51,8 @@ function allowedMentions(data: z.infer<typeof requestSchema>): string[] {
       data.lightToggles > 5 ? `${data.lightToggles} light changes` : undefined,
     ],
   } satisfies Record<(typeof QUESTION_KINDS)[number], Array<string | undefined>>;
-  return byKind[data.kind].filter((value): value is string => !!value && value.length <= 40);
+  const values: Array<string | undefined> = byKind[data.kind];
+  return values.filter((value): value is string => !!value && value.length <= 40);
 }
 
 export const generateAdaptiveQuestionAI = createServerFn({ method: "POST" })
