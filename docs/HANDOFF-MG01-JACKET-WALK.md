@@ -24,3 +24,13 @@ Cambio: guardar checkpoint tras cada recogida completada, incluyendo fuga y recu
 PROBADO: TypeScript PASS; Vitest 67/67 en 17 archivos PASS; build PASS. Nuevas regresiones para Continue antes/después de recuperar el elefante y guardados anteriores sin toyEscape.
 La causa observada por MJ en su dispositivo no se ha reproducido directamente. QA visual anterior conservada; esta revisión se verificó con tests de persistencia, sin nuevo QA visual ni despliegue público.
 Drive no usado. Siguiente paso: comprobar URL pública actualizada y partida nueva/Continuar en móvil físico.
+
+## MJ — pared detrás de chaqueta y baúl fijo (2026-10-10)
+Base: 3c10012cb909ba224d5583890a9d39dacf77103a. Responsable Codex; main autorizada.
+- Sustituido parche desplazado por clean plate del fondo original: solo se revela la región detrás de chaqueta; resto de imagen de Iker intacta. Nuevo asset src/assets/bg-playroom-2-clean.avif (37 KB).
+- Baúl renderizado exclusivamente en OnWall 0, su primera sala. Recogida y salida en otras paredes no se animan hacia un baúl inexistente. Conservada fuga única y recuperación persistente.
+- PROBADO: TypeScript PASS, Vitest 67/67 (17 archivos) PASS, build PASS. Regresión comprueba que el baúl desaparece al girar y está al volver.
+- QA: Edge móvil 390x844 táctil, pared reconstruida visible, muñeco detrás de chaqueta, otro en suelo/huellas, sin baúl en pared 2, paseo y recuperación del elefante, cero pageerrors.
+- Imagen editada con herramienta integrada imagegen. Prompt: quitar solo chaqueta/percha y reconstruir papel floral y molduras de madera, conservando puerta, suelo, encuadre y luz. Original conservado; versión optimizada en AVIF.
+- URL pública solicitada https://dusk-house-tales.lovable.app. PENDIENTE: verificar publicación de versión nueva en Lovable; push a GitHub no confirma deployment.
+- Drive no usado. Siguiente paso: actualizar publicación de Lovable y confirmar en móvil físico.

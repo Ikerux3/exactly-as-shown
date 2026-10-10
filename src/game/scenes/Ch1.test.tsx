@@ -29,7 +29,7 @@ vi.mock("../fx", () => ({ JumpScare: () => null }));
 vi.mock("../DialogueVoice", () => ({ useSpokenPrompt: vi.fn() }));
 vi.mock("../ai/questions", () => ({ adaptiveQuestion: vi.fn(), currentQuestionContext: vi.fn(), offlineAdaptiveQuestion: vi.fn() }));
 vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", WALLS: { room: ["room", "window", "coat", "shelves"] }, PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
-vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => null }));
+vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => <div data-testid="toybox" /> }));
 import { Ch1 } from "./Ch1Ch2";
 import { saveCheckpoint } from "../store";
 
@@ -80,6 +80,7 @@ describe("MG01 first pickup escape", () => {
 
   it("accepts one action for repeated taps, remembers its wall, recovers once and preserves it after remount", () => {
     const view = render(<Ch1 />);
+    expect(screen.getByTestId("toybox")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Pick up the bear" });
     fireEvent.click(button); fireEvent.click(button);
     act(() => vi.advanceTimersByTime(220));
@@ -87,8 +88,10 @@ describe("MG01 first pickup escape", () => {
     expect(model.state.ch1).toEqual([]);
     expect(model.state.observeChoice).toHaveBeenCalledTimes(1);
     turn();
+    expect(screen.queryByTestId("toybox")).toBeNull();
     expect(screen.queryByRole("button", { name: "Pick up the escaped bear" })).toBeNull();
     turn(3);
+    expect(screen.getByTestId("toybox")).toBeInTheDocument();
     pick("Pick up the escaped bear");
     expect(model.state.ch1).toEqual(["bear"]);
     expect(model.state.toyEscape.recovered).toBe(true);

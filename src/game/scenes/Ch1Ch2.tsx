@@ -1,3 +1,4 @@
+import cleanJacketWall from "../../assets/bg-playroom-2-clean.avif";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OnWall, Stage, useWall } from "../Stage";
 import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
@@ -24,7 +25,7 @@ function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect 
   return (
     <div className={`absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2 ${walking ? "mg01-exit-and-walk" : ""}`}
       data-toy={toy} data-wall={wall}
-      style={{ left: x + "%", top: y + "%", "--box-dx": `${76 - x}cqw`, "--box-dy": `${(82 - y) * 1.5}cqw`,
+      style={{ left: x + "%", top: y + "%", "--box-dx": `${wall === 0 ? 76 - x : 0}cqw`, "--box-dy": `${wall === 0 ? (82 - y) * 1.5 : 0}cqw`,
         animationDelay: walking ? `${walkDelay}s, ${walkDelay + 0.7}s` : undefined,
         animationPlayState: s.lightsOn && !s.paused && s.interactive && !flying ? "running" : "paused" } as CSSProperties}>
       <button type="button" aria-label={`Pick up ${walking ? "the escaped " : "the "}${label}`}
@@ -132,8 +133,8 @@ export function Ch1() {
       <div aria-live="polite" className="pointer-events-none absolute bottom-[3%] left-[8%] right-[8%] z-40 rounded bg-void/70 px-2 py-1 text-xs text-paper">
         {s.toyEscape && !s.toyEscape.recovered ? "The first toy walked away! It is still on the same wall. Turn the light on to pick it up." : "Find toys on every wall. Two are by the door and jacket."}
       </div>
-      <ToyBox style={{ position: "absolute", left: "61%", top: "74.5%", width: "30%" }} glow={!!flying} />
       <OnWall n={0}>
+        <ToyBox style={{ position: "absolute", left: "61%", top: "74.5%", width: "30%" }} glow={!!flying} />
         {toy(r1, 0)}
         <div className="pointer-events-none absolute left-[34%] top-[73%] z-[41] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40" aria-hidden />
       </OnWall>
@@ -161,7 +162,7 @@ export function Ch1() {
         {jacketMoved && <div aria-hidden className="pointer-events-none absolute inset-0 z-20"
           style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
             }}>
-          <img src={WALLS[BG.bgPlayroom]?.[2]} alt="" className="scene-bg" style={{ objectPosition: "0% 50%", transform: "translateX(20%)" }} />
+          <img src={cleanJacketWall} alt="" className="scene-bg" style={{ objectPosition: "25% 50%" }} />
         </div>}
         {toy(r4, 3, jacketMoved)}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] transition-transform duration-500 motion-reduce:transition-none"
