@@ -6,6 +6,7 @@ import { preloadArt } from "@/game/assets";
 import { Ending, Final, Intro, Title } from "@/game/scenes/Opening";
 import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
+import { HOLD_MS, TransitionVeil, useChapterJump } from "@/game/fx";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,6 +33,7 @@ function Game() {
     document.addEventListener("touchmove", prevent, { passive: false });
     return () => document.removeEventListener("touchmove", prevent);
   }, []);
+  const holding = useChapterJump();
   const k = `${screen}-${phaseKey}`;
   return (
     <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -45,6 +47,13 @@ function Game() {
       {screen === "ch5" && <Ch5 key={k} />}
       {screen === "final" && <Final />}
       {screen === "ending" && <Ending />}
+      <TransitionVeil screen={screen} />
+      {holding && (
+        <div className="paper fixed bottom-4 left-1/2 z-[110] -translate-x-1/2 px-4 py-2 text-sm">
+          Saltando al capítulo {holding}…
+          <div className="mt-1 h-1 bg-crimson" style={{ animation: `grow ${HOLD_MS}ms linear forwards`, transformOrigin: "left" }} />
+        </div>
+      )}
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { GuestVoid, LightSwitch } from "./Props";
 import { setUnease, sfx } from "./audio";
 import { ChapterCard } from "./kit";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
+import { SanityFX } from "./fx";
 
 // Shared flashlight position (percent of frame) so scenes can test illumination.
 export const light = { x: 50, y: 55 };
@@ -117,6 +118,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       )}
 
       <div className="absolute inset-0 z-10">{children}</div>
+      <SanityFX bg={bg} bgPos={bgPos} />
 
       {guest?.show && !s.lightsOn && (
         <GuestVoid style={{ left: `${guest.x}%`, top: `${guest.y}%`, height: `${guest.h}%`, transform: "translate(-50%, 0)", zIndex: 25 }} intensity={0.95} />

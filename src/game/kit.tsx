@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CHAPTER_TITLE, useGame, type Line } from "./store";
+import { Ransom } from "./fx";
 
 const done = new Set<string>();
 export function resetOnce() { done.clear(); }
@@ -27,10 +28,10 @@ export function ChapterCard({ n }: { n: number }) {
   }, [n]);
   if (!show) return null;
   return (
-    <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-void/80 animate-out fade-out duration-700 [animation-delay:1.9s] [animation-fill-mode:forwards]">
-      <div className="text-center animate-float-up">
-        <p className="font-hand text-sm uppercase tracking-[0.4em] text-muted-foreground">Chapter {n}</p>
-        <p className="title-word mt-2 text-3xl text-paper">{CHAPTER_TITLE[n]}</p>
+    <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-void/90 animate-out fade-out duration-700 [animation-delay:1.9s] [animation-fill-mode:forwards]">
+      <div className="px-6 text-center animate-float-up">
+        <p className="font-crayon text-xl text-crimson">chapter {n}</p>
+        <div className="mt-3 text-3xl"><Ransom text={CHAPTER_TITLE[n] ?? ""} seed={n * 13} /></div>
       </div>
     </div>
   );

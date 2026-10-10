@@ -64,15 +64,15 @@ export function DialogueBar({ right }: { right?: ReactNode }) {
           aria-live="polite"
           aria-label={`${line.text} — tap to continue`}
         >
-          {line.speaker !== "narrator" && <span className="dialogue-label">{SPEAKER[line.speaker]}</span>}
+          {line.speaker !== "narrator" && <span className="speaker-tag dialogue-label">{SPEAKER[line.speaker]}</span>}
           <span key={line.text} className="block animate-float-up">{line.text}</span>
         </button>
       ) : (
-        <div className="subtitle dialogue-panel" aria-live="polite">
+        <div className={`subtitle dialogue-panel ${objective ? "" : "is-empty"}`} aria-live="polite">
           {objective && (
             <>
-              <span className="dialogue-label text-honey">Mommy's list</span>
-              <span key={objective} className="block font-hand text-[1.05em] leading-snug text-paper/90 animate-float-up">{objective}</span>
+              <span className="speaker-tag dialogue-label">Mommy's list</span>
+              <span key={objective} className="block leading-snug animate-float-up">{objective}</span>
             </>
           )}
         </div>
