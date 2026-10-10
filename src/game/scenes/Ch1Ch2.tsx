@@ -394,10 +394,11 @@ export function Ch2Dining() {
         </div>
       )}
       {/* Tray */}
-      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact)" }}>
+      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact)" }}>
+        {/* fixed slot width: pieces keep their size as the tray empties */}
         {(s.ch2Items as ItemId[]).filter((i) => !placed.includes(i)).map((i) => (
           <button key={i} onClick={() => { sfx("tap"); setSel(sel === i ? null : i); }} aria-label={`Pick ${i}`}
-            className={`h-full flex-1 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}>
+            className={`h-full w-[15.5%] shrink-0 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}>
             <ItemArt id={i} className="mx-auto w-[85%]" />
           </button>
         ))}

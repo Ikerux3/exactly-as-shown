@@ -53,11 +53,6 @@ export function Title() {
             <Ransom text="BACK" seed={21} />
           </span>
         </h1>
-        {panel === "menu" && (
-          <p className="mx-auto mt-6 max-w-[16rem] font-hand text-base text-paper/85 drop-shadow">
-            {mem.runs > 0 ? "The house remembers you." : "Be good while she's gone. It won't take long."}
-          </p>
-        )}
       </div>
 
       {panel === "menu" && (
@@ -83,7 +78,6 @@ export function Title() {
             <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("how")}>How to play</button>
             <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("settings")}>Settings</button>
           </div>
-          <p className="mt-1 text-center font-hand text-xs text-paper/60">Psychological horror · best with sound · subtitles always on</p>
         </nav>
       )}
 

@@ -151,14 +151,14 @@ export function GuestVoid({ style, intensity = 1 }: { style?: CSSProperties; int
   );
 }
 
-export function LightSwitch({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+export function LightSwitch({ on, onToggle, disabled, hint }: { on: boolean; onToggle: () => void; disabled?: boolean; hint?: boolean | undefined }) {
   return (
     <button
       onClick={onToggle}
       disabled={disabled}
       aria-label={on ? "Turn the lights off" : "Turn the lights on"}
       aria-pressed={on}
-      className="relative h-full shrink-0 aspect-[3/4] transition-[transform,opacity] active:scale-95 disabled:opacity-40"
+      className={`relative h-full shrink-0 aspect-[3/4] transition-[transform,opacity] active:scale-95 disabled:opacity-40 ${hint && !disabled ? "switch-hint" : ""}`}
     >
       <svg viewBox="0 0 60 80" className="h-full w-full drop-shadow-lg" aria-hidden>
         <rect x="4" y="4" width="52" height="72" rx="8" fill="var(--paper-deep)" stroke="var(--brass)" strokeWidth="3" />
