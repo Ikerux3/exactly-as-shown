@@ -168,7 +168,15 @@ export function Stage({
       frameRef={frame}
       frameClassName={`${unstable ? "unstable" : ""} ${s.lightsOn ? "" : "lights-off"} ${s.cordura >= 50 ? "warp" : ""}`}
       onFramePointer={move}
-      onFrameDown={(e: React.PointerEvent) => { swipe.current = { x: e.clientX, y: e.clientY, t: Date.now() }; }}
+      onFrameDown={(e: React.PointerEvent) => {
+        // Don't turn walls when the player is tapping or dragging an actual control.
+        const target = e.target as Element;
+        if (target.closest("button, input, textarea, select, [role='button']")) {
+          swipe.current = null;
+          return;
+        }
+        swipe.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+      }}
       onFrameUp={(e: React.PointerEvent) => {
         const s0 = swipe.current;
         swipe.current = null;
