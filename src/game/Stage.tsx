@@ -56,7 +56,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
     const id = window.setInterval(() => {
       const st = useGame.getState();
       setUnease(st.cordura, chapter);
-      if (!st.interactive || st.scare || st.line || st.paused) return;
+      if (!st.interactive || st.scare || st.line || st.paused || st.forcedBlackout) return;
       if (!st.lightsOn) {
         darkAcc.current += 1;
         st.fact({ darkSeconds: st.facts.darkSeconds + 1 });
@@ -78,7 +78,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
         const st = useGame.getState();
         const checkpoint = st.screen === "ch2d" ? "ch2k" : st.screen;
         st.set({
-          screen: checkpoint, scare: false, cordura: 50, lightsOn: true,
+          screen: checkpoint, scare: false, forcedBlackout: false, cordura: 50, lightsOn: true,
           phaseKey: st.phaseKey + 1, scareArmed: true, line: undefined, queue: [],
           interactive: false,
           ...(checkpoint === "ch1" ? { ch1: [] } : {}),
