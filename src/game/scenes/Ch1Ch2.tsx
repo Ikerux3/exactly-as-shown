@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
 import { FOURTH_TOY_LANDINGS, KITCHEN_WALLS, TOY_ESCAPE_SPOTS, shouldReleaseFourthToy } from "../roomLayout";
-import { BG, PROP, toyImageFor } from "../assets";
-import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
+import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, toyImageFor } from "../assets";
+import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
@@ -398,19 +398,30 @@ const ITEMS: ItemId[] = [
   "glass-mother",
   "cutlery-mother",
 ];
-const UNITS: {
-  kind: "door" | "drawer";
-  x: number;
-  y: number;
-  w: number;
-  contents: (ItemId | "decoy-plate" | "decoy-glass")[];
-}[] = [
-  { kind: "door", x: 3, y: 60, w: 21, contents: ["plate-mother", "decoy-plate"] },
-  { kind: "door", x: 26, y: 60, w: 21, contents: ["glass-child"] },
-  { kind: "door", x: 49, y: 60, w: 21, contents: ["decoy-glass", "cutlery-mother"] },
-  { kind: "drawer", x: 73, y: 61, w: 24, contents: ["cutlery-child", "plate-child"] },
-  { kind: "drawer", x: 73, y: 77, w: 24, contents: ["glass-mother"] },
+type Junk = "junk-clock" | "junk-key" | "junk-brush" | "junk-box";
+type Content = ItemId | Junk;
+const JUNK_IMG: Record<Junk, string> = {
+  "junk-clock": PROP.clock,
+  "junk-key": PROP2.key,
+  "junk-brush": PROP2.toothbrush,
+  "junk-box": MUSICBOX,
+};
+const UNITS: { kind: "door" | "drawer"; x: number; y: number; w: number }[] = [
+  { kind: "door", x: 3, y: 60, w: 21 },
+  { kind: "door", x: 26, y: 60, w: 21 },
+  { kind: "door", x: 49, y: 60, w: 21 },
+  { kind: "drawer", x: 73, y: 61, w: 24 },
+  { kind: "drawer", x: 73, y: 77, w: 24 },
 ];
+
+function shuffle<T>(a: T[]): T[] {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j]!, b[i]!];
+  }
+  return b;
+}
 
 function useColors() {
   const s = useGame();
@@ -428,36 +439,98 @@ export function ItemArt({ id, big, className }: { id: string; big?: boolean; cla
       {kind === "plate" && <Plate color={color} big={big} style={style} />}
       {kind === "glass" && <Glass color={color} big={big} style={style} />}
       {kind === "cutlery" && <Cutlery color={color} big={big} style={style} />}
-      {kind === "decoy" &&
-        (owner === "plate" ? (
-          <Plate color="var(--wood-light)" big style={style} />
-        ) : (
-          <Glass color="var(--wood-light)" big style={style} />
-        ))}
+      {kind === "junk" && (
+        <img src={JUNK_IMG[id as Junk]} alt="" className="prop w-full" style={{ filter: "sepia(.4) contrast(1.15)" }} />
+      )}
     </div>
   );
 }
 
+const itemLabel = (id: ItemId, name: string) => {
+  const [kind, owner] = id.split("-") as [ItemKind, Owner];
+  const k = kind === "cutlery" ? "fork & spoon" : kind;
+  return owner === "child" ? `${name}'s ${k}` : `Mommy's ${k}`;
+};
+
+/** Kitchen: Mommy's list only shows in the dark, it can change, and the cupboards bite back. */
 export function Ch2Kitchen() {
   const s = useGame();
+  const nm = s.name || "baby";
   const [open, setOpen] = useState<number[]>([]);
-  useSceneIntro("ch2k", "Find your plate, glass and cutlery — and Mommy's.", [
+  const [setup] = useState(() => {
+    const order = shuffle(ITEMS);
+    const list = order.slice(0, 4);
+    const pool = order.slice(4);
+    const stuff: Content[] = shuffle<Content>([...ITEMS, "junk-clock", "junk-key", "junk-brush", "junk-box"]);
+    const contents: Content[][] = UNITS.map(() => []);
+    stuff.forEach((c, i) => contents[i % UNITS.length]!.push(c));
+    return { list, pool, contents: shuffle(contents), trap: Math.floor(Math.random() * UNITS.length) };
+  });
+  const [list, setList] = useState<ItemId[]>(setup.list);
+  const [changed, setChanged] = useState(false);
+  const [scare, setScare] = useState<string | null>(null);
+  const trapSprung = useRef(false);
+  useSceneIntro("ch2k", "Mommy left a list. You can only read it with the light off.", [
     { speaker: "narrator", text: "The kitchen. Everything is put away in the cupboards." },
+    { speaker: "mimic", text: `I left you a list, ${nm}. Turn off the light to read it.` },
   ]);
-  const remaining = ITEMS.filter((i) => !s.ch2Items.includes(i));
-  const cupboardWall = KITCHEN_WALLS;
-  const take = (it: string) => {
-    if (!s.lightsOn || !s.interactive) return; // cannot collect dishes in darkness
-    if (it.startsWith("decoy")) {
+  const got = s.ch2Items as ItemId[];
+  const done = list.every((i) => got.includes(i));
+
+  const take = (it: Content) => {
+    if (!s.interactive || scare) return;
+    if (!s.lightsOn) {
+      s.say({ speaker: "narrator", text: "Too dark to grab anything. Turn the light back on.", ms: 2000 });
+      return;
+    }
+    if (it.startsWith("junk")) {
+      s.mistake();
+      s.addCordura(12);
+      setScare(Math.random() < 0.5 ? SCARE.face1 : SCARE.face2);
+      return;
+    }
+    const id = it as ItemId;
+    if (!list.includes(id)) {
       sfx("wrong");
       s.mistake();
-      s.say({ speaker: "narrator", text: "That one's far too big. It isn't for you.", ms: 2000 });
+      s.addCordura(4);
+      s.say({ speaker: "guest", text: "That's not on the list. Read it again.", ms: 2200 });
       return;
     }
     sfx("chime");
-    s.observeChoice(it.replace("-", " for "));
-    s.set({ ch2Items: [...s.ch2Items, it] });
+    s.observeChoice(id.replace("-", " for "));
+    const next = [...got, id];
+    s.set({ ch2Items: next });
+    // Halfway through, the list rewrites itself.
+    if (!changed && next.length === 2) {
+      setChanged(true);
+      const left = list.filter((i) => !next.includes(i));
+      const out = left[Math.floor(Math.random() * left.length)];
+      const inn = setup.pool[0];
+      if (out && inn) {
+        window.setTimeout(() => {
+          sfx("whisper");
+          useGame.getState().set({ flicker: Date.now() });
+          setList((l) => l.map((i) => (i === out ? inn : i)));
+          useGame.getState().say({ speaker: "guest", text: "Mommy changed her mind. Check the list again.", ms: 3000 });
+        }, 700);
+      }
+    }
   };
+
+  const toggle = (i: number, kind: string) => {
+    if (!s.interactive || scare) return;
+    sfx("open");
+    const isOpen = open.includes(i);
+    if (!isOpen) s.inspect(`kitchen ${kind} ${i + 1}`);
+    setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]);
+    if (!isOpen && i === setup.trap && !trapSprung.current) {
+      trapSprung.current = true;
+      s.addCordura(8);
+      window.setTimeout(() => setScare(SCARE.face2), 180);
+    }
+  };
+
   return (
     <Stage
       bg={BG.bgKitchen}
@@ -465,24 +538,24 @@ export function Ch2Kitchen() {
       bgPos="50% 50%"
       chapter={2}
       chapterCard
-      progress={`Tray ${s.ch2Items.length}/6`}
-      clues={UNITS.map((u, i) =>
-        u.contents.some((c) => remaining.includes(c as ItemId)) && !open.includes(i) ? (
-          <OnWall key={i} n={cupboardWall[i] ?? 0}>
-          <div
-            className="glow-clue absolute rounded-md border-2 border-current"
-            style={{
-              left: cupboardWall[i] === 0 ? `${u.x}%` : "32%",
-              top: `${u.y}%`,
-              width: cupboardWall[i] === 0 ? `${u.w}%` : "37%",
-              height: u.kind === "door" ? "17.5%" : "9.7%",
-            }}
-          />
-          </OnWall>
-        ) : null,
-      )}
+      progress={`List ${list.filter((i) => got.includes(i)).length}/${list.length}`}
+      switchHint={got.length === 0}
+      clues={
+        <div className="absolute left-[8%] right-[8%] top-[7%] -rotate-2 px-3 py-2 font-crayon list-scrawl">
+          <p className="text-[clamp(12px,4cqw,16px)] uppercase tracking-wider opacity-80">Mommy's list</p>
+          <ul className="mt-1 space-y-0.5 text-[clamp(15px,5.2cqw,22px)] leading-tight">
+            {list.map((i, n) => (
+              <li key={i} style={{ rotate: `${(n % 2 ? 1 : -1) * 1.5}deg`, textDecoration: got.includes(i) ? "line-through" : undefined, opacity: got.includes(i) ? 0.45 : 1 }}>
+                <span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: i.endsWith("child") ? `var(--c-${s.favColor})` : `var(--c-${s.motherColor})` }} />
+                {itemLabel(i, nm)}
+              </li>
+            ))}
+          </ul>
+          {changed && <p className="mt-1 text-xs opacity-70">(she crossed something out)</p>}
+        </div>
+      }
+      above={scare ? <JumpScare img={scare} onDone={() => setScare(null)} /> : null}
     >
-      {/* cabinet body the doors and drawers are set into */}
       <div
         className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
         style={{
@@ -492,120 +565,81 @@ export function Ch2Kitchen() {
       />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
-        const isFront = cupboardWall[i] === 0;
-        const toggle = () => {
-          sfx("open");
-          if (!isOpen) s.inspect(`kitchen ${u.kind} ${i + 1}`);
-          setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]);
-        };
+        const wallN = KITCHEN_WALLS[i] ?? 0;
+        const isFront = wallN === 0;
         const aspect = u.kind === "door" ? "4 / 5" : "12 / 7";
+        const left = (setup.contents[i] ?? []).filter((c) => !got.includes(c as ItemId));
         return (
-          <OnWall key={i} n={cupboardWall[i] ?? 0}>
-          <div
-            className="absolute"
-            style={{ left: isFront ? `${u.x}%` : "32%", top: `${u.y}%`, width: isFront ? `${u.w}%` : "37%", zIndex: isOpen ? 5 : 1 }}
-          >
-            {!isOpen ? (
-              <button
-                aria-label="Open the cupboard"
-                className="block w-full"
-                style={{ aspectRatio: aspect, touchAction: "manipulation" }}
-                onClick={toggle}
-              >
-                <Cupboard
-                  kind={u.kind}
-                  open={false}
-                  style={{ width: "100%", height: "100%", display: "block" }}
-                />
-              </button>
-            ) : (
-              <div className="relative w-full" style={{ aspectRatio: aspect }}>
-                {/* the door / drawer front, swung clear of the opening — tap it to close */}
-                {u.kind === "door" ? (
-                  <button
-                    aria-label="Close the cupboard"
-                    onClick={toggle}
-                    className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
-                    style={{
-                      backgroundImage: `url(${PROP.door})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "right center",
-                      filter: "brightness(.7) sepia(.3)",
-                      boxShadow: "var(--shadow-contact)",
-                    }}
-                  />
-                ) : (
-                  <button
-                    aria-label="Close the drawer"
-                    onClick={toggle}
-                    className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
-                    style={{
-                      backgroundImage: `url(${PROP.drawer})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      filter: "sepia(.3)",
-                      boxShadow: "var(--shadow-contact)",
-                    }}
-                  ></button>
-                )}
-                {/* interior with contents, always on top and tappable */}
-                <div
-                  className={`absolute inset-0 flex items-center justify-around gap-1 rounded p-1.5 ${u.kind === "door" ? "flex-col" : ""}`}
-                  style={{
-                    background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))",
-                    boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)",
-                  }}
+          <OnWall key={i} n={wallN}>
+            <div
+              className="absolute"
+              style={{ left: isFront ? `${u.x}%` : "32%", top: `${u.y}%`, width: isFront ? `${u.w}%` : "37%", zIndex: isOpen ? 5 : 1 }}
+            >
+              {!isOpen ? (
+                <button
+                  aria-label="Open the cupboard"
+                  className="block w-full"
+                  style={{ aspectRatio: aspect, touchAction: "manipulation" }}
+                  onClick={() => toggle(i, u.kind)}
                 >
-                  {u.kind === "door" && (
-                    <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 bg-wood-light" />
+                  <Cupboard kind={u.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
+                </button>
+              ) : (
+                <div className="relative w-full" style={{ aspectRatio: aspect }}>
+                  {u.kind === "door" ? (
+                    <button
+                      aria-label="Close the cupboard"
+                      onClick={() => toggle(i, u.kind)}
+                      className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
+                      style={{ backgroundImage: `url(${PROP.door})`, backgroundSize: "cover", backgroundPosition: "right center", filter: "brightness(.7) sepia(.3)", boxShadow: "var(--shadow-contact)" }}
+                    />
+                  ) : (
+                    <button
+                      aria-label="Close the drawer"
+                      onClick={() => toggle(i, u.kind)}
+                      className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
+                      style={{ backgroundImage: `url(${PROP.drawer})`, backgroundSize: "cover", backgroundPosition: "center", filter: "sepia(.3)", boxShadow: "var(--shadow-contact)" }}
+                    />
                   )}
-                  {u.contents
-                    .filter((c) => !s.ch2Items.includes(c))
-                    .map((c) => (
+                  <div
+                    className={`absolute inset-0 flex flex-wrap items-center justify-around gap-0.5 rounded p-1 ${u.kind === "door" ? "content-around" : ""}`}
+                    style={{ background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))", boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)" }}
+                  >
+                    {i === setup.trap && (
+                      <img src={SCARE.face2} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-screen grayscale" />
+                    )}
+                    {left.map((c) => (
                       <button
                         key={c}
                         onClick={() => take(c)}
-                        aria-label={
-                          c.startsWith("decoy")
-                            ? "A very large dish"
-                            : `Take ${c.replace("-", " for ")}`
-                        }
-                        style={{ minWidth: 44, minHeight: 44, touchAction: "manipulation" }}
-                        className={`relative z-10 grid place-items-center ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}
+                        aria-label={c.startsWith("junk") ? "Something that isn't a dish" : `Take ${c.replace("-", " for ")}`}
+                        style={{ minWidth: 40, minHeight: 40, touchAction: "manipulation" }}
+                        className="relative z-10 grid w-[44%] place-items-center"
                       >
-                        <ItemArt id={c} big={c.startsWith("decoy")} />
+                        <ItemArt id={c} />
                       </button>
                     ))}
-                  {u.contents.every((c) => s.ch2Items.includes(c) || c.startsWith("decoy")) &&
-                    u.contents.every((c) => !c.startsWith("decoy") || false) && (
-                      <span className="font-hand text-xs text-paper/50">empty</span>
-                    )}
+                    {left.length === 0 && <span className="font-hand text-xs text-paper/50">empty</span>}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </OnWall>
         );
       })}
-      {/* Tray */}
+      {/* Tray: only what you've collected — the list itself lives in the dark */}
       <div
         className="absolute left-[4%] right-[4%] top-[47%] flex h-[10%] items-center gap-1 rounded-lg px-2"
-        style={{
-          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
-          boxShadow: "var(--shadow-contact)",
-        }}
+        style={{ background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact)" }}
       >
-        {ITEMS.map((i) => (
-          <div key={i} className="grid h-full flex-1 place-items-center">
-            {s.ch2Items.includes(i) ? (
-              <ItemArt id={i} className="w-[80%] animate-float-up" />
-            ) : (
-              <div className="h-3 w-3 rounded-full border border-dashed border-paper/50" />
-            )}
+        {got.length === 0 && <span className="w-full text-center font-hand text-sm text-paper/60">the tray is empty</span>}
+        {got.map((i) => (
+          <div key={i} className="grid h-full w-[18%] place-items-center">
+            <ItemArt id={i} className="w-[80%] animate-float-up" />
           </div>
         ))}
       </div>
-      {s.ch2Items.length === 6 && (
+      {done && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[54%] z-20 flex justify-center animate-float-up">
           <button
             className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]"
@@ -622,86 +656,186 @@ export function Ch2Kitchen() {
   );
 }
 
-type DiningMatProps = {
-  side: "L" | "R";
-  x: number;
-  childLeft: boolean;
-  placed: ItemId[];
-  selected: ItemId | null;
-  onPlace: (side: "L" | "R") => void;
+/* ---- Dining: a Resident-Evil style packing puzzle on the table, seen from above ---- */
+
+type PieceId = ItemId | "bread" | "bigplate";
+type Piece = { id: PieceId; w: number; h: number };
+const GRID = 4;
+const PIECES: Piece[] = [
+  { id: "plate-child", w: 2, h: 2 },
+  { id: "plate-mother", w: 2, h: 2 },
+  { id: "bread", w: 2, h: 1 },
+  { id: "cutlery-child", w: 1, h: 2 },
+  { id: "cutlery-mother", w: 1, h: 2 },
+  { id: "glass-child", w: 1, h: 1 },
+  { id: "glass-mother", w: 1, h: 1 },
+];
+const BIG: Piece = { id: "bigplate", w: 4, h: 4 };
+/** One valid packing, scratched into the tablecloth — only visible in the dark. */
+const SOLUTION: Record<string, { x: number; y: number; r: boolean }> = {
+  "plate-child": { x: 0, y: 0, r: false },
+  "plate-mother": { x: 2, y: 0, r: false },
+  bread: { x: 0, y: 2, r: false },
+  "cutlery-child": { x: 2, y: 2, r: false },
+  "cutlery-mother": { x: 3, y: 2, r: false },
+  "glass-child": { x: 0, y: 3, r: false },
+  "glass-mother": { x: 1, y: 3, r: false },
 };
-function DiningMat({ side, x, childLeft, placed, selected, onPlace }: DiningMatProps) {
-    const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
-    const mine = placed.filter((p) => p.endsWith(owner));
-    return (
-      <button
-        aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`}
-        onClick={() => onPlace(side)}
-        className={`absolute z-10 grid min-h-12 w-[34%] -translate-x-1/2 place-items-center rounded-[50%] touch-manipulation transition-[outline,background-color,box-shadow] duration-150 active:scale-[0.98] focus-visible:outline-4 focus-visible:outline-honey ${selected ? "ring-2 ring-honey/80" : ""}`}
-        style={{
-          left: `${x}%`,
-          top: "54%",
-          height: "11%",
-          touchAction: "manipulation",
-          background: "oklch(0.92 0.03 85 / .9)",
-          outline: selected ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)",
-          outlineOffset: -6,
-          boxShadow: "var(--shadow-contact)",
-        }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center gap-0.5 px-3">
-          {(["cutlery", "plate", "glass"] as ItemKind[]).map((k) => {
-            const id = `${k}-${owner}`;
-            return mine.includes(id as ItemId) ? (
-              <ItemArt key={k} id={id} className={k === "plate" ? "w-[45%]" : "w-[22%]"} />
-            ) : null;
-          })}
-        </div>
-      </button>
-    );
+type Placed = Record<string, { x: number; y: number; r: boolean }>;
+const dims = (p: Piece, r: boolean) => (r ? { w: p.h, h: p.w } : { w: p.w, h: p.h });
+const GRID_BOX = { left: 15, top: 27, width: 70 }; // % of frame; cells are square
+
+function PieceArt({ p, r }: { p: Piece; r: boolean }) {
+  const { w, h } = dims(p, r);
+  const inner: CSSProperties = r
+    ? { position: "absolute", left: "50%", top: "50%", width: `${(h / w) * 100}%`, height: `${(w / h) * 100}%`, transform: "translate(-50%,-50%) rotate(90deg)" }
+    : { position: "absolute", inset: 0 };
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <div style={inner} className="grid place-items-center">
+        {p.id === "bread" ? (
+          <img src={PROP3.bread} alt="" className="prop h-full w-full object-contain" />
+        ) : p.id === "bigplate" ? (
+          <img src={PROP3.bigplate} alt="" className="prop h-full w-full object-contain" />
+        ) : (
+          <ItemArt id={p.id} className={p.id.startsWith("cutlery") ? "h-full w-[70%]" : "w-[88%]"} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function Ch2Dining() {
   const s = useGame();
-  const col = useColors();
-  const childLeft = ["bear", "train", "elephant"].includes(s.toyOrder[0]);
-  const [sel, setSel] = useState<ItemId | null>(null);
+  const nm = s.name || "sweetheart";
+  const [view, setView] = useState<"tray" | "table">("tray");
+  const [sel, setSel] = useState<{ id: PieceId; r: boolean } | null>(null);
+  const [placed, setPlaced] = useState<Placed>({});
   const [asking, setAsking] = useState(false);
   const [foodInput, setFoodInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
-  const [third, setThird] = useState(false);
-  const [intruders, setIntruders] = useState<number[]>([]);
-  const [intruderCount, setIntruderCount] = useState(0);
-  const previousLight = useRef(s.lightsOn);
-  const blackoutTimer = useRef<number | null>(null);
-  const lastPlacement = useRef(0);
-  useEffect(
-    () => () => {
-      if (blackoutTimer.current) clearTimeout(blackoutTimer.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    const lightsWentOff = previousLight.current && !s.lightsOn;
-    previousLight.current = s.lightsOn;
-    if (!lightsWentOff || !s.interactive || intruderCount >= 3) return;
-    setIntruders((items) => [...items, intruderCount]);
-    setIntruderCount((n) => n + 1);
-    sfx("creak");
-  }, [s.lightsOn, s.interactive, intruderCount]);
+  const [bigOffered, setBigOffered] = useState(false);
+  const [phase, setPhase] = useState<"play" | "crash" | "black" | "smile" | "after">("play");
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const ended = useRef(false);
   useSceneIntro(
     "ch2d",
-    "Set two places: yours and Mommy's. In the dark you can tell which is which.",
+    "Make everything fit on the table. In the dark, the cloth remembers how.",
     [
-      { speaker: "narrator", text: "Two places at the long table. They look exactly the same." },
+      { speaker: "narrator", text: "The table is too small for everything on the tray." },
+      { speaker: "mimic", text: `Make it all fit, ${nm}. Mommy hates a messy table.` },
       ...chooseInterventions(s.facts, 2)
         .filter((i) => i.kind === "line")
         .map((i) => ({ speaker: "guest" as const, text: (i as { text: string }).text })),
     ],
   );
-  const placed = s.ch2Placed as ItemId[];
-  const correct = placed.length;
+  const all = bigOffered ? [...PIECES, BIG] : PIECES;
+  const pieceOf = (id: PieceId) => all.find((p) => p.id === id)!;
+  const inTray = all.filter((p) => !placed[p.id]);
+  const count = PIECES.filter((p) => placed[p.id]).length;
+
+  const occupied = (except?: PieceId) => {
+    const g: (PieceId | null)[][] = Array.from({ length: GRID }, () => Array(GRID).fill(null));
+    for (const [id, pl] of Object.entries(placed)) {
+      if (id === except) continue;
+      const d = dims(pieceOf(id as PieceId), pl.r);
+      for (let y = pl.y; y < pl.y + d.h; y++) for (let x = pl.x; x < pl.x + d.w; x++) g[y]![x] = id as PieceId;
+    }
+    return g;
+  };
+
+  const fits = (p: Piece, r: boolean, x: number, y: number) => {
+    const d = dims(p, r);
+    if (x + d.w > GRID || y + d.h > GRID) return false;
+    const g = occupied(p.id);
+    for (let yy = y; yy < y + d.h; yy++) for (let xx = x; xx < x + d.w; xx++) if (g[yy]![xx]) return false;
+    return true;
+  };
+
+  const crash = () => {
+    ended.current = true;
+    s.set({ interactive: false, objective: "" });
+    setPlaced((pl) => ({ ...pl, bigplate: { x: 0, y: 0, r: false } }));
+    setPhase("crash");
+    sfx("scare");
+    s.addCordura(15);
+    window.setTimeout(() => {
+      setPhase("black");
+      sfx("switch");
+    }, 700);
+    window.setTimeout(() => {
+      setPhase("smile");
+      sfx("whisper");
+    }, 3400);
+    window.setTimeout(() => {
+      setPhase("after");
+      setPlaced(SOLUTION);
+      sfx("switch");
+      useGame.getState().say([
+        { speaker: "narrator", text: "The light comes back. The table is set. Perfectly." },
+        { speaker: "guest", text: `Thank you, ${nm}. I'll make your ${useGame.getState().favFood || "dinner"}.` },
+        { speaker: "narrator", text: "Upstairs, a music box starts to play." },
+      ]);
+    }, 7200);
+    window.setTimeout(() => useGame.getState().go("ch3"), 15500);
+  };
+
+  const tapCell = (x: number, y: number) => {
+    if (!s.interactive || phase !== "play") return;
+    if (!s.lightsOn) {
+      s.say({ speaker: "narrator", text: "In the dark you can only look. Turn the light on to move things.", ms: 2400 });
+      return;
+    }
+    const here = occupied()[y]![x];
+    if (!sel) {
+      if (here && here !== "bigplate") {
+        sfx("tap");
+        const pl = placed[here]!;
+        setPlaced((p) => {
+          const n = { ...p };
+          delete n[here];
+          return n;
+        });
+        setSel({ id: here, r: pl.r });
+      }
+      return;
+    }
+    const p = pieceOf(sel.id);
+    if (p.id === "bigplate") {
+      crash();
+      return;
+    }
+    if (!fits(p, sel.r, x, y)) {
+      sfx("wrong");
+      s.mistake();
+      s.say({ speaker: "narrator", text: "It doesn't fit there.", ms: 1400 });
+      return;
+    }
+    sfx("chime");
+    s.success();
+    const next = { ...placed, [p.id]: { x, y, r: sel.r } };
+    setPlaced(next);
+    setSel(null);
+    const n = PIECES.filter((q) => next[q.id]).length;
+    if (n === PIECES.length && !bigOffered) {
+      useGame.getState().set({ interactive: false });
+      window.setTimeout(() => {
+        if (!useGame.getState().favFood) {
+          setAsking(true);
+          sfx("whisper");
+        } else offerBig();
+      }, 900);
+    } else if (n < PIECES.length) setView("tray");
+  };
+
+  const offerBig = () => {
+    setBigOffered(true);
+    setView("tray");
+    sfx("creak");
+    const st = useGame.getState();
+    st.set({ interactive: true, objective: "Set its plate too." });
+    st.say({ speaker: "guest", text: "Can you set my plate too?", ms: 4000 });
+  };
 
   const answerFood = async () => {
     const answer = foodInput.trim();
@@ -710,243 +844,178 @@ export function Ch2Dining() {
     const result = await interpretFavoriteFood(answer);
     const state = useGame.getState();
     state.observeChoice(result.displayFood);
-    state.set({ favFood: result.displayFood, interactive: true });
+    state.set({ favFood: result.displayFood });
     setAsking(false);
     setInterpreting(false);
     state.say({ speaker: "guest", text: result.monsterLine });
+    window.setTimeout(offerBig, 2600);
   };
 
-  const punishWrongPlacement = () => {
-    const st = useGame.getState();
-    if (blackoutTimer.current) return;
-    st.set({ forcedBlackout: true, lightsOn: false, flicker: Date.now() });
-    st.addCordura(wrongTableBlackoutPenalty()); // Stage pauses its normal ticker.
-    sfx("switch");
-    blackoutTimer.current = window.setTimeout(() => {
-      const latest = useGame.getState();
-      if (latest.screen === "ch2d" && !latest.scare)
-        latest.set({ forcedBlackout: false, lightsOn: true });
-      blackoutTimer.current = null;
-    }, GAMEPLAY_RULES.errorBlackoutSeconds * 1000);
-  };
-  const place = (side: "L" | "R") => {
-    if (!sel || !s.lightsOn || !s.interactive || s.forcedBlackout) {
-      if (!s.lightsOn)
-        s.say({
-          speaker: "narrator",
-          text: "You can't see well enough to set the table. Turn the light on.",
-          ms: 2400,
-        });
+  const pick = (p: Piece) => {
+    if (!s.interactive || phase !== "play") return;
+    if (!s.lightsOn) {
+      s.say({ speaker: "narrator", text: "Too dark to pick anything up.", ms: 1800 });
       return;
     }
-    const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
-    if (placed.includes(sel)) {
-      setSel(null);
-      return;
-    }
-    if (sel.endsWith(owner)) {
-      sfx("chime");
-      s.success();
-      if (Date.now() - lastPlacement.current < 1000) sfx("creak");
-      lastPlacement.current = Date.now();
-      s.set({ ch2Placed: [...placed, sel] });
-      setSel(null);
-      if (placed.length + 1 === 3 && !s.favFood)
-        window.setTimeout(() => {
-          useGame.getState().set({ interactive: false });
-          setAsking(true);
-          sfx("whisper");
-        }, 600);
-    } else {
-      sfx("wrong");
-      s.mistake();
-      setSel(null);
-      punishWrongPlacement();
-    }
+    sfx("tap");
+    setSel({ id: p.id, r: false });
+    setView("table");
   };
 
-  useEffect(() => {
-    if (correct === 6 && intruderCount > 0 && intruders.length === 0 && !ended.current) {
-      ended.current = true;
-      s.set({ interactive: false, objective: "" });
-      window.setTimeout(() => {
-        sfx("switch");
-        useGame.getState().set({ flicker: Date.now() });
-        setThird(true);
-        sfx("creak");
-      }, 1200);
-      window.setTimeout(
-        () =>
-          useGame.getState().say([
-            { speaker: "narrator", text: "There are three places at the table now." },
-            {
-              speaker: "guest",
-              text: `I set one for me. I made your ${useGame.getState().favFood}. Same colour as yours.`,
-            },
-            { speaker: "narrator", text: "Upstairs, a music box starts to play." },
-          ]),
-        2200,
-      );
-      window.setTimeout(() => useGame.getState().go("ch3"), 13000);
-    }
-  }, [correct, intruderCount, intruders.length]);
-
-
+  const gridStyle: CSSProperties = { left: `${GRID_BOX.left}%`, top: `${GRID_BOX.top}%`, width: `${GRID_BOX.width}%`, aspectRatio: "1" };
+  const cellPct = 100 / GRID;
+  const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
+    left: `${x * cellPct}%`, top: `${y * cellPct}%`, width: `${w * cellPct}%`, height: `${h * cellPct}%`,
+  });
 
   return (
     <Stage
       bg={BG.bgDining}
-      spread
+      noTurn
       bgPos="50% 50%"
       chapter={2}
-      progress={`Table ${correct}/6`}
-      guest={{ x: 50, y: 22, h: 46, show: correct >= 1 }}
+      progress={`Table ${count}/${PIECES.length}`}
       clues={
-        <OnWall n={0}>
-          {(["L", "R"] as const).map((side) => {
-            const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
-            const x = side === "L" ? 25 : 75;
-            return (
-              <div
-                key={side}
-                className="glow-clue absolute -translate-x-1/2 text-center"
-                style={{ left: `${x}%`, top: "45%" }}
-              >
-                {owner === "child" ? (
-                  <svg viewBox="0 0 40 40" className="mx-auto w-12" aria-hidden>
-                    <path
-                      d="M20 4 L25 15 L37 15 L27 23 L31 35 L20 28 L9 35 L13 23 L3 15 L15 15 Z"
-                      fill={col.child}
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 40 50" className="mx-auto w-11" aria-hidden>
-                    <path
-                      d="M14 4 L26 4 L28 14 L38 46 L2 46 L12 14 Z"
-                      fill={col.mother}
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                )}
-                <span className="font-hand text-sm">
-                  {owner === "child" ? (s.name || "you").slice(0, 1) : "M"}
-                </span>
-              </div>
-            );
-          })}
-        </OnWall>
+        view === "table" ? (
+          <div className="absolute" style={gridStyle}>
+            {PIECES.map((p) => {
+              const sol = SOLUTION[p.id]!;
+              const d = dims(p, sol.r);
+              return (
+                <div key={p.id} className="glow-clue absolute rounded-sm border-2 border-dashed border-current" style={{ ...box(sol.x, sol.y, d.w, d.h) }}>
+                  <span className="absolute left-1 top-0.5 font-crayon text-[10px]">{p.id.split("-")[0]}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null
+      }
+      above={
+        <>
+          {phase === "crash" && <div className="shatter absolute inset-0 z-[55] bg-paper/80 mix-blend-difference" />}
+          {(phase === "black" || phase === "smile") && (
+            <div className="absolute inset-0 z-[58] grid place-items-center bg-void">
+              {phase === "smile" && <img src={SCARE.smile} alt="" className="smile-rise w-[96%]" />}
+            </div>
+          )}
+          {asking && (
+            <div className="absolute inset-x-[6%] top-[14%] z-[45] paper animate-float-up p-5">
+              <p className="font-display text-lg italic">"What do you like to eat best?"</p>
+              <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
+              <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); void answerFood(); }}>
+                <label className="sr-only" htmlFor="favourite-food">Your favourite food</label>
+                <input
+                  id="favourite-food"
+                  autoFocus
+                  maxLength={120}
+                  value={foodInput}
+                  onChange={(e) => setFoodInput(e.target.value)}
+                  disabled={interpreting}
+                  placeholder="Type anything…"
+                  className="min-w-0 flex-1 rounded border border-ink/30 bg-paper px-3 py-2 font-hand text-sm text-ink outline-none focus:border-crimson"
+                />
+                <button type="submit" disabled={!foodInput.trim() || interpreting} className="stitch-btn sage text-sm disabled:opacity-50">
+                  {interpreting ? "Listening…" : "Tell it"}
+                </button>
+              </form>
+            </div>
+          )}
+        </>
       }
     >
-      <OnWall n={0}>
-      {/* Seat colors match the player's answer and the dress from Mom's introduction. */}
       <div
-        className="pointer-events-none absolute left-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
-        style={{ backgroundColor: childLeft ? col.child : col.mother }}
-      />
-      <div
-        className="pointer-events-none absolute right-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
-        style={{ backgroundColor: childLeft ? col.mother : col.child }}
-      />
-      <DiningMat side="L" x={25} childLeft={childLeft} placed={placed} selected={sel} onPlace={place} />
-      <DiningMat side="R" x={75} childLeft={childLeft} placed={placed} selected={sel} onPlace={place} />
-      </OnWall>
-      {/* The Guest scatters its corrupted third place to DIFFERENT walls. */}
-      <div className="pointer-events-none absolute top-[7%] left-[8%] z-30 rounded bg-void/70 px-2 py-1 text-xs text-paper">
-        {intruders.length ? "Something was laid out elsewhere in the room…" : "Table for Mommy and you"}
-      </div>
-      {/* The Guest's plate, fork and glass appear one per blackout, removable in light. */}
-      {intruders.map((id) => (
-        <OnWall key={id} n={id + 1}>
-        <button
-          type="button"
-          disabled={!s.lightsOn || !s.interactive}
-          aria-label={"Remove corrupt " + (["plate", "fork", "glass"][id] ?? "utensil")}
-          onClick={() => {
-            sfx("chime");
-            setIntruders((items) => items.filter((i) => i !== id));
-          }}
-          className="absolute z-40 grid min-h-14 min-w-14 h-[13%] w-[25%] touch-manipulation place-items-center rounded-lg border-2 border-crimson bg-void text-3xl text-paper shadow-lg active:scale-[0.96] focus-visible:outline-4 focus-visible:outline-honey disabled:opacity-50"
-          style={{ left: 35 + id * 9 + "%", top: "49%" }}
-        >
-          {["🍽️", "🍴", "🥛"][id]}
-        </button>
-        </OnWall>
-      ))}
-      <OnWall n={0}>
-      {third && (
-        <div className="absolute left-1/2 top-[52%] w-[22%] -translate-x-1/2 animate-float-up text-center">
-          <Plate color={col.child} style={{ width: "100%" }} />
-          <p className="font-hand text-xs leading-tight text-paper drop-shadow">{s.favFood}</p>
-        </div>
-      )}
-      </OnWall>
-      {/* Tray */}
-      <div
-        className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2"
-        style={{
-          background: "linear-gradient(oklch(0.32 0.04 55), oklch(0.2 0.03 50))",
-          boxShadow: "var(--shadow-contact)",
+        className="absolute inset-0"
+        onPointerDown={(e) => { swipe.current = { x: e.clientX, y: e.clientY }; }}
+        onPointerUp={(e) => {
+          const s0 = swipe.current;
+          swipe.current = null;
+          if (!s0) return;
+          const dx = e.clientX - s0.x;
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(e.clientY - s0.y) * 1.6) { sfx("creak"); setView((v) => (v === "tray" ? "table" : "tray")); }
         }}
       >
-        {/* fixed slot width: pieces keep their size as the tray empties */}
-        {(s.ch2Items as ItemId[])
-          .filter((i) => !placed.includes(i))
-          .map((i) => (
-            <button
-              key={i}
-              onClick={() => {
-                if (!s.interactive || !s.lightsOn || s.forcedBlackout) return;
-                sfx("tap");
-                if (sel !== i) s.observeChoice(i.replace("-", " for "));
-                setSel(sel === i ? null : i);
-              }}
-              aria-label={`Pick ${i}`}
-              className={`flex h-full min-h-12 w-[15.5%] shrink-0 touch-manipulation items-center justify-center rounded-lg border-2 transition-[border-color,background-color,box-shadow] duration-100 active:scale-[0.96] focus-visible:outline-4 focus-visible:outline-honey ${sel === i ? "border-honey bg-honey/50 ring-2 ring-honey/70" : "border-transparent hover:bg-paper/20"}`}
-            >
-              <ItemArt id={i} className="mx-auto w-[85%]" />
+        {/* view tabs */}
+        <div className="absolute inset-x-0 top-[2%] z-30 flex justify-center gap-2">
+          {(["tray", "table"] as const).map((v) => (
+            <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`wall-arrow relative px-3 py-1 font-crayon text-xs ${view === v ? "" : "opacity-60"}`} style={{ position: "relative" }}>
+              {v === "tray" ? "Tray" : "Table"}
             </button>
           ))}
-      </div>
-      {asking && (
-        <div className="absolute inset-x-[6%] top-[14%] z-20 paper animate-float-up p-5">
-          <p className="font-display text-lg italic">"What do you like to eat best?"</p>
-          <p className="mt-1 text-xs opacity-60">The voice comes from under the table.</p>
-          <form
-            className="mt-3 flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void answerFood();
-            }}
-          >
-            <label className="sr-only" htmlFor="favourite-food">
-              Your favourite food
-            </label>
-            <input
-              id="favourite-food"
-              autoFocus
-              maxLength={120}
-              value={foodInput}
-              onChange={(event) => setFoodInput(event.target.value)}
-              disabled={interpreting}
-              placeholder="Type anything…"
-              className="min-w-0 flex-1 rounded border border-ink/30 bg-paper px-3 py-2 font-hand text-sm text-ink outline-none focus:border-crimson"
-            />
-            <button
-              type="submit"
-              disabled={!foodInput.trim() || interpreting}
-              className="stitch-btn sage text-sm disabled:opacity-50"
-            >
-              {interpreting ? "Listening…" : "Tell it"}
-            </button>
-          </form>
-          <p className="mt-2 text-[10px] opacity-50">
-            If the house cannot reach Gemini, it remembers using local rules.
-          </p>
         </div>
-      )}
+
+        {view === "tray" ? (
+          <div className="wall-in-l absolute inset-0">
+            {/* the tray: a battered wooden board with every piece laid out at its real size */}
+            <div
+              className="absolute left-[5%] right-[5%] top-[44%] rounded-lg p-2"
+              style={{ background: "linear-gradient(oklch(0.34 0.05 55), oklch(0.2 0.03 50))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }}
+            >
+              <div className="flex flex-wrap items-end justify-center gap-2">
+                {inTray.length === 0 && <span className="py-6 font-hand text-sm text-paper/60">nothing left on the tray</span>}
+                {inTray.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => pick(p)}
+                    aria-label={`Pick up ${p.id.replace("-", " for ")}`}
+                    className={`relative touch-manipulation ${sel?.id === p.id ? "ring-2 ring-honey" : ""} ${p.id === "bigplate" ? "animate-float-up" : ""}`}
+                    style={{ width: p.id === "bigplate" ? "86%" : `${p.w * 17}%`, aspectRatio: `${p.w} / ${p.h}`, minWidth: 40 }}
+                  >
+                    <div className="absolute inset-0 rounded border border-dashed border-paper/30" />
+                    <PieceArt p={p} r={false} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="absolute inset-x-0 top-[88%] text-center font-hand text-xs text-paper/70">swipe or tap Table to look down at it</p>
+          </div>
+        ) : (
+          <div className="wall-in-r absolute inset-0">
+            <img src={PROP3.tabletop} alt="" className="scene-bg" style={{ filter: s.lightsOn ? undefined : "saturate(.3) brightness(.7)" }} />
+            <div className="absolute" style={gridStyle}>
+              {/* empty cells */}
+              {Array.from({ length: GRID * GRID }, (_, k) => {
+                const x = k % GRID, y = Math.floor(k / GRID);
+                return (
+                  <button
+                    key={k}
+                    aria-label={`Table spot ${x + 1}, ${y + 1}`}
+                    onClick={() => tapCell(x, y)}
+                    className="absolute touch-manipulation border border-paper/15"
+                    style={box(x, y, 1, 1)}
+                  />
+                );
+              })}
+              {Object.entries(placed).map(([id, pl]) => {
+                const p = pieceOf(id as PieceId);
+                if (!p) return null;
+                const d = dims(p, pl.r);
+                return (
+                  <button
+                    key={id}
+                    onClick={() => tapCell(pl.x, pl.y)}
+                    aria-label={`Move ${id.replace("-", " for ")}`}
+                    className={`absolute touch-manipulation ${id === "bigplate" && phase === "crash" ? "shatter" : ""}`}
+                    style={box(pl.x, pl.y, d.w, d.h)}
+                  >
+                    <PieceArt p={p} r={pl.r} />
+                  </button>
+                );
+              })}
+            </div>
+            {sel && phase === "play" && (
+              <div className="absolute inset-x-0 bottom-[4%] z-30 flex items-center justify-center gap-2">
+                <div className="paper relative h-14 w-14 rotate-2">
+                  <PieceArt p={pieceOf(sel.id)} r={sel.r} />
+                </div>
+                {sel.id !== "bigplate" && pieceOf(sel.id).w !== pieceOf(sel.id).h && (
+                  <button className="stitch-btn sage text-sm" onClick={() => { sfx("tap"); setSel({ ...sel, r: !sel.r }); }}>Turn it</button>
+                )}
+                <button className="stitch-btn text-sm" onClick={() => { sfx("tap"); setSel(null); setView("tray"); }}>Put back</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </Stage>
   );
 }
