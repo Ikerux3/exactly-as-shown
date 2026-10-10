@@ -328,7 +328,9 @@ const PUZZLES: Record<
 export function Ch4() {
   const s = useGame();
   const plan = useAdaptiveChapter(4);
-  const puzzle = PUZZLES[plan.puzzleVariant];
+  // The AI plan can arrive late; once the player has seen clues or pressed the lock, the code never changes.
+  const lockedVariant = useRef<keyof typeof PUZZLES | null>(null);
+  const puzzle = PUZZLES[lockedVariant.current ?? plan.puzzleVariant];
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
   const [solved, setSolved] = useState(false);
@@ -366,7 +368,7 @@ export function Ch4() {
     }
   };
 
-  useEffect(() => setInput([]), [plan.puzzleVariant]);
+  if (!lockedVariant.current && (!s.lightsOn || input.length > 0 || note)) lockedVariant.current = plan.puzzleVariant;
   useEffect(() => {
     if (plan.provider !== "gemini" || aiLineSpoken.current) return;
     aiLineSpoken.current = true;
@@ -563,7 +565,7 @@ export function Ch4() {
         }}
       />
       {wardrobe === 2 && (
-        <GuestVoid style={{ left: "55%", top: "22%", height: "60%", transform: "translateX(-50%)" }} intensity={0.9} />
+        <GuestVoid style={{ left: "88%", top: "26%", height: "50%", transform: "translateX(-50%)" }} intensity={0.9} />
       )}
 
       </OnWall>
