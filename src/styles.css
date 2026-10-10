@@ -440,16 +440,18 @@
 .wall-in-l { animation: wall-l .45s cubic-bezier(.2,.8,.2,1) both; }
 .wall-arrow {
   position: absolute; top: 50%; z-index: 40; translate: 0 -50%;
-  width: 34px; height: 58px; display: grid; place-items: center;
-  font-family: var(--font-display); font-size: 34px; line-height: 1;
-  background: var(--paper); color: var(--ink); opacity: .75;
+  width: 48px; height: 64px; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 36px; line-height: 1;
+  background: var(--paper); color: var(--ink); opacity: .9;
+  transition: opacity 120ms ease, background-color 120ms ease;
   box-shadow: 2px 3px 0 oklch(0 0 0 / .55);
   clip-path: polygon(6% 2%, 96% 0, 100% 48%, 94% 100%, 2% 97%, 0 52%);
   touch-action: manipulation;
 }
 .wall-arrow.left-1 { rotate: -3deg; }
 .wall-arrow.right-1 { rotate: 3deg; }
-.wall-arrow:active { scale: .92; opacity: 1; }
+.wall-arrow:active { scale: .96; opacity: 1; background: var(--honey); }
+.wall-arrow:focus-visible { outline: 3px solid var(--honey); outline-offset: 2px; }
 
 /* ===== Ending films: little puppet gestures ===== */
 .cut-nod { animation: cut-nod 0.5s ease-in-out 2; }
