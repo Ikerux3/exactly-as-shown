@@ -163,7 +163,7 @@ export function Ch4() {
         <>
           <div className="glow-clue absolute left-[19%] top-[18%]"><Symbol s="flower" size={46} color="var(--glow)" /></div>
           <div className="glow-clue absolute left-[22%] top-[58%]"><Symbol s="moon" size={42} color="var(--glow)" /></div>
-          <div className="glow-clue absolute left-[49%] top-[6%]"><Symbol s="eye" size={44} color="var(--glow)" /></div>
+          <div className="glow-clue absolute left-[55%] top-[16%]"><Symbol s="eye" size={44} color="var(--glow)" /></div>
         </>
       )}
       above={
@@ -185,13 +185,13 @@ export function Ch4() {
       <button className="absolute left-[18%] top-[16%] w-[14%]" aria-label="The photograph" onClick={() => s.say({ speaker: "narrator", text: "You and Mommy. Someone is standing behind you in the picture. You don't remember them.", ms: 3500 })}>
         <PhotoFrame wrong style={{ position: "static", width: "100%" }} />
       </button>
-      <button className="absolute left-[48%] top-[4%] w-[13%]" aria-label="The clock" onClick={() => s.say({ speaker: "narrator", text: "The clock ticks. It is not counting forwards.", ms: 2600 })}>
+      <button className="absolute left-[54%] top-[14%] w-[13%]" aria-label="The clock" onClick={() => s.say({ speaker: "narrator", text: "The clock ticks. It is not counting forwards.", ms: 2600 })}>
         <Clock style={{ position: "static", width: "100%" }} />
       </button>
       <button className="absolute left-[20%] top-[60%] w-[15%]" aria-label="The small box" onClick={() => s.say({ speaker: "narrator", text: "Mommy's trinket box. It's locked, and it's empty — you can tell from the sound.", ms: 3000 })}>
         <TrinketBox style={{ position: "static", width: "100%" }} />
       </button>
-      <button className="absolute left-[44%] top-[83%] w-[16%] rotate-[-8deg]" aria-label="A note on the rug" onClick={() => { sfx("tap"); setNote(true); }}>
+      <button className="absolute left-[56%] top-[62%] w-[16%] rotate-[-8deg]" aria-label="A note on the rug" onClick={() => { sfx("tap"); setNote(true); }}>
         <div className="paper px-2 py-3 font-hand text-xs">a note…</div>
       </button>
 
