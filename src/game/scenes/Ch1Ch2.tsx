@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, illuminated } from "../Stage";
 import { BG, PROP, toyImageFor } from "../assets";
+import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
@@ -416,6 +417,7 @@ export function Ch2Kitchen() {
   ]);
   const remaining = ITEMS.filter((i) => !s.ch2Items.includes(i));
   const take = (it: string) => {
+    if (!s.lightsOn || !s.interactive) return; // cannot collect dishes in darkness
     if (it.startsWith("decoy")) {
       sfx("wrong");
       s.mistake();
@@ -645,14 +647,14 @@ export function Ch2Dining() {
     const st = useGame.getState();
     if (blackoutTimer.current) return;
     st.set({ forcedBlackout: true, lightsOn: false, flicker: Date.now() });
-    st.addCordura(9); // fixed 3 seconds x 3 points; Stage pauses its normal ticker.
+    st.addCordura(wrongTableBlackoutPenalty()); // Stage pauses its normal ticker.
     sfx("switch");
     blackoutTimer.current = window.setTimeout(() => {
       const latest = useGame.getState();
       if (latest.screen === "ch2d" && !latest.scare)
         latest.set({ forcedBlackout: false, lightsOn: true });
       blackoutTimer.current = null;
-    }, 3000);
+    }, GAMEPLAY_RULES.errorBlackoutSeconds * 1000);
   };
   const place = (side: "L" | "R") => {
     if (!sel || !s.lightsOn) {
@@ -687,7 +689,7 @@ export function Ch2Dining() {
   };
 
   useEffect(() => {
-    if (correct === 6 && intruders.length === 0 && !ended.current) {
+    if (correct === 6 && intruderCount > 0 && intruders.length === 0 && !ended.current) {
       ended.current = true;
       s.set({ interactive: false, objective: "" });
       window.setTimeout(() => {
@@ -710,7 +712,7 @@ export function Ch2Dining() {
       );
       window.setTimeout(() => useGame.getState().go("ch3"), 13000);
     }
-  }, [correct, intruders.length]);
+  }, [correct, intruderCount, intruders.length]);
 
   const Mat = ({ side, x }: { side: "L" | "R"; x: number }) => {
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";

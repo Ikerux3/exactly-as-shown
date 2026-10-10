@@ -3,6 +3,7 @@ import { useGame } from "./store";
 import { GuestVoid, LightSwitch } from "./Props";
 import { setUnease, sfx } from "./audio";
 import { ChapterCard } from "./kit";
+import { GAMEPLAY_RULES, checkpointScreen } from "./gameplayRules";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
 import { CutoutDefs, SanityFX } from "./fx";
 
@@ -67,15 +68,17 @@ export function Stage({
   useEffect(() => {
     const id = window.setInterval(() => {
       const st = useGame.getState();
-      setUnease(st.cordura, chapter);
+      // Music is visibly/audibly more corrupt when the music-box room is dark.
+      setUnease(Math.min(100, st.cordura + (chapter === 3 && !st.lightsOn ? 40 : 0)), chapter);
       if (!st.interactive || st.scare || st.line || st.paused || st.forcedBlackout) return;
       if (!st.lightsOn) {
         darkAcc.current += 1;
         st.fact({ darkSeconds: st.facts.darkSeconds + 1 });
-        st.addCordura(3);
+        lightAcc.current = 0;
+        st.addCordura(GAMEPLAY_RULES.darkPerSecond);
       } else {
         lightAcc.current += 1;
-        if (lightAcc.current >= 2) {
+        if (lightAcc.current >= GAMEPLAY_RULES.litSecondsPerPoint) {
           lightAcc.current = 0;
           st.addCordura(-1);
         }
@@ -91,12 +94,12 @@ export function Stage({
       sfx("scare");
       window.setTimeout(() => {
         const st = useGame.getState();
-        const checkpoint = st.screen === "ch2d" ? "ch2k" : st.screen;
+        const checkpoint = checkpointScreen(st.screen);
         st.set({
           screen: checkpoint,
           scare: false,
           forcedBlackout: false,
-          cordura: 50,
+          cordura: GAMEPLAY_RULES.retryCordura,
           lightsOn: true,
           phaseKey: st.phaseKey + 1,
           scareArmed: true,

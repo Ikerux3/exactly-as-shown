@@ -209,11 +209,17 @@ export function Ch3() {
       }
     >
       {/* The icon on the box teaches how to reveal the melody. */}
-      <div className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper" aria-hidden>
+      <div
+        className="pointer-events-none absolute right-[5%] top-[25%] rounded-md bg-void/80 px-2 py-1 text-center text-xs text-paper"
+        aria-hidden
+      >
         💡 ↓ ♪
       </div>
       {!s.lightsOn && round >= 2 && !done && (
-        <div aria-hidden className="pointer-events-none absolute right-[7%] top-[11%] h-[22%] w-[18%] overflow-hidden rounded-t-2xl border border-paper/30 bg-void/80">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-[7%] top-[11%] h-[22%] w-[18%] overflow-hidden rounded-t-2xl border border-paper/30 bg-void/80"
+        >
           <div className="absolute left-[35%] top-[21%] h-[70%] w-[34%] rounded-full bg-paper/25 blur-sm" />
         </div>
       )}
@@ -485,8 +491,10 @@ export function Ch4() {
               className="absolute inset-x-[10%] top-[22%] z-20 paper animate-float-up p-5 text-left"
             >
               <p className="font-hand text-xl leading-snug">
-                The little box sits between the photograph and the clock.<br />
-                The clock is last.<br />
+                The little box sits between the photograph and the clock.
+                <br />
+                The clock is last.
+                <br />
                 Which symbols did you see on those objects in darkness?
               </p>
               <p className="mt-3 font-hand text-sm opacity-75">
@@ -672,7 +680,10 @@ function PajamaCh5() {
   const [wrongChoices, setWrongChoices] = useState(0);
   const ended = useRef(false);
   useSceneIntro("ch5", "Choose your pajamas, then tidy the other clothes.", [
-    { speaker: "narrator", text: "Your pajamas are somewhere in this heap. Mommy will be back soon." },
+    {
+      speaker: "narrator",
+      text: "Your pajamas are somewhere in this heap. Mommy will be back soon.",
+    },
   ]);
   const pile = PAJAMA_PIECES.flatMap((piece) =>
     PAJAMA_COLORS.map((color) => ({ ...piece, color, id: piece.kind + "-" + color })),
@@ -681,17 +692,23 @@ function PajamaCh5() {
   const otherTotal = PAJAMA_PIECES.length * (PAJAMA_COLORS.length - 1);
   useEffect(() => {
     const state = useGame.getState();
-    state.set({ objective: allWorn
-      ? "Put all the other clothes in the basket."
-      : "Find shirt, pants and socks in your favorite color." });
+    state.set({
+      objective: allWorn
+        ? "Put all the other clothes in the basket."
+        : "Find shirt, pants and socks in your favorite color.",
+    });
   }, [allWorn]);
   useEffect(() => {
-    if (ended.current || !allWorn || inBasket.length !== otherTotal) return;
+    if (ended.current || !allWorn || inBasket.length !== otherTotal) return undefined;
     ended.current = true;
     const state = useGame.getState();
     state.success();
     state.set({ interactive: false, objective: "" });
-    state.say({ speaker: "narrator", text: "Everything is put away. Now the house is quiet.", ms: 1500 });
+    state.say({
+      speaker: "narrator",
+      text: "Everything is put away. Now the house is quiet.",
+      ms: 1500,
+    });
     const t = window.setTimeout(() => {
       if (useGame.getState().screen === "ch5") useGame.getState().go("final");
     }, 2100);
@@ -714,19 +731,29 @@ function PajamaCh5() {
       return;
     }
     if (garment.color === s.favColor) return;
-    setSelected((old) => old === garment.id ? null : garment.id);
+    setSelected((old) => (old === garment.id ? null : garment.id));
     sfx("tap");
   };
   const basket = () => {
     if (!selected || !allWorn || !s.interactive || !s.lightsOn) return;
-    setInBasket((old) => old.includes(selected) ? old : [...old, selected]);
+    setInBasket((old) => (old.includes(selected) ? old : [...old, selected]));
     setSelected(null);
     sfx("open");
   };
   return (
-    <Stage bg={BG.bgBathroom} bgPos="50% 50%" chapter={5} chapterCard
-      progress={allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"}>
-      <div aria-hidden className="pointer-events-none absolute right-[13%] top-[7%] z-10 text-xl text-crimson opacity-80">
+    <Stage
+      bg={BG.bgBathroom}
+      bgPos="50% 50%"
+      chapter={5}
+      chapterCard
+      progress={
+        allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"
+      }
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute right-[13%] top-[7%] z-10 text-xl text-crimson opacity-80"
+      >
         {wrongChoices > 0 || inBasket.length >= 3 ? "👁️ 👁️" : ""}
       </div>
       <div className="absolute inset-x-[5%] top-[14%] z-10 rounded-lg border-2 border-wood bg-paper/95 p-2 text-ink shadow-xl">
@@ -735,40 +762,66 @@ function PajamaCh5() {
         </p>
         <div className="mt-1 flex items-center justify-center gap-2 text-xs">
           <span>Your chosen color:</span>
-          <span className="h-4 w-7 rounded-sm border border-ink/50" style={{ background: "var(--c-" + s.favColor + ")" }} />
+          <span
+            className="h-4 w-7 rounded-sm border border-ink/50"
+            style={{ background: "var(--c-" + s.favColor + ")" }}
+          />
           <span className="font-hand">{s.favColor}</span>
         </div>
-        <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">{message}</p>
+        <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">
+          {message}
+        </p>
         <div className="grid grid-cols-3 gap-1">
           {pile.map((garment) => {
             const used = garment.color === s.favColor && worn.includes(garment.kind);
             const away = inBasket.includes(garment.id);
             return (
-              <button type="button" key={garment.id} disabled={used || away || !s.lightsOn || !s.interactive}
+              <button
+                type="button"
+                key={garment.id}
+                disabled={used || away || !s.lightsOn || !s.interactive}
                 aria-label={garment.color + " " + garment.name}
                 aria-pressed={selected === garment.id}
                 onClick={() => pick(garment)}
-                className={"flex min-h-12 items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs disabled:opacity-30 " +
-                  (selected === garment.id ? "border-crimson bg-rose/30" : "border-wood/40 bg-paper-deep")}>
-                <span aria-hidden className="text-base">{garment.icon}</span>
-                <span className="h-3 w-3 shrink-0 rounded-full border border-ink/50" style={{ background: "var(--c-" + garment.color + ")" }} />
+                className={
+                  "flex min-h-12 items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs disabled:opacity-30 " +
+                  (selected === garment.id
+                    ? "border-crimson bg-rose/30"
+                    : "border-wood/40 bg-paper-deep")
+                }
+              >
+                <span aria-hidden className="text-base">
+                  {garment.icon}
+                </span>
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border border-ink/50"
+                  style={{ background: "var(--c-" + garment.color + ")" }}
+                />
                 <span className="sr-only">{garment.name}</span>
               </button>
             );
           })}
         </div>
-        <p className="mt-2 text-center text-xs">Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}</p>
+        <p className="mt-2 text-center text-xs">
+          Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}
+        </p>
       </div>
-      <button type="button" onClick={basket} disabled={!selected || !s.lightsOn || !s.interactive}
+      <button
+        type="button"
+        onClick={basket}
+        disabled={!selected || !s.lightsOn || !s.interactive}
         aria-label="Place selected clothing into the laundry basket"
-        className="stitch-btn honey absolute bottom-[3%] left-1/2 z-10 min-h-12 w-[72%] -translate-x-1/2 disabled:opacity-50">
+        className="stitch-btn honey absolute bottom-[3%] left-1/2 z-10 min-h-12 w-[72%] -translate-x-1/2 disabled:opacity-50"
+      >
         🧺 {selected ? "Put selected clothing away" : "Laundry basket"}
       </button>
     </Stage>
   );
 }
 
-export function Ch5() { return <PajamaCh5 />; }
+export function Ch5() {
+  return <PajamaCh5 />;
+}
 
 /** Archived previous version, kept for reference until QA of the new bedroom/bathroom. */
 export function LegacyCh5() {
