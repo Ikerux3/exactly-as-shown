@@ -61,7 +61,7 @@ export function Ch1() {
   const [drawerOpen, setDrawer] = useState(false);
   const [jacketMoved, setJacket] = useState(false);
   const [extraOpen, setExtraOpen] = useState(false);
-  const [roam, setRoam] = useState<Record<string, {wall: number; x: number; y: number}>>({});
+  const [roam, setRoam] = useState<Record<string, {wall: number; x: number; y: number; dx?: number}>>({});
   const alternate = s.toyOrder[0] !== "bear";
   const [flying, setFlying] = useState<ToyId | null>(null);
   const pickupLock = useRef(false);
@@ -83,9 +83,12 @@ export function Ch1() {
           if (!visible) return;
           const original = PLAYROOM_TOYS[slot];
           if (!original) return;
-          const at = next[t] ?? { ...original, y: 80 + slot % 3 * 2 };
-          const x = at.x + .9;
-          next[t] = x > 94 ? { wall: (at.wall + 1) % 4, x: 7, y: at.y } : { ...at, x };
+          // Toys pace back and forth on their own wall; they never leave the room or change walls.
+          const at = next[t] ?? { ...original, y: 80 + slot % 3 * 2, dx: slot % 2 ? -.7 : .7 };
+          let dx = at.dx ?? .7;
+          let x = at.x + dx;
+          if (x > 86 || x < 12) { dx = -dx; x = Math.max(12, Math.min(86, x)); }
+          next[t] = { ...at, x, dx };
         });
         return next;
       });
@@ -112,7 +115,7 @@ export function Ch1() {
       if (latest.screen === "ch1" && !latest.scare) {
         if (!latest.facts.firstToy) latest.fact({ firstToy: toy });
         latest.observeChoice(toy === latest.favToyVisualSlot && latest.favToy ? latest.favToy : TOY_LABEL[toy]);
-        const firstEscape = !latest.toyEscape && latest.ch1.length === 0;
+        const firstEscape = false; // Toys never climb back out of the box.
         const recovering = latest.toyEscape?.toy === toy && !latest.toyEscape.recovered;
         if (firstEscape) {
           // Exactly the first collected toy escapes; neither speed, lights nor wall turns eject others.
