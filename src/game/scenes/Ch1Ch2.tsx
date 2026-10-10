@@ -683,7 +683,7 @@ export function Ch2Dining() {
     }, GAMEPLAY_RULES.errorBlackoutSeconds * 1000);
   };
   const place = (side: "L" | "R") => {
-    if (!sel || !s.lightsOn) {
+    if (!sel || !s.lightsOn || !s.interactive || s.forcedBlackout) {
       if (!s.lightsOn)
         s.say({
           speaker: "narrator",
@@ -693,6 +693,10 @@ export function Ch2Dining() {
       return;
     }
     const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
+    if (placed.includes(sel)) {
+      setSel(null);
+      return;
+    }
     if (sel.endsWith(owner)) {
       sfx("chime");
       s.success();
@@ -747,10 +751,12 @@ export function Ch2Dining() {
       <button
         aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`}
         onClick={() => place(side)}
-        className="absolute h-[9%] w-[30%] -translate-x-1/2 rounded-[50%]"
+        className={`absolute z-10 grid min-h-12 w-[34%] -translate-x-1/2 place-items-center rounded-[50%] touch-manipulation transition-[outline,background-color,box-shadow] duration-150 active:scale-[0.98] focus-visible:outline-4 focus-visible:outline-honey ${sel ? "ring-2 ring-honey/80" : ""}`}
         style={{
           left: `${x}%`,
           top: "54%",
+          height: "11%",
+          touchAction: "manipulation",
           background: "oklch(0.92 0.03 85 / .9)",
           outline: sel ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)",
           outlineOffset: -6,
@@ -864,12 +870,13 @@ export function Ch2Dining() {
             <button
               key={i}
               onClick={() => {
+                if (!s.interactive || !s.lightsOn || s.forcedBlackout) return;
                 sfx("tap");
                 if (sel !== i) s.observeChoice(i.replace("-", " for "));
                 setSel(sel === i ? null : i);
               }}
               aria-label={`Pick ${i}`}
-              className={`h-full w-[15.5%] shrink-0 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}
+              className={`flex h-full min-h-12 w-[15.5%] shrink-0 touch-manipulation items-center justify-center rounded-lg border-2 transition-[border-color,background-color,box-shadow] duration-100 active:scale-[0.96] focus-visible:outline-4 focus-visible:outline-honey ${sel === i ? "border-honey bg-honey/50 ring-2 ring-honey/70" : "border-transparent hover:bg-paper/20"}`}
             >
               <ItemArt id={i} className="mx-auto w-[85%]" />
             </button>
