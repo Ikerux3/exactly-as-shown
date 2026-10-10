@@ -4,6 +4,8 @@ import { OnWall, Stage, useWall } from "../Stage";
 import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
 import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, WALLS, toyImageFor } from "../assets";
 import { JumpScare } from "../fx";
+import { Button } from "@/components/ui/button";
+import { QOL_ART, foodImageFor } from "../assets";
 import { TOY_LABEL, useGame, saveCheckpoint, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
@@ -20,14 +22,20 @@ function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect 
 }) {
   const wall = useWall();
   const s = useGame();
+  const [shy, setShy] = useState({ x: 0, y: 0 });
   const [walkDelay] = useState(() => -Math.max(0, Date.now() - (escapedAt ?? Date.now() - 1000)) / 1000);
   const label = toy === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[toy];
   return (
     <div className={`absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2 ${walking ? "mg01-exit-and-walk" : ""}`}
       data-toy={toy} data-wall={wall}
-      style={{ left: x + "%", top: y + "%", "--box-dx": `${wall === 0 ? 76 - x : 0}cqw`, "--box-dy": `${wall === 0 ? (82 - y) * 1.5 : 0}cqw`,
+      onPointerMove={(e) => {
+        if (s.lightsOn || e.pointerType === "touch") return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        setShy({ x: e.clientX < rect.left + rect.width / 2 ? 14 : -14, y: -6 });
+      }} onPointerLeave={() => setShy({ x: 0, y: 0 })}
+      style={{ left: x + "%", top: y + "%", translate: `${shy.x}px ${shy.y}px`, transition: "left .18s linear, top .18s linear, translate .3s ease", "--box-dx": `${wall === 0 ? 76 - x : 0}cqw`, "--box-dy": `${wall === 0 ? (82 - y) * 1.5 : 0}cqw`,
         animationDelay: walking ? `${walkDelay}s, ${walkDelay + 0.7}s` : undefined,
-        animationPlayState: s.lightsOn && !s.paused && s.interactive && !flying ? "running" : "paused" } as CSSProperties}>
+        animationPlayState: !s.paused && s.interactive && !flying ? "running" : "paused" } as CSSProperties}>
       <button type="button" aria-label={`Pick up ${walking ? "the escaped " : "the "}${label}`}
         disabled={!!flying || !s.interactive || s.paused || s.scare}
         onClick={() => onCollect(toy, wall)}
@@ -35,7 +43,7 @@ function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect 
         style={{ touchAction: "manipulation" }}>
         <img src={toyImageFor(toy, s.favToyVisualSlot, s.favToyImage)} alt="" draggable={false}
           onError={(e) => { const fallback = toyImageFor(toy); if (e.currentTarget.src !== new URL(fallback, window.location.href).href) e.currentTarget.src = fallback; }}
-          className="pointer-events-none w-full drop-shadow-xl transition-[transform,opacity] duration-200"
+          className={`pointer-events-none w-full drop-shadow-xl transition-[transform,opacity] duration-200 ${!s.lightsOn ? "toy-bounce" : ""}`}
           style={{ transform: flying === toy ? "translate(var(--box-dx), var(--box-dy)) scale(.35)" : undefined, opacity: flying === toy ? .25 : 1 }} />
       </button>
     </div>
@@ -48,12 +56,42 @@ export function Ch1() {
   const [cushionMoved, setCushion] = useState(false);
   const [drawerOpen, setDrawer] = useState(false);
   const [jacketMoved, setJacket] = useState(false);
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [roam, setRoam] = useState<Record<string, {wall: number; x: number; y: number}>>({});
+  const alternate = s.toyOrder[0] !== "bear";
   const [flying, setFlying] = useState<ToyId | null>(null);
   const pickupLock = useRef(false);
   const pickupTimer = useRef<number | null>(null);
   const ended = useRef(false);
   useSceneIntro("ch1", "Find five toys on the four walls. Look behind the jacket and follow the footprints.", []);
   useEffect(() => () => { if (pickupTimer.current !== null) window.clearTimeout(pickupTimer.current); }, []);
+
+  useEffect(() => {
+    if (s.lightsOn || s.paused || !s.interactive || s.scare) return;
+    const id = window.setInterval(() => {
+      setRoam((old) => {
+        const next = { ...old };
+        s.toyOrder.forEach((t, slot) => {
+          if (s.ch1.includes(t) || s.toyEscape?.toy === t) return;
+          const visible = slot === 0 || slot === 4 || (slot === 1 && cushionMoved) || (slot === 2 && drawerOpen) || (slot === 3 && (alternate ? extraOpen : jacketMoved));
+          if (!visible) return;
+          const original = PLAYROOM_TOYS[slot];
+          if (!original) return;
+          const at = next[t] ?? { ...original, y: 80 + slot % 3 * 2 };
+          const x = at.x + .9;
+          next[t] = x > 94 ? { wall: (at.wall + 1) % 4, x: 7, y: at.y } : { ...at, x };
+        });
+        return next;
+      });
+      const state = useGame.getState();
+      const escape = state.toyEscape;
+      if (escape && !escape.recovered && Date.now() - (escape.escapedAt ?? 0) > 1000) {
+        const x = escape.x + .9;
+        state.set({ toyEscape: { ...escape, x: x > 94 ? 7 : x, wall: x > 94 ? (escape.wall + 1) % 4 : escape.wall } });
+      }
+    }, 180);
+    return () => window.clearInterval(id);
+  }, [s.lightsOn, s.paused, s.interactive, s.scare, cushionMoved, drawerOpen, jacketMoved, extraOpen, alternate, s.ch1.length]);
 
   const collect = (toy: ToyId, wall: number) => {
     const st = useGame.getState();
@@ -116,7 +154,7 @@ export function Ch1() {
   }, [s.ch1.length, s.toyEscape?.recovered]);
 
   const toy = (t: ToyId, slot: number, revealed = true) => {
-    if (!revealed || s.ch1.includes(t) || (s.toyEscape?.toy === t && !s.toyEscape.recovered)) return null;
+    if (roam[t] || !revealed || s.ch1.includes(t) || (s.toyEscape?.toy === t && !s.toyEscape.recovered)) return null;
     const spot = PLAYROOM_TOYS[slot]!;
     return <PlayroomToy toy={t} x={spot.x} y={spot.y} flying={flying} onCollect={collect} />;
   };
@@ -124,17 +162,16 @@ export function Ch1() {
   return (
     <Stage bg={BG.bgPlayroom} spread bgPos="15% 50%" wallPositions={["15% 50%", "50% 50%", "25% 50%", "50% 50%"]} chapter={1} chapterCard
       progress={`Toys ${s.ch1.length}/5`} guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}>
+      {Object.entries(roam).map(([t, at]) => !s.ch1.includes(t as ToyId) && <OnWall key={t} n={at.wall}><PlayroomToy toy={t as ToyId} x={at.x} y={at.y} flying={flying} onCollect={collect} /></OnWall>)}
       {s.toyEscape && !s.toyEscape.recovered && (
         <OnWall n={s.toyEscape.wall}>
+          {s.toyEscape.wall !== 0 && Date.now() - (s.toyEscape.escapedAt ?? 0) < 1200 && <ToyBox open style={{position: "absolute", left: "61%", top: "74.5%", width: "30%"}} />}
           <PlayroomToy toy={s.toyEscape.toy} x={s.toyEscape.x} y={s.toyEscape.y}
             flying={flying} walking escapedAt={s.toyEscape.escapedAt} onCollect={collect} />
         </OnWall>
       )}
-      <div aria-live="polite" className="pointer-events-none absolute bottom-[3%] left-[8%] right-[8%] z-40 rounded bg-void/70 px-2 py-1 text-xs text-paper">
-        {s.toyEscape && !s.toyEscape.recovered ? "The first toy walked away! It is still on the same wall. Turn the light on to pick it up." : "Find toys on every wall. Two are by the door and jacket."}
-      </div>
       <OnWall n={0}>
-        <ToyBox style={{ position: "absolute", left: "61%", top: "74.5%", width: "30%" }} glow={!!flying} />
+        <ToyBox style={{ position: "absolute", left: "61%", top: "74.5%", width: "30%" }} glow={!!flying} open={!!flying || !!s.toyEscape && !s.toyEscape.recovered} />
         {toy(r1, 0)}
         <div className="pointer-events-none absolute left-[34%] top-[73%] z-[41] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40" aria-hidden />
       </OnWall>
@@ -164,7 +201,8 @@ export function Ch1() {
             }}>
           <img src={cleanJacketWall} alt="" className="scene-bg" style={{ objectPosition: "25% 50%" }} />
         </div>}
-        {toy(r4, 3, jacketMoved)}
+        {toy(r4, 3, alternate ? extraOpen : jacketMoved)}
+         {alternate && <button type="button" aria-label="Look behind the keepsake box" disabled={!canInspect} className="absolute left-[24%] top-[43%] z-40 w-[25%] touch-manipulation" onClick={() => {setExtraOpen(true); sfx("open");}} style={{transform: extraOpen ? "translate(-55%, -35%) rotate(-20deg)" : undefined}}><img src={PROP2.trinketbox} alt="" className="w-full" /></button>}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] transition-transform duration-500 motion-reduce:transition-none"
           style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
             transformOrigin: "36% 33%", transform: jacketMoved ? "rotate(-36deg)" : undefined }}>
@@ -354,6 +392,7 @@ export function Ch2Kitchen() {
       chapterCard
       progress={`List ${list.filter((i) => got.includes(i)).length}/${list.length}`}
       switchHint={got.length === 0}
+      navigationLocked={openU !== null || !!scare}
       clues={
         <div className="absolute left-[8%] right-[8%] top-[7%] -rotate-2 px-3 py-2 font-crayon list-scrawl">
           <p className="text-[clamp(12px,4cqw,16px)] uppercase tracking-wider opacity-80">Mommy's list</p>
@@ -371,45 +410,24 @@ export function Ch2Kitchen() {
       above={
         <>
           {u && openU !== null && !scare && (
-            <div className="absolute inset-0 z-[40] grid place-items-center bg-void/75 animate-float-up">
-              <div
-                className="relative w-[90%] -rotate-1 p-3"
-                style={{ background: "linear-gradient(oklch(0.3 0.04 55), oklch(0.18 0.03 50))", boxShadow: "0 0 0 6px oklch(0.24 0.04 50), 6px 10px 0 oklch(0 0 0 / .6)", filter: s.lightsOn ? undefined : "brightness(.2)" }}
-              >
-                <span className="absolute -top-3 left-6 h-5 w-20 rotate-3 bg-paper/80" />
-                <p className="mb-2 text-center font-crayon text-xs uppercase tracking-widest text-paper/70">
-                  inside the {u.kind === "door" ? "cupboard" : "drawer"}
-                </p>
-                <div className="relative grid grid-cols-2 gap-3 rounded p-2" style={{ background: "oklch(0.12 0.02 50)", boxShadow: "inset 0 6px 14px oklch(0 0 0 / .8)" }}>
-                  {openU === setup.trap && (
-                    <img src={SCARE.face2} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15 mix-blend-screen grayscale" />
-                  )}
-                  {inside.length === 0 && <p className="col-span-2 py-8 text-center font-hand text-paper/50">empty</p>}
-                  {inside.map((c) => {
-                    const tag = ownerTag(c);
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => take(c)}
-                        aria-label={c.startsWith("junk") ? "Something that isn't a dish" : `Take ${itemLabel(c as ItemId, nm)}`}
-                        className="relative grid aspect-square touch-manipulation place-items-center rounded bg-paper/5 p-2 active:scale-95"
-                      >
-                        <ItemArt id={c} className="w-[78%]" />
-                        {tag && (
-                          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 -rotate-2 whitespace-nowrap px-2 py-0.5 font-hand text-[13px] leading-none text-ink" style={{ background: tag.color }}>
-                            {tag.text}'s {kindName(c)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 flex justify-center">
-                  <button className="stitch-btn text-sm" onClick={() => { sfx("open"); setOpenU(null); }}>Close it</button>
-                </div>
-              </div>
-            </div>
-          )}
+             <div role="dialog" aria-label="Inside the cupboard" className="absolute inset-0 z-[40] overflow-hidden bg-void animate-float-up">
+               <img src={QOL_ART.kitchenInterior} alt="" className="scene-bg" />
+               <div className="absolute inset-0" style={{opacity: s.lightsOn ? 1 : .16}}>
+                 {inside.length === 0 && <p className="absolute left-1/2 top-1/2 -translate-x-1/2 font-hand text-paper">empty</p>}
+                 {inside.map((c, i) => {
+                   const tag = ownerTag(c);
+                   return <Button key={c} variant="game" size="game" onClick={() => take(c)}
+                     aria-label={c.startsWith("junk") ? "Something that isn't a dish" : `Take ${itemLabel(c as ItemId, nm)}`}
+                     className="shelf-item absolute grid touch-manipulation place-items-center active:scale-95"
+                     style={{left: i % 2 === 0 ? "13%" : "56%", top: `${i < 2 ? 6 : 34}%`, width: "31%", height: "22%"}}>
+                     <ItemArt id={c} className="shelf-art w-[78%]" />
+                     {tag && <span className="absolute -bottom-3 left-1/2 w-full -translate-x-1/2 whitespace-normal text-center font-hand text-[12px] leading-tight text-paper">{tag.text}'s {kindName(c)}</span>}
+                   </Button>;
+                 })}
+               </div>
+               <Button variant="game" size="game" className="stitch-btn absolute right-[5%] top-[3%] text-sm" onClick={() => {sfx("open"); setOpenU(null);}}>Back</Button>
+             </div>
+           )}
           {scare && <JumpScare img={scare} onDone={() => setScare(null)} />}
         </>
       }
@@ -423,7 +441,7 @@ export function Ch2Kitchen() {
               aria-label={unit.kind === "door" ? "Open the cupboard" : "Open the drawer"}
               onClick={() => openUnit(i, unit.kind)}
               className="absolute block touch-manipulation active:scale-[0.97]"
-              style={{ left: isFront ? `${unit.x}%` : "30%", top: isFront ? `${unit.y}%` : "55%", width: isFront ? `${unit.w}%` : "40%", aspectRatio: unit.kind === "door" ? "4 / 5" : "12 / 7" }}
+              style={{ left: isFront ? (i === 0 ? "13%" : "56%") : "31%", top: "57%", width: isFront ? "30%" : "38%", aspectRatio: unit.kind === "door" ? "4 / 5" : "12 / 7" }}
             >
               <Cupboard kind={unit.kind} open={false} style={{ width: "100%", height: "100%", display: "block" }} />
             </button>
@@ -432,7 +450,7 @@ export function Ch2Kitchen() {
       })}
       {/* what you've gathered so far, pinned to the wall like a note */}
       {got.length > 0 && (
-        <div className="pointer-events-none absolute left-[4%] top-[44%] flex max-w-[60%] rotate-[-2deg] items-center gap-1 bg-paper/90 px-2 py-1 shadow-[3px_4px_0_oklch(0_0_0/.5)]">
+        <div className="pointer-events-none absolute left-[4%] top-[36%] flex max-w-[60%] rotate-[-2deg] items-center gap-1 bg-paper/90 px-2 py-1 shadow-[3px_4px_0_oklch(0_0_0/.5)]">
           {got.map((i) => (
             <ItemArt key={i} id={i} className="w-9 animate-float-up" />
           ))}
@@ -441,7 +459,7 @@ export function Ch2Kitchen() {
       {done && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[4%] z-20 flex justify-center animate-float-up">
           <button
-            className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]"
+            className="stitch-btn honey carry-table pointer-events-auto w-[88%] whitespace-normal py-4 text-center text-[15px]"
             onClick={() => {
               sfx("tap");
               s.go("ch2d");
@@ -508,7 +526,7 @@ type Drag = { id: PieceId; r: boolean; px: number; py: number; sx: number; sy: n
 export function Ch2Dining() {
   const s = useGame();
   const nm = s.name || "sweetheart";
-  const [view, setView] = useState<"tray" | "table">("tray");
+  const [view, setView] = useState<"tray" | "table">("table");
   const [placed, setPlaced] = useState<Placed>({});
   const [rot, setRot] = useState<Record<string, boolean>>({});
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -526,6 +544,9 @@ export function Ch2Dining() {
   const [bigOffered, setBigOffered] = useState(false);
   const [phase, setPhase] = useState<"play" | "crash" | "black" | "smile" | "after">("play");
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  const cinemaTimers = useRef<number[]>([]);
+  useEffect(() => () => cinemaTimers.current.forEach(window.clearTimeout), []);
+  const later = (fn: () => void, ms: number) => { cinemaTimers.current.push(window.setTimeout(fn, ms)); };
   useSpokenPrompt(foodQuestion, "guest", asking && !foodQuestionLoading);
 
   useEffect(() => {
@@ -590,19 +611,19 @@ export function Ch2Dining() {
     setPhase("crash");
     sfx("scare");
     s.addCordura(15);
-    window.setTimeout(() => { setPhase("black"); sfx("switch"); }, 700);
-    window.setTimeout(() => { setPhase("smile"); sfx("whisper"); }, 3400);
-    window.setTimeout(() => {
+    later(() => { setPhase("black"); sfx("switch"); }, 950);
+    later(() => { setPhase("smile"); sfx("whisper"); }, 3000);
+    later(() => {
       setPhase("after");
+      useGame.getState().set({ lightsOn: true, forcedBlackout: false });
       setPlaced(SOLUTION);
       sfx("switch");
       useGame.getState().say([
         { speaker: "narrator", text: "The light comes back. The table is set. Perfectly." },
         { speaker: "guest", text: `Thank you, ${nm}. I'll make your ${useGame.getState().favFood || "dinner"}.` },
-        { speaker: "narrator", text: "Upstairs, a music box starts to play." },
+        { speaker: "narrator", text: "Upstairs, a music box starts to play.", onDone: () => useGame.getState().go("ch3") },
       ]);
-    }, 7200);
-    window.setTimeout(() => useGame.getState().go("ch3"), 15500);
+    }, 6000);
   };
 
   const offerBig = () => {
@@ -753,7 +774,8 @@ export function Ch2Dining() {
         view === "table" ? (
           <div className="absolute" style={gridStyle}>
             {PIECES.map((p) => {
-              const sol = SOLUTION[p.id]!;
+              const sol = SOLUTION[p.id];
+              if (!sol) return null;
               const d = dims(p, sol.r);
               return (
                 <div key={p.id} className="glow-clue absolute rounded-sm border-2 border-dashed border-current" style={box(sol.x, sol.y, d.w, d.h)}>
@@ -780,10 +802,12 @@ export function Ch2Dining() {
               <PieceArt p={pieceOf(drag.id)} r={drag.r} />
             </div>
           )}
-          {phase === "crash" && <div className="shatter absolute inset-0 z-[55] bg-paper/80 mix-blend-difference" />}
+          {phase === "crash" && <div className="pointer-events-none absolute z-[55]" style={gridStyle}>
+            {Array.from({length: 12}, (_, i) => <div key={i} className="dish-shard absolute inset-0" style={{clipPath: `polygon(50% 50%, ${50 + Math.cos(i * Math.PI / 6) * 75}% ${50 + Math.sin(i * Math.PI / 6) * 75}%, ${50 + Math.cos((i + 1) * Math.PI / 6) * 75}% ${50 + Math.sin((i + 1) * Math.PI / 6) * 75}%)`, "--shard-x": `${Math.cos(i * Math.PI / 6) * 150}%`, "--shard-y": `${Math.sin(i * Math.PI / 6) * 150}%`, "--shard-r": `${i % 2 ? 75 : -85}deg` } as CSSProperties}><img src={PROP3.bigplate} alt="" className="h-full w-full object-contain" /></div>)}
+          </div>}
           {(phase === "black" || phase === "smile") && (
             <div className="absolute inset-0 z-[58] grid place-items-center bg-void">
-              {phase === "smile" && <img src={SCARE.smile} alt="" className="smile-rise w-[96%]" />}
+              {phase === "smile" && <img src={QOL_ART.guestReveal} alt="" className="smile-rise w-[72%] object-contain" />}
             </div>
           )}
           {asking && (
@@ -819,18 +843,18 @@ export function Ch2Dining() {
         onPointerUp={(e) => {
           const s0 = swipe.current;
           swipe.current = null;
-          if (!s0 || dragRef.current) return;
+          if (!s0 || dragRef.current || !bigOffered || phase !== "play") return;
           const dx = e.clientX - s0.x;
           if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(e.clientY - s0.y) * 1.6) { sfx("creak"); setView((v) => (v === "tray" ? "table" : "tray")); }
         }}
       >
-        <div className="absolute inset-x-0 top-[3%] z-40 flex justify-center gap-3">
+        {bigOffered && phase === "play" && <div className="absolute inset-x-0 top-[3%] z-40 flex justify-center gap-3">
           {(["tray", "table"] as const).map((v) => (
             <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`stitch-btn px-3 py-1 text-xs ${view === v ? "honey" : "opacity-70"}`}>
               {v === "tray" ? "Tray" : "Table"}
             </button>
           ))}
-        </div>
+        </div>}
 
         {view === "tray" ? (
           <div className="wall-in-l absolute inset-0">
@@ -864,6 +888,7 @@ export function Ch2Dining() {
         ) : (
           <div className="wall-in-r absolute inset-0">
             <img src={PROP3.tabletop} alt="" className="scene-bg" style={{ filter: s.lightsOn ? undefined : "saturate(.3) brightness(.7)" }} />
+            {phase === "after" && <img src={foodImageFor(s.favFood ?? "cake")} alt={s.favFood ?? "dinner"} className="pointer-events-none absolute left-[32%] top-[25%] z-30 w-[36%]" />}
             <div ref={gridRef} className="absolute" style={gridStyle}>
               {Array.from({ length: GRID * GRID }, (_, k) => (
                 <div key={k} className="absolute border border-dashed border-paper/30" style={box(k % GRID, Math.floor(k / GRID), 1, 1)} />
@@ -887,7 +912,7 @@ export function Ch2Dining() {
                     key={id}
                     onPointerDown={(e) => startDrag(e, id as PieceId)}
                     aria-label={`Move ${id.replace("-", " for ")}`}
-                    className={`absolute touch-none select-none ${id === "bigplate" && phase === "crash" ? "shatter" : ""}`}
+                    className={`absolute touch-none select-none ${phase === "crash" ? "dish-drop" : ""}`}
                     style={box(pl.x, pl.y, d.w, d.h)}
                   >
                     <PieceArt p={p} r={pl.r} />
@@ -897,12 +922,12 @@ export function Ch2Dining() {
             </div>
             {/* the tray, docked under the table: drag from here */}
             {phase === "play" && (
-              <div className="absolute inset-x-[3%] bottom-[2%] top-[69%] rounded-lg p-2" style={{ background: "linear-gradient(oklch(0.3 0.04 55 / .95), oklch(0.18 0.03 50 / .95))", boxShadow: "var(--shadow-contact)" }}>
+              <div className="table-dock absolute inset-x-[3%] bottom-[2%] top-[69%] p-2">
                 <p className="mb-1 text-center font-hand text-[12px] leading-none text-paper/80">
-                  {inDock.length ? "drag onto the table · tap to turn" : "everything is on the table"}
+                  {inDock.length ? "" : "everything is on the table"}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  {inDock.map((p) => <DockPiece key={p.id} p={p} scale={p.id === "bigplate" ? 22 : 34} />)}
+                  {inDock.map((p) => <DockPiece key={p.id} p={p} scale={p.id === "bigplate" ? 19 : 28} />)}
                 </div>
               </div>
             )}
