@@ -56,14 +56,14 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
     const id = window.setInterval(() => {
       const st = useGame.getState();
       setUnease(st.cordura, chapter);
-      if (!st.interactive || st.scare || st.line || st.paused) return;
+      if (!st.interactive || st.scare || st.line || st.paused || st.forcedBlackout) return;
       if (!st.lightsOn) {
         darkAcc.current += 1;
         st.fact({ darkSeconds: st.facts.darkSeconds + 1 });
-        if (darkAcc.current >= 2) { darkAcc.current = 0; st.addCordura(1); }
+        st.addCordura(3);
       } else {
         lightAcc.current += 1;
-        if (lightAcc.current >= 3) { lightAcc.current = 0; st.addCordura(-1); }
+        if (lightAcc.current >= 2) { lightAcc.current = 0; st.addCordura(-1); }
       }
     }, 1000);
     return () => window.clearInterval(id);
@@ -76,7 +76,17 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       sfx("scare");
       window.setTimeout(() => {
         const st = useGame.getState();
-        st.set({ scare: false, cordura: 55, lightsOn: true, phaseKey: st.phaseKey + 1, scareArmed: true, line: undefined, queue: [] });
+        const checkpoint = st.screen === "ch2d" ? "ch2k" : st.screen;
+        st.set({
+          screen: checkpoint, scare: false, forcedBlackout: false, cordura: 50, lightsOn: true,
+          phaseKey: st.phaseKey + 1, scareArmed: true, line: undefined, queue: [],
+          interactive: false,
+          ...(checkpoint === "ch1" ? { ch1: [] } : {}),
+          ...(checkpoint === "ch2k" ? { ch2Items: [], ch2Placed: [] } : {}),
+          ...(checkpoint === "ch3" ? { ch3Rounds: 0 } : {}),
+        });
+        darkAcc.current = 0;
+        lightAcc.current = 0;
         st.say({ speaker: "narrator", text: "You blink. The room is the way it was a moment ago. Try again.", ms: 3200 });
       }, 1900);
     }

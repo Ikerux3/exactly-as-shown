@@ -135,7 +135,7 @@ function noise(dur: number, freq: number, vol: number, q = 1) {
   src.start();
 }
 
-export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note" | "step" | "door", n = 0) {
+export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note" | "step" | "door" | "heartbeat", n = 0) {
   const c = ensure();
   if (!c) return;
   const t = c.currentTime + 0.01;
@@ -159,6 +159,24 @@ export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare
       g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + 0.3); g.gain.linearRampToValueAtTime(0.0001, t + 1.5);
       const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 600;
       o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + 1.6);
+      break;
+    }
+    case "heartbeat": {
+      // Two quiet low beats with a quick gap: an anxious child's pulse.
+      if (!master) return;
+      for (const [offset, gain] of [[0, 0.12], [0.23, 0.075]] as const) {
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(61, t + offset);
+        o.frequency.exponentialRampToValueAtTime(42, t + offset + 0.17);
+        g.gain.setValueAtTime(0.0001, t + offset);
+        g.gain.exponentialRampToValueAtTime(gain, t + offset + 0.035);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + offset + 0.20);
+        o.connect(g).connect(master);
+        o.start(t + offset);
+        o.stop(t + offset + 0.21);
+      }
       break;
     }
     case "whisper": noise(1.6, 2400, 0.35, 0.7); break;

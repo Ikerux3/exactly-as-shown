@@ -418,3 +418,17 @@
 @keyframes cut-walk { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(-2.5%); } }
 @keyframes cut-wave { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
 @keyframes cine-shake { 0%, 100% { translate: 0 0; } 20% { translate: -1.6% 0.8%; } 45% { translate: 1.3% -0.6%; } 70% { translate: -0.7% 0.3%; } }
+
+
+/* MJ v3.1 — restrained heartbeat shake during the six-second final blackout. */
+@keyframes final-heartbeat-wobble {
+  0%, 16%, 31%, 60%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(1px, 0); }
+  24% { transform: translate(-1px, 1px); }
+  64% { transform: translate(1px, -1px); }
+  68% { transform: translate(-1px, 0); }
+}
+.final-heartbeat-shake { animation: final-heartbeat-wobble 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .final-heartbeat-shake { animation: none; }
+}

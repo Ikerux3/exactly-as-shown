@@ -244,29 +244,60 @@ export function Intro() {
 
 export function Final() {
   const s = useGame();
-  const [phase, setPhase] = useState<"blackout" | "door">("blackout");
+  const [phase, setPhase] = useState<"blackout" | "whisper" | "door">("blackout");
   const [canRun, setCanRun] = useState(false);
+  const finalValue = s.finalCordura ?? s.cordura;
+  const intense = finalValue >= 100;
+
   useEffect(() => {
     stopMusic();
-    s.set({ interactive: false, lightsOn: false, objective: "" });
-    sfx("whisper");
-    const t1 = window.setTimeout(() => sfx("whisper"), 2600);
-    const t2 = window.setTimeout(() => {
+    const st = useGame.getState();
+    // Unique exception to the standard darkness timer: six seconds add just +5 TOTAL.
+    // No Stage is mounted in the finale, so the regular 100% reset cannot run here.
+    const frozen = Math.min(100, st.cordura + 5);
+    st.set({ interactive: false, lightsOn: false, objective: "", cordura: frozen, finalCordura: frozen });
+    sfx("heartbeat");
+    const beating = window.setInterval(() => sfx("heartbeat"), 960);
+    const whisper = window.setTimeout(() => {
+      window.clearInterval(beating);
+      setPhase("whisper");
+      sfx(frozen >= 100 ? "scare" : "whisper");
+      useGame.getState().say({
+        speaker: "mimic",
+        text: (useGame.getState().name || "Little one") + "… I can still see you.",
+        ms: 1600,
+      });
+    }, 6000);
+    const door = window.setTimeout(() => {
+      const state = useGame.getState();
+      state.set({ line: undefined, queue: [] });
       setPhase("door");
       sfx("open");
-      useGame.getState().say([
-        { speaker: "narrator", text: "A key turns in the front door. Warm light spills across the floor." },
-        { speaker: "mother", text: `${s.name || "Sweetheart"}? I'm home! I'm so sorry I took so long.`, onShow: () => setCanRun(true) },
+      state.say([
+        { speaker: "narrator", text: "A key turns in the front door. Warm light fills the hall." },
+        { speaker: "mother", text: (state.name || "Sweetheart") + "? I'm home! I'm so sorry I took so long.", onShow: () => setCanRun(true) },
       ]);
-    }, 5000);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, 8000);
+    return () => { window.clearInterval(beating); window.clearTimeout(whisper); window.clearTimeout(door); };
   }, []);
+
   return (
     <Shell bottom={<DialogueBar />}>
-      {phase === "blackout" ? (
-        <div className="absolute inset-0 grid place-items-center bg-void">
-          <p className="subtitle guest px-4 py-3 text-lg animate-float-up [animation-delay:1.2s]">{s.name || "little one"}…</p>
+      {phase !== "door" ? (
+        <div className="final-heartbeat-shake absolute inset-0 grid place-items-center bg-void" role="status" aria-label="Six seconds of darkness, a frightened heartbeat, and a whisper">
+          {phase === "whisper" && (
+            <>
+              {intense && (
+                <div className="absolute left-1/2 top-[30%] flex -translate-x-1/2 gap-9" aria-hidden>
+                  <span className="h-4 w-7 rounded-[50%] bg-crimson shadow-[0_0_22px_var(--crimson)]" />
+                  <span className="h-4 w-7 rounded-[50%] bg-crimson shadow-[0_0_22px_var(--crimson)]" />
+                </div>
+              )}
+              <p className={"subtitle guest px-4 py-3 text-lg " + (intense ? "text-crimson" : "")}>
+                {s.name || "Little one"}… I can still see you.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>
@@ -274,7 +305,9 @@ export function Final() {
           <GuestVoid style={{ left: "2%", top: "8%", height: "70%", opacity: 0.6 }} intensity={0.6} />
           {canRun && (
             <div className="absolute inset-x-0 bottom-[6%] flex justify-center animate-float-up">
-              <button type="button" className="stitch-btn honey text-lg" onClick={() => { s.set({ line: undefined, queue: [] }); s.go("ending"); }}>Run to Mommy</button>
+              <button type="button" className="stitch-btn honey text-lg" onClick={() => {
+                s.set({ line: undefined, queue: [] }); s.go("ending");
+              }}>Run to Mommy</button>
             </div>
           )}
         </>
