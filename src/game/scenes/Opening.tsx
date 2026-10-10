@@ -3,6 +3,7 @@ import { BG, TOY_IMG } from "../assets";
 import { COLOR_LABEL, MOTHER_LABEL, loadMemory, sanitizeName, saveMemory, useGame, type ColorKey } from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
 import { GuestVoid } from "../Props";
+import { Ransom } from "../fx";
 import { resetOnce } from "../kit";
 
 export function Title() {
@@ -14,13 +15,12 @@ export function Title() {
       <img src={BG.bgTitle} alt="A small handmade house at dusk" className="scene-bg" style={{ objectPosition: "50% 50%" }} />
       <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, oklch(0.12 0.04 275 / .2), transparent 40%, oklch(0.06 0.02 275 / .85) 100%)" }} />
       <div className="absolute inset-x-0 top-[8%] px-6 text-center">
-        <h1 className="title-word text-[13vw] leading-[0.9] text-paper drop-shadow-[0_4px_0_var(--wood)] sm:text-6xl">
-          <span className="block">MOMMY</span>
-          <span className="block text-[0.62em] text-honey">will be</span>
+        <h1 className="space-y-2 text-[10vw] sm:text-5xl" aria-label="Mommy will be back">
+          <Ransom text="MOMMY" seed={3} className="block" />
+          <Ransom text="will be" seed={8} className="block text-[0.6em]" />
           <span className="relative block">
-            BA<span className="relative inline-block translate-y-[0.06em] rotate-[4deg]">C
-              <span className="absolute left-1/2 top-[85%] block h-[0.8em] w-[2px] origin-top bg-crimson/80" style={{ animation: "drip 6s ease-out both" }} />
-            </span>K
+            <Ransom text="BACK" seed={21} />
+            <span className="absolute left-[58%] top-[90%] block h-[0.9em] w-[3px] origin-top bg-crimson" style={{ animation: "drip 6s ease-out both" }} />
           </span>
         </h1>
         <p className="mx-auto mt-4 max-w-[16rem] font-hand text-base text-paper/80">
@@ -51,13 +51,12 @@ export function Intro() {
     <div className="game-frame">
       <img src={BG.bgPlayroom} alt="" className="scene-bg" style={{ objectPosition: "15% 50%" }} />
       <div className="absolute inset-0 bg-void/30" />
-      {/* Mother: a felt silhouette by the door */}
-      <svg viewBox="0 0 60 160" className="absolute bottom-[8%] right-[6%] h-[42%] drop-shadow-2xl" aria-hidden>
-        <circle cx="30" cy="22" r="14" fill="oklch(0.78 0.05 60)" />
-        <path d="M16 18 Q30 -4 44 18 Q46 34 40 40 L20 40 Q14 34 16 18 Z" fill="oklch(0.35 0.05 40)" />
-        <path d="M14 46 Q30 36 46 46 L56 156 L4 156 Z" fill={`var(--c-${s.motherColor})`} />
-        <path d="M18 50 L42 50" stroke="var(--paper)" strokeDasharray="3 3" />
-        <rect x="44" y="96" width="14" height="18" rx="3" fill="var(--wood-light)" />
+      {/* Mother: a faceless black cardboard cut-out, pinned to the scene */}
+      <svg viewBox="0 0 60 170" className="absolute bottom-[8%] right-[6%] h-[44%]" style={{ filter: "drop-shadow(5px 6px 0 oklch(0 0 0 / .5))" }} aria-hidden>
+        <path d="M30 6 C40 6 44 15 43 24 C42 33 37 38 30 38 C23 38 18 33 17 24 C16 15 20 6 30 6 Z M14 46 Q30 38 46 46 L50 70 L56 160 L34 162 L32 120 L28 120 L26 162 L4 160 L10 70 Z" fill="oklch(0.08 0.01 270)" />
+        <path d="M48 96 l10 2 l-1 20 l-12 -1 Z" fill="oklch(0.08 0.01 270)" />
+        <path d="M22 52 L38 52" stroke={`var(--c-${s.motherColor})`} strokeWidth="3" strokeDasharray="3 3" />
+        <rect x="24" y="2" width="12" height="5" fill="oklch(0.88 0.08 90 / .7)" transform="rotate(-8 30 4)" />
       </svg>
       <div className="absolute inset-x-[6%] top-[10%] paper animate-float-up p-5">
         {step === 0 && (

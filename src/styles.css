@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Fraunces", Georgia, serif;
-  --font-hand: "Patrick Hand", "Comic Sans MS", cursive;
+  --font-display: "Special Elite", "Courier New", monospace;
+  --font-hand: "Special Elite", "Courier New", monospace;
+  --font-crayon: "Caveat Brush", cursive;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -198,3 +199,69 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
+
+/* ===== Collage / ransom-note identity (overrides) ===== */
+.paper {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(175deg, oklch(0.94 0.03 85), oklch(0.86 0.045 75));
+  color: var(--ink);
+  border-radius: 1px;
+  outline: none;
+  box-shadow: 3px 5px 0 oklch(0.05 0.01 270 / 0.55), 0 18px 30px -10px oklch(0 0 0 / 0.7);
+  clip-path: polygon(0 2%, 4% 0, 18% 1.5%, 33% 0, 52% 1%, 70% 0, 86% 1.8%, 100% 0, 99% 30%, 100% 62%, 99% 100%, 78% 98.5%, 55% 100%, 30% 98.6%, 10% 100%, 0 98%, 1% 60%, 0 30%);
+}
+.subtitle {
+  font-family: "Special Elite", monospace;
+  background: linear-gradient(176deg, oklch(0.93 0.03 85), oklch(0.84 0.045 75));
+  color: var(--ink);
+  border-radius: 0;
+  backdrop-filter: none;
+  transform: rotate(-0.8deg);
+  box-shadow: 3px 4px 0 oklch(0 0 0 / 0.6);
+  clip-path: polygon(0 4%, 6% 0, 40% 3%, 72% 0, 100% 4%, 99% 50%, 100% 96%, 64% 100%, 30% 97%, 0 100%, 1% 50%);
+}
+.subtitle::before {
+  content: ""; position: absolute; top: -6px; left: 42%; width: 64px; height: 16px;
+  background: oklch(0.88 0.08 90 / 0.65); transform: rotate(-4deg);
+}
+.subtitle.guest {
+  background: oklch(0.1 0.01 270); color: oklch(0.85 0.03 20);
+  font-style: normal; letter-spacing: 0.08em; text-transform: lowercase;
+  transform: rotate(1.2deg); animation: jitter 0.18s steps(2) infinite;
+}
+.speaker-tag { font-family: var(--font-crayon); font-size: 15px; letter-spacing: 0.04em; text-transform: none; color: var(--crimson); }
+.stitch-btn {
+  font-family: "Special Elite", monospace;
+  border-radius: 2px; outline: none; letter-spacing: 0.04em;
+  box-shadow: 3px 4px 0 oklch(0 0 0 / 0.65);
+  clip-path: polygon(0 6%, 50% 0, 100% 8%, 98% 94%, 45% 100%, 2% 92%);
+}
+.stitch-btn:nth-child(odd) { transform: rotate(-1deg); }
+.title-word { font-family: "Abril Fatface", serif; font-weight: 400; }
+
+/* Ransom letters */
+.ransom { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 0.06em; line-height: 1; }
+.ransom-l { display: inline-block; padding: 0.06em 0.1em 0.02em; box-shadow: 2px 3px 0 oklch(0 0 0 / 0.55); }
+.ransom-gap { width: 0.4em; }
+
+/* Sanity FX */
+.fx-vignette { position: absolute; inset: 0; pointer-events: none; transition: box-shadow 1.5s ease, background 1.5s ease; }
+.fx-aberr { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+.fx-aberr img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fx-pulse { animation: heartbeat 1.1s ease-in-out infinite; }
+.fx-grain { position: absolute; inset: -50%; pointer-events: none; opacity: 0.12; animation: grain 0.4s steps(3) infinite;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.eye-pair { position: absolute; display: flex; gap: 0.5em; animation: eyes 5s ease-in-out infinite; }
+.eye-pair i { width: 0.55em; height: 0.3em; border-radius: 50%; background: oklch(0.9 0.05 90); box-shadow: 0 0 6px oklch(0.9 0.1 90 / 0.7); }
+.walker { position: absolute; filter: brightness(0) drop-shadow(0 0 2px oklch(0 0 0)); opacity: 0.85; animation: walk-across linear forwards, waddle 0.35s ease-in-out infinite alternate; }
+
+@keyframes jitter { 0% { translate: 0 0 } 100% { translate: 0.6px -0.4px } }
+@keyframes heartbeat { 0%,100% { opacity: .55 } 15% { opacity: 1 } 30% { opacity: .6 } 45% { opacity: .95 } }
+@keyframes grain { 0% { transform: translate(0,0) } 33% { transform: translate(-5%,3%) } 66% { transform: translate(4%,-4%) } }
+@keyframes eyes { 0%,40%,48%,100% { transform: scaleY(1); opacity: .9 } 44% { transform: scaleY(0.05) } 70% { opacity: .2 } }
+@keyframes walk-across { from { left: var(--from) } to { left: var(--to) } }
+@keyframes waddle { from { rotate: -7deg; translate: 0 0 } to { rotate: 7deg; translate: 0 -6% } }
+@keyframes veil { 0% { opacity: 1 } 70% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes snap { 0%,100% { opacity: 0 } 10%,30% { opacity: 1 } }
+@keyframes grow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
