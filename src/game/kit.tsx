@@ -37,6 +37,26 @@ export function ChapterCard({ n }: { n: number }) {
   );
 }
 
+/**
+ * A hand-drawn crayon ring around something you can tap (percent of the frame).
+ * Purely visual: it never takes clicks, so the hitbox underneath keeps working.
+ * Render it through Stage's `above` so it shows both with the light on and in the dark.
+ */
+export function Hint({ x, y, w, h, label, faint, ring = true, labelTop }: {
+  x: number; y: number; w: number; h: number; label?: string; faint?: boolean; ring?: boolean; labelTop?: boolean;
+}) {
+  return (
+    <div className={`hint-mark ${faint ? "faint" : ""}`} style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`, pointerEvents: "none" }} aria-hidden>
+      {ring && (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full overflow-visible">
+          <path d="M10 50 C7 22 38 5 62 8 C88 12 98 36 94 58 C90 84 58 96 35 92 C13 88 3 68 12 42" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+      {label && <span className={`hint-label ${labelTop ? "top" : ""}`}>{label}</span>}
+    </div>
+  );
+}
+
 export function wait(ms: number) {
   return new Promise((r) => window.setTimeout(r, ms));
 }

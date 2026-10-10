@@ -3,7 +3,7 @@ import { Stage, illuminated } from "../Stage";
 import { BG, MUSICBOX, TOY_IMG } from "../assets";
 import { TOY_LABEL, useGame } from "../store";
 import { Clock, GuestVoid, Key, Pajamas, PhotoFrame, Symbol, Toothbrush, TrinketBox, type Sym } from "../Props";
-import { useSceneIntro } from "../kit";
+import { Hint, useSceneIntro } from "../kit";
 import { sfx, startMusic, stopMusic } from "../audio";
 import { chooseInterventions } from "../guest";
 import { useAdaptiveChapter } from "../ai/adapt";
@@ -142,6 +142,7 @@ export function Ch4() {
   const [solved, setSolved] = useState(false);
   const [hasKey, setKey] = useState(false);
   const [wardrobe, setWardrobe] = useState(0);
+  const [wrongTry, setWrongTry] = useState<Sym[] | null>(null); // visual only: the failed attempt, shown briefly
   const aiLineSpoken = useRef(false);
   const nm = s.name || "sweetheart";
 
@@ -165,8 +166,11 @@ export function Ch4() {
     const next = [...input, sym];
     if (puzzle.answer[next.length - 1] !== sym) {
       sfx("wrong"); s.mistake(); setInput([]);
+      setWrongTry(next);
+      window.setTimeout(() => setWrongTry(null), 750);
       return;
     }
+    setWrongTry(null);
     setInput(next);
     if (next.length === 3) {
       setSolved(true); sfx("open"); sfx("chime");
@@ -241,9 +245,23 @@ export function Ch4() {
       {!solved && (
         <div className="absolute bottom-[3%] left-[4%] right-[4%] paper px-3 py-2.5">
           <p className="mb-1.5 text-center text-xs opacity-70">A little lock under the footboard</p>
+          {/* the three dials of the lock: fill as you press, shake red on a wrong code */}
+          <div className={`mb-2 flex justify-center gap-2 ${wrongTry ? "lock-shake" : ""}`} aria-live="polite"
+            aria-label={wrongTry ? "Wrong code" : `Code entered: ${input.join(", ") || "none"}`}>
+            {[0, 1, 2].map((i) => {
+              const sym = (wrongTry ?? input)[i];
+              return (
+                <span key={i} className={`grid h-9 w-9 place-items-center rounded-md border-2 transition-colors ${
+                  wrongTry ? "border-crimson bg-crimson/15" : sym ? "border-wood bg-paper-deep" : "border-dashed border-wood/40"}`}>
+                  {sym && <span key={`${i}-${sym}`} className="animate-float-up"><Symbol s={sym} size={22} color={wrongTry ? "var(--crimson)" : "var(--wood)"} /></span>}
+                </span>
+              );
+            })}
+          </div>
           <div className="grid grid-cols-6 gap-1">
             {PANEL.map((p) => (
-              <button key={p} onClick={() => press(p)} disabled={!s.lightsOn} aria-label={p} className="grid aspect-square place-items-center rounded-md bg-paper-deep disabled:opacity-40">
+              <button key={p} onClick={() => press(p)} disabled={!s.lightsOn} aria-label={p}
+                className="grid aspect-square place-items-center rounded-md bg-paper-deep transition active:scale-90 active:bg-honey/60 disabled:opacity-40">
                 <Symbol s={p} size={30} color="var(--wood)" />
               </button>
             ))}
@@ -293,11 +311,19 @@ export function Ch5() {
 
   // Mommy's list keeps track of what's still left before bed.
   const todo = [brush < 2 && "teeth", !pj && "pyjamas", !found && toyLabel].filter((t): t is string => !!t);
+  const searching = brush === 2 && pj && !found;
+  const toyName = s.favToy ?? `your ${TOY_LABEL[toy]}`;
   useEffect(() => {
     if (found) return;
-    s.set({ objective: `Get ready for bed. Still to do: ${todo.join(", ")}.` });
+    s.set({
+      objective: !searching
+        ? `Get ready for bed. Still to do: ${todo.join(", ")}.`
+        : sawClue
+          ? `You saw where ${toyName} is. Turn the light on and look there.`
+          : `Find ${toyName}. Turn the light off and search the room with your light.`,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todo.join()]);
+  }, [todo.join(), searching, sawClue]);
 
   // The house turns the light off on its own after the first two tasks.
   useEffect(() => {
@@ -350,6 +376,17 @@ export function Ch5() {
   return (
     <Stage
       bg={BG.bgBathroom} bgPos="50% 50%" chapter={5} chapterCard progress={`Ready ${3 - todo.length}/3`}
+      switchHint={searching && (s.lightsOn ? !sawClue : sawClue)}
+      above={
+        <>
+          {brush === 0 && <Hint x={41} y={40} w={12} h={10} label="toothbrush" />}
+          {brush === 1 && <Hint x={14} y={46} w={44} h={16} label="scrub ← →" ring={false} labelTop />}
+          {!pj && <Hint x={30} y={79} w={30} h={12} label="pyjamas" />}
+          {searching && Object.entries(HIDE_SPOTS).map(([id, spot]) => (
+            <Hint key={id} x={spot.x} y={spot.y} w={spot.w} h={spot.h} faint />
+          ))}
+        </>
+      }
       clues={brush === 2 && pj && !found && (
         <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${hidingSpot.clueX}%`, top: `${hidingSpot.clueY}%`, width: "18%" }}>
           <img src={TOY_IMG[toy]} alt="" className="w-full opacity-80" style={{ filter: "saturate(.4) brightness(1.2) drop-shadow(0 0 8px var(--glow))" }} />

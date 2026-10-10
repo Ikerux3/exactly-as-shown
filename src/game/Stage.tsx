@@ -29,9 +29,11 @@ type Props = {
   progress?: string | undefined;
   /** Show the "Chapter N" title card when the scene opens. */
   chapterCard?: boolean;
+  /** Make the light switch glow when the next step is to use it. */
+  switchHint?: boolean;
 };
 
-export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, switchEnabled = true, guest, progress, chapterCard }: Props) {
+export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, switchEnabled = true, guest, progress, chapterCard, switchHint }: Props) {
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
   const dark = useRef<HTMLDivElement>(null);
@@ -94,7 +96,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       top={<ChapterBar chapter={chapter} progress={progress} />}
       bottom={
         <DialogueBar
-          right={switchEnabled ? <LightSwitch on={s.lightsOn} onToggle={toggle} disabled={!s.interactive || s.scare} /> : null}
+          right={switchEnabled ? <LightSwitch on={s.lightsOn} onToggle={toggle} disabled={!s.interactive || s.scare} hint={switchHint && !s.line} /> : null}
         />
       }
       overlay={
