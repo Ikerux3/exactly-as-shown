@@ -256,7 +256,9 @@ export function Ch1() {
       >
         <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
       </button>
+      </OnWall>
 
+      <OnWall n={1}>
       {/* Toy 3 — in the drawer */}
       <button
         aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"}
@@ -271,6 +273,7 @@ export function Ch1() {
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
       {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
+      </OnWall>
 
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
@@ -304,7 +307,9 @@ export function Ch1() {
           />
         </button>
       )}
+      </OnWall>
 
+      <OnWall n={2}>
       {/* Toy 5 — under the rug edge */}
       <button
         aria-label="Lift the edge of the rug"
@@ -335,6 +340,7 @@ export function Ch1() {
         </svg>
       </button>
       {rugLifted && !s.lightsOn && <Toy t={r5} x={22} y={79} w={15} />}
+      </OnWall>
     </Stage>
   );
 }
