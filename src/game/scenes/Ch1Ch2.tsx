@@ -618,6 +618,45 @@ export function Ch2Kitchen() {
   );
 }
 
+type DiningMatProps = {
+  side: "L" | "R";
+  x: number;
+  childLeft: boolean;
+  placed: ItemId[];
+  selected: ItemId | null;
+  onPlace: (side: "L" | "R") => void;
+};
+function DiningMat({ side, x, childLeft, placed, selected, onPlace }: DiningMatProps) {
+    const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
+    const mine = placed.filter((p) => p.endsWith(owner));
+    return (
+      <button
+        aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`}
+        onClick={() => onPlace(side)}
+        className={`absolute z-10 grid min-h-12 w-[34%] -translate-x-1/2 place-items-center rounded-[50%] touch-manipulation transition-[outline,background-color,box-shadow] duration-150 active:scale-[0.98] focus-visible:outline-4 focus-visible:outline-honey ${selected ? "ring-2 ring-honey/80" : ""}`}
+        style={{
+          left: `${x}%`,
+          top: "54%",
+          height: "11%",
+          touchAction: "manipulation",
+          background: "oklch(0.92 0.03 85 / .9)",
+          outline: selected ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)",
+          outlineOffset: -6,
+          boxShadow: "var(--shadow-contact)",
+        }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center gap-0.5 px-3">
+          {(["cutlery", "plate", "glass"] as ItemKind[]).map((k) => {
+            const id = `${k}-${owner}`;
+            return mine.includes(id as ItemId) ? (
+              <ItemArt key={k} id={id} className={k === "plate" ? "w-[45%]" : "w-[22%]"} />
+            ) : null;
+          })}
+        </div>
+      </button>
+    );
+}
+
 export function Ch2Dining() {
   const s = useGame();
   const col = useColors();
@@ -748,36 +787,7 @@ export function Ch2Dining() {
     }
   }, [correct, intruderCount, intruders.length]);
 
-  const Mat = ({ side, x }: { side: "L" | "R"; x: number }) => {
-    const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
-    const mine = placed.filter((p) => p.endsWith(owner));
-    return (
-      <button
-        aria-label={`Place at the ${side === "L" ? "left" : "right"} seat`}
-        onClick={() => place(side)}
-        className={`absolute z-10 grid min-h-12 w-[34%] -translate-x-1/2 place-items-center rounded-[50%] touch-manipulation transition-[outline,background-color,box-shadow] duration-150 active:scale-[0.98] focus-visible:outline-4 focus-visible:outline-honey ${sel ? "ring-2 ring-honey/80" : ""}`}
-        style={{
-          left: `${x}%`,
-          top: "54%",
-          height: "11%",
-          touchAction: "manipulation",
-          background: "oklch(0.92 0.03 85 / .9)",
-          outline: sel ? "3px dashed var(--honey)" : "2px dashed oklch(0.7 0.04 70)",
-          outlineOffset: -6,
-          boxShadow: "var(--shadow-contact)",
-        }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center gap-0.5 px-3">
-          {(["cutlery", "plate", "glass"] as ItemKind[]).map((k) => {
-            const id = `${k}-${owner}`;
-            return mine.includes(id as ItemId) ? (
-              <ItemArt key={k} id={id} className={k === "plate" ? "w-[45%]" : "w-[22%]"} />
-            ) : null;
-          })}
-        </div>
-      </button>
-    );
-  };
+
 
   return (
     <Stage
@@ -836,8 +846,8 @@ export function Ch2Dining() {
         className="pointer-events-none absolute right-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
         style={{ backgroundColor: childLeft ? col.mother : col.child }}
       />
-      <Mat side="L" x={25} />
-      <Mat side="R" x={75} />
+      <DiningMat side="L" x={25} childLeft={childLeft} placed={placed} selected={sel} onPlace={place} />
+      <DiningMat side="R" x={75} childLeft={childLeft} placed={placed} selected={sel} onPlace={place} />
       </OnWall>
       {/* The Guest scatters its corrupted third place to DIFFERENT walls. */}
       <div className="pointer-events-none absolute top-[7%] left-[8%] z-30 rounded bg-void/70 px-2 py-1 text-xs text-paper">
