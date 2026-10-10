@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { StudioSplash } from "@/game/StudioSplash";
 import { restoreSettings, useGame } from "@/game/store";
 import { useSubtitles } from "@/game/Shell";
 import { preloadArt } from "@/game/assets";
@@ -26,6 +27,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Game() {
+  const [studioOpening, setStudioOpening] = useState(true);
+  const finishStudioOpening = useCallback(() => setStudioOpening(false), []);
   const screen = useGame((s) => s.screen);
   const phaseKey = useGame((s) => s.phaseKey);
   useSubtitles();
@@ -39,6 +42,7 @@ function Game() {
   }, []);
   const holding = useChapterJump();
   const k = `${screen}-${phaseKey}`;
+  if (studioOpening) return <StudioSplash onComplete={finishStudioOpening} />;
   return (
     <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {screen === "title" && <Title />}
@@ -55,7 +59,7 @@ function Game() {
       <TransitionVeil screen={screen} />
       {holding && (
         <div className="paper fixed bottom-4 left-1/2 z-[110] -translate-x-1/2 px-4 py-2 text-sm">
-          Saltando al capítulo {holding}…
+          Skipping to chapter {holding}…
           <div className="mt-1 h-1 bg-crimson" style={{ animation: `grow ${HOLD_MS}ms linear forwards`, transformOrigin: "left" }} />
         </div>
       )}

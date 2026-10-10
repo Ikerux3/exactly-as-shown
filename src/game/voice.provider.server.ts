@@ -7,6 +7,10 @@ const DEFAULT_MODEL = "eleven_flash_v2_5";
 const MAX_AUDIO_BYTES = 2_500_000;
 const REQUEST_TIMEOUT_MS = 8_000;
 
+export function elevenLabsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env["ELEVENLABS_ENABLED"]?.trim().toLowerCase() === "true";
+}
+
 function voiceIdForRole(role: VoiceRole): string | undefined {
   const guest = process.env["ELEVENLABS_GUEST_VOICE_ID"]?.trim();
   const mother =
@@ -48,6 +52,7 @@ export async function requestElevenLabsSpeech(
   text: string,
   role: VoiceRole,
 ): Promise<ElevenLabsSpeechResult> {
+  if (!elevenLabsEnabled()) return { available: false };
   const apiKey = process.env["ELEVENLABS_API_KEY"]?.trim();
   const voiceId = voiceIdForRole(role);
   if (!apiKey || !voiceId) return { available: false };

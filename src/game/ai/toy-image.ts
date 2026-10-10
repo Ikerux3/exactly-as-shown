@@ -1,4 +1,5 @@
 import { generateFavoriteToyImageAI } from "./toy-image.functions";
+import { preferenceToyImage } from "../assets";
 import {
   cacheFavoriteToyAsset,
   favoriteToyAssetKey,
@@ -11,6 +12,8 @@ export async function generateFavoriteToyImage(
   description: string,
 ): Promise<FavoriteToyAsset | undefined> {
   const key = favoriteToyAssetKey(description);
+  const curated = preferenceToyImage(description);
+  if (curated) return { key: `curated:${description}`, imageUrl: curated };
   const cached = await loadFavoriteToyAsset(key);
   if (cached) return { key, imageUrl: cached };
   try {
@@ -28,5 +31,6 @@ export async function generateFavoriteToyImage(
 }
 
 export async function restoreFavoriteToyImage(key: string): Promise<string | undefined> {
+  if (key.startsWith("curated:")) return preferenceToyImage(key.slice(8));
   return loadFavoriteToyAsset(key);
 }

@@ -52,8 +52,12 @@ export type Line = {
   speaker: "mother" | "guest" | "mimic" | "child" | "narrator";
   text: string;
   ms?: number | undefined;
+  /** Spoken prompt rendered elsewhere (for example an answer form), not in the subtitle bar. */
+  voiceOnly?: boolean | undefined;
   /** Runs once when the line appears on screen (keeps cutscene effects in sync with skipping). */
   onShow?: (() => void) | undefined;
+  /** Runs after speech/subtitle completion or a manual skip. Runtime-only; never persisted. */
+  onDone?: (() => void) | undefined;
 };
 
 export type Facts = {
@@ -112,12 +116,14 @@ type State = {
   adaptations: Partial<Record<AdaptiveChapter, AdaptivePlan>>;
   adaptiveMoments: Record<string, RealtimeDecision>;
   finalCordura?: number | undefined;
+  /** First MG01 pickup escapes once on its original wall, even across scare remounts. */
+  toyEscape?: { toy: ToyId; wall: number; x: number; y: number; escapedAt?: number | undefined; recovered: boolean } | undefined;
   // checkpoints
   ch1: ToyId[];
   ch2Items: string[];
   ch2Placed: string[];
   ch3Rounds: number;
-  /** MJ v3.1: the rapid toy-box catapult can happen only once in the whole run. */
+  /** Legacy save field retained for compatibility; MG01 no longer catapults toys. */
   toyCatapultUsed: boolean;
 };
 
@@ -202,6 +208,7 @@ const initial = (): Omit<State, "muted"> => ({
   ch2Placed: [],
   ch3Rounds: 0,
   toyCatapultUsed: false,
+  toyEscape: undefined,
 });
 
 export const useGame = create<State & Actions>((set, get) => ({
@@ -228,12 +235,14 @@ export const useGame = create<State & Actions>((set, get) => ({
     else set({ queue: [...s.queue, ...arr] });
   },
   nextLine: (manual = false) => {
+    const current = get().line;
     const [n, ...rest] = get().queue;
     set((s) => ({
       line: n,
       queue: rest,
       facts: manual ? { ...s.facts, dialogueSkips: s.facts.dialogueSkips + 1 } : s.facts,
     }));
+    current?.onDone?.();
   },
   addCordura: (n) => set((s) => ({ cordura: Math.max(0, Math.min(100, s.cordura + n)) })),
   setLights: (on) =>
@@ -373,7 +382,14 @@ type Save = Pick<
   | "ch2Placed"
   | "ch3Rounds"
   | "toyCatapultUsed"
+  | "toyEscape"
 >;
+
+/** Persist completed puzzle actions without changing scene or restarting the chapter. */
+export function saveCheckpoint() {
+  const state = useGame.getState();
+  if (RESUMABLE.includes(state.screen)) writeSave(state);
+}
 
 function writeSave(s: State) {
   const save: Save = {
@@ -396,6 +412,7 @@ function writeSave(s: State) {
     ch2Placed: s.ch2Placed,
     ch3Rounds: s.ch3Rounds,
     toyCatapultUsed: s.toyCatapultUsed,
+    toyEscape: s.toyEscape,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(save));
@@ -478,18 +495,30 @@ export type Memory = {
   lastName?: string;
   lastToy?: ToyId;
   lastEnding?: "composed" | "crying";
+  /** The player asked the house to forget them; data is kept but hidden. */
+  forgotten?: boolean;
 };
-export function loadMemory(): Memory {
+function readRawMemory(): Memory {
   if (typeof window === "undefined") return { runs: 0 };
   try {
     const memory = JSON.parse(localStorage.getItem(MEM_KEY) || "") as Memory;
-    return {
-      ...memory,
-      ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
-    };
+    return { ...memory, runs: memory.runs || 0 };
   } catch {
     return { runs: 0 };
   }
+}
+/** Full persisted memory for internal updates, even while the player has hidden it. */
+export function loadStoredMemory(): Memory {
+  const memory = readRawMemory();
+  return {
+    ...memory,
+    ...(memory.lastName ? { lastName: sanitizeName(memory.lastName) || "Little one" } : {}),
+  };
+}
+export function loadMemory(): Memory {
+  const memory = loadStoredMemory();
+  if (memory.forgotten) return { runs: 0, forgotten: true };
+  return memory;
 }
 export function saveMemory(m: Memory) {
   try {
@@ -504,12 +533,17 @@ export function saveMemory(m: Memory) {
     /* ignore */
   }
 }
+/** Toggle whether the house recognises the player. Returns the visible memory. */
+export function setMemoryForgotten(forgotten: boolean): Memory {
+  const raw = readRawMemory();
+  const next: Memory = { ...raw };
+  if (forgotten) next.forgotten = true;
+  else delete next.forgotten;
+  saveMemory(next);
+  return loadMemory();
+}
 export function forgetMemory() {
-  try {
-    localStorage.removeItem(MEM_KEY);
-  } catch {
-    /* ignore */
-  }
+  setMemoryForgotten(true);
 }
 
 export function sanitizeName(raw: string): string {

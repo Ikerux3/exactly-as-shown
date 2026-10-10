@@ -1,6 +1,19 @@
 export const VOICE_ROLES = ["guest", "mother", "mimic"] as const;
 export type VoiceRole = (typeof VOICE_ROLES)[number];
 
+export function voiceRoleForSpeaker(speaker: string): VoiceRole | null {
+  return VOICE_ROLES.find((role) => role === speaker) ?? null;
+}
+
+export function lineDisplayMs(text: string, configuredMs?: number): number {
+  return configuredMs ?? Math.max(2200, text.length * 55);
+}
+
+/** Last-resort escape hatch when a browser never emits speech completion events. */
+export function voiceSafetyMs(text: string, configuredMs?: number): number {
+  return Math.max(lineDisplayMs(text, configuredMs), Math.min(45_000, 12_000 + text.length * 120));
+}
+
 export type SpeechRuntime = {
   synthesis: Pick<SpeechSynthesis, "cancel" | "getVoices" | "speak">;
   Utterance: new (text: string) => SpeechSynthesisUtterance;

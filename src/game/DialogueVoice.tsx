@@ -1,18 +1,32 @@
 import { useEffect, useRef } from "react";
 import { useGame, type Line } from "./store";
-import { cancelBrowserSpeech, speakWithBrowser, type VoiceRole } from "./voice";
+import { cancelBrowserSpeech, lineDisplayMs, speakWithBrowser, voiceRoleForSpeaker } from "./voice";
 import { synthesizeDialogueVoice } from "./voice.functions";
 
-const REMOTE_WAIT_MS = 700;
-
-function roleForLine(line: Line): VoiceRole | null {
-  if (line.speaker === "mother") return "mother";
-  if (line.speaker === "mimic") return "mimic";
-  if (line.speaker === "guest") return "guest";
-  return null;
+/** Sends a question rendered inside another UI panel through the same global voice queue. */
+export function useSpokenPrompt(
+  text: string,
+  speaker: "mother" | "guest" | "mimic",
+  active = true,
+) {
+  useEffect(() => {
+    const clean = text.trim();
+    if (!active || !clean) return;
+    const prompt: Line = { speaker, text: clean, voiceOnly: true };
+    useGame.getState().say(prompt);
+    return () => {
+      const state = useGame.getState();
+      if (state.line === prompt) {
+        const [next, ...rest] = state.queue;
+        state.set({ line: next, queue: rest });
+      } else if (state.queue.includes(prompt)) {
+        state.set({ queue: state.queue.filter((queued) => queued !== prompt) });
+      }
+    };
+  }, [active, speaker, text]);
 }
 
-/** Speaks character dialogue without ever delaying subtitle progression. */
+/** Speaks character dialogue and keeps its subtitle/prompt alive until speech finishes. */
 export function useDialogueVoice() {
   const line = useGame((state) => state.line);
   const muted = useGame((state) => state.muted);
@@ -21,7 +35,9 @@ export function useDialogueVoice() {
 
   useEffect(() => {
     let active = true;
-    let fallbackStarted = false;
+    let finished = false;
+    let completionTimer: number | undefined;
+    const startedAt = Date.now();
 
     const stopRemote = () => {
       const current = remoteAudio.current;
@@ -38,7 +54,7 @@ export function useDialogueVoice() {
     };
 
     stopAll();
-    const role = line ? roleForLine(line) : null;
+    const role = line ? voiceRoleForSpeaker(line.speaker) : null;
     if (!line || !role || muted || paused) {
       return () => {
         active = false;
@@ -47,18 +63,25 @@ export function useDialogueVoice() {
     }
 
     const text = line.text.trim();
+    const finishLine = () => {
+      if (!active || finished) return;
+      finished = true;
+      stopAll();
+      const remaining = Math.max(0, lineDisplayMs(text, line.ms) - (Date.now() - startedAt));
+      completionTimer = window.setTimeout(() => {
+        if (active && useGame.getState().line === line) useGame.getState().nextLine();
+      }, remaining);
+    };
     const browserFallback = () => {
-      if (!active || fallbackStarted) return;
-      fallbackStarted = true;
+      if (!active || finished) return;
       stopRemote();
-      speakWithBrowser(text, undefined, { role });
+      const started = speakWithBrowser(text, undefined, { role, onEnd: finishLine });
+      if (!started) finishLine();
     };
 
-    const waitTimer = window.setTimeout(browserFallback, REMOTE_WAIT_MS);
     void synthesizeDialogueVoice({ data: { role, text } })
       .then((result) => {
-        if (!active || fallbackStarted) return;
-        window.clearTimeout(waitTimer);
+        if (!active || finished) return;
         if (!result.available || typeof Audio === "undefined") {
           browserFallback();
           return;
@@ -69,7 +92,7 @@ export function useDialogueVoice() {
         const url = URL.createObjectURL(new Blob([bytes], { type: result.mimeType }));
         const audio = new Audio(url);
         if (role === "mimic") audio.playbackRate = 0.96;
-        audio.onended = stopRemote;
+        audio.onended = finishLine;
         audio.onerror = browserFallback;
         remoteAudio.current = { audio, url };
         void audio.play().catch(browserFallback);
@@ -78,7 +101,7 @@ export function useDialogueVoice() {
 
     return () => {
       active = false;
-      window.clearTimeout(waitTimer);
+      if (completionTimer !== undefined) window.clearTimeout(completionTimer);
       stopAll();
     };
   }, [line, muted, paused]);

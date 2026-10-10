@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
-import { BG, MUSICBOX, toyImageFor } from "../assets";
+import { pajamaWall } from "../roomLayout";
+import { BG, CUT, MUSICBOX, PROP3, SCARE, toyImageFor } from "../assets";
+import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame } from "../store";
 import {
   Clock,
@@ -18,17 +20,17 @@ import { sfx, startMusic, stopMusic } from "../audio";
 import { chooseInterventions } from "../guest";
 import { useAdaptiveChapter } from "../ai/adapt";
 import { runAdaptiveMoment } from "../ai/realtime";
-import type { AdaptivePlan, RealtimeAction } from "../ai/contracts";
+import type { RealtimeAction } from "../ai/contracts";
+import {
+  adaptiveBlackoutProbability,
+  adaptiveMusicRoundLength,
+  adaptivePajamaWall,
+  pajamaCleanupGoal,
+  shiftedDifficulty,
+} from "../ai/gameplay";
 
 /* ---------------- CHAPTER 3 — THE MUSIC BOX ---------------- */
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
-const LENS = [3, 4, 5, 7];
-const ADAPTIVE_LENS = {
-  gentle: LENS,
-  standard: LENS,
-  relentless: LENS,
-} as const;
-const DIFFICULTIES: AdaptivePlan["difficulty"][] = ["gentle", "standard", "relentless"];
 const SYM_COLOR: Partial<Record<Sym, string>> = {
   star: "var(--honey)",
   moon: "var(--turq)",
@@ -36,16 +38,9 @@ const SYM_COLOR: Partial<Record<Sym, string>> = {
   key: "var(--brass)",
 };
 
-function shiftedDifficulty(base: AdaptivePlan["difficulty"], action: RealtimeAction) {
-  const index = DIFFICULTIES.indexOf(base);
-  const shift = action === "ease" ? -1 : action === "escalate" ? 1 : 0;
-  return DIFFICULTIES[Math.max(0, Math.min(DIFFICULTIES.length - 1, index + shift))]!;
-}
-
 export function Ch3() {
   const s = useGame();
-  const incomingPlan = useAdaptiveChapter(3);
-  const plan = useRef(incomingPlan).current;
+  const plan = useAdaptiveChapter(3);
   const round = s.ch3Rounds;
   const [seq, setSeq] = useState<Sym[]>([]);
   const [show, setShow] = useState<number>(-1);
@@ -87,7 +82,7 @@ export function Ch3() {
             ? "star"
             : "key";
     const difficulty = shiftedDifficulty(plan.difficulty, liveAction);
-    const length = ADAPTIVE_LENS[difficulty][round]!;
+    const length = adaptiveMusicRoundLength(difficulty, round);
     setSeq(
       Array.from({ length }, (_, index) =>
         index === 0 ? bias : SYMS[Math.floor(Math.random() * 4)]!,
@@ -96,9 +91,7 @@ export function Ch3() {
     setInput([]);
     roundMistakes.current = 0;
     roundStartedAt.current = Date.now();
-    // Difficulty changes are applied only when a completed round advances this counter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round, s.favColor]);
+  }, [round, s.favColor, plan.difficulty, liveAction]);
 
   useEffect(() => {
     if (!s.interactive || betweenRounds || timedRound.current === round) return;
@@ -162,9 +155,12 @@ export function Ch3() {
             speaker: "narrator",
             text: "The ballerina has stopped mid-turn. She is facing the door.",
           },
-          { speaker: "narrator", text: "Then, from down the hall, a voice you know." },
+          {
+            speaker: "narrator",
+            text: "Then, from down the hall, a voice you know.",
+            onDone: () => useGame.getState().go("ch4"),
+          },
         ]);
-        window.setTimeout(() => useGame.getState().go("ch4"), 10500);
       } else {
         setBetweenRounds(true);
         s.set({ interactive: false });
@@ -176,13 +172,20 @@ export function Ch3() {
           const state = useGame.getState();
           if (state.screen !== "ch3") return;
           setLiveAction(decision.action);
-          state.set({ line: { speaker: "guest", text: decision.line, ms: 2600 }, queue: [] });
-          window.setTimeout(() => {
-            const latest = useGame.getState();
-            if (latest.screen !== "ch3") return;
-            latest.set({ ch3Rounds: completedRound, interactive: true });
-            setBetweenRounds(false);
-          }, 2700);
+          state.set({
+            line: {
+              speaker: "guest",
+              text: decision.line,
+              ms: 2600,
+              onDone: () => {
+                const latest = useGame.getState();
+                if (latest.screen !== "ch3") return;
+                latest.set({ ch3Rounds: completedRound, interactive: true });
+                setBetweenRounds(false);
+              },
+            },
+            queue: [],
+          });
         });
       }
     }
@@ -235,7 +238,7 @@ export function Ch3() {
         className="absolute left-1/2 top-[60%] flex -translate-x-1/2 gap-2"
         aria-label={`Round ${Math.min(round + 1, 4)} of 4`}
       >
-        {LENS.map((_, i) => (
+        {Array.from({ length: 4 }, (_, i) => (
           <span
             key={i}
             className={`h-3 w-3 rounded-full border-2 border-paper ${i < round ? "bg-honey" : ""}`}
@@ -329,9 +332,8 @@ const PUZZLES: Record<
 
 export function Ch4() {
   const s = useGame();
-  const incomingPlan = useAdaptiveChapter(4);
-  const plan = useRef(incomingPlan).current;
-  const puzzle = PUZZLES.garden;
+  const plan = useAdaptiveChapter(4);
+  const puzzle = PUZZLES[plan.puzzleVariant];
   const [note, setNote] = useState(false);
   const [input, setInput] = useState<Sym[]>([]);
   const [solved, setSolved] = useState(false);
@@ -346,6 +348,28 @@ export function Ch4() {
   const hintRecorded = useRef(false);
   const inspected = useRef(new Set<string>());
   const nm = s.name || "sweetheart";
+  const [leaving, setLeaving] = useState<null | "door" | "wardrobe">(null);
+  const [exitScareDone, setExitScareDone] = useState(false);
+
+  const exitBy = (way: "door" | "wardrobe") => {
+    if (!s.interactive || leaving) return;
+    if (!hasKey) {
+      sfx(way === "door" ? "door" : "creak");
+      s.say({ speaker: "narrator", text: way === "door" ? "Locked. The key must be somewhere in this room." : "Something inside the wardrobe is breathing. Slowly.", ms: 2600 });
+      return;
+    }
+    setLeaving(way);
+    s.set({ interactive: false, objective: "" });
+    if (way === "door") {
+      sfx("door");
+      s.say({ speaker: "narrator", text: "The key turns. You slip out without a sound.", ms: 2400 });
+      window.setTimeout(() => useGame.getState().go("ch5"), 2600);
+    } else {
+      sfx("creak");
+      s.addCordura(25);
+      s.mistake();
+    }
+  };
 
   useEffect(() => setInput([]), [plan.puzzleVariant]);
   useEffect(() => {
@@ -498,6 +522,19 @@ export function Ch4() {
       }
       above={
         <>
+          {leaving === "wardrobe" && !exitScareDone && (
+            <JumpScare
+              img={CUT.guest}
+              ms={1500}
+              onDone={() => {
+                setExitScareDone(true);
+                const st = useGame.getState();
+                st.set({ flicker: Date.now() });
+                st.say({ speaker: "guest", text: "You came inside. Good. I'll walk you to the bath.", ms: 2600 });
+                window.setTimeout(() => useGame.getState().go("ch5"), 2800);
+              }}
+            />
+          )}
           {note && (
             <button
               onClick={() => setNote(false)}
@@ -531,7 +568,7 @@ export function Ch4() {
         }}
       />
       {wardrobe === 2 && (
-        <GuestVoid style={{ right: "-2%", top: "18%", height: "70%" }} intensity={0.9} />
+        <GuestVoid style={{ left: "55%", top: "22%", height: "60%", transform: "translateX(-50%)" }} intensity={0.9} />
       )}
 
       </OnWall>
@@ -654,17 +691,26 @@ export function Ch4() {
           </div>
         </div>
       )}
-      {hasKey && (
-        <button
-          className="stitch-btn honey absolute bottom-[4%] left-[6%] z-20 animate-float-up"
-          onClick={() => {
-            sfx("open");
-            s.go("ch5");
-          }}
-        >
-          Unlock the door and run
-        </button>
+      {hasKey && !leaving && (
+        <p className="pointer-events-none absolute bottom-[4%] left-[6%] right-[6%] z-20 animate-float-up paper px-3 py-2 text-center font-hand text-sm">
+          Turn around. The door… or the wardrobe.
+        </p>
       )}
+      </OnWall>
+      {/* Two ways out, both on the back wall: the door is safe, the wardrobe is not. */}
+      <OnWall n={2}>
+        <button
+          aria-label="The bedroom door"
+          onClick={() => exitBy("door")}
+          className={`absolute touch-manipulation rounded-sm ${hasKey ? "ring-2 ring-honey/60" : ""}`}
+          style={{ left: "7%", top: "25%", width: "32%", height: "53%" }}
+        />
+        <button
+          aria-label="The wardrobe"
+          onClick={() => exitBy("wardrobe")}
+          className="absolute touch-manipulation rounded-sm"
+          style={{ left: "41%", top: "34%", width: "52%", height: "46%" }}
+        />
       </OnWall>
     </Stage>
   );
@@ -686,65 +732,169 @@ const HIDE_SPOTS = {
 } as const;
 
 type PajamaKind = "shirt" | "pants" | "socks";
-const PAJAMA_PIECES: { kind: PajamaKind; name: string; icon: string }[] = [
-  { kind: "shirt", name: "shirt", icon: "👕" },
-  { kind: "pants", name: "pants", icon: "👖" },
-  { kind: "socks", name: "socks", icon: "🧦" },
+const PAJAMA_PIECES: { kind: PajamaKind; name: string }[] = [
+  { kind: "shirt", name: "shirt" },
+  { kind: "pants", name: "pants" },
+  { kind: "socks", name: "socks" },
 ];
 const PAJAMA_COLORS = ["rose", "sage", "honey", "turq"] as const;
 
 /** v3.1 chapter 5: three pieces in the chosen color, other clothing into the basket. */
 function PajamaCh5() {
   const s = useGame();
+  const plan = useAdaptiveChapter(5);
   const [worn, setWorn] = useState<PajamaKind[]>([]);
   const [inBasket, setInBasket] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState("Three matching pieces. Look for your favorite color.");
   const [wrongChoices, setWrongChoices] = useState(0);
+  const [cleanupGoal, setCleanupGoal] = useState(() => pajamaCleanupGoal(plan.difficulty));
+  const [livePressure, setLivePressure] = useState(plan.blackoutPressure);
+  const [assist, setAssist] = useState(false);
   const ended = useRef(false);
+  const aiLineSpoken = useRef(false);
+  const wrongReactionRequested = useRef(false);
+  const readyReactionRequested = useRef(false);
+  const chapterStartedAt = useRef(Date.now());
   useSceneIntro("ch5", "Choose your pajamas, then tidy the other clothes.", [
     {
       speaker: "narrator",
       text: "Your pajamas are somewhere in this heap. Mommy will be back soon.",
     },
+    ...chooseInterventions(s.facts, 5)
+      .filter((intervention) => intervention.kind === "line")
+      .map((intervention) => ({
+        speaker: "guest" as const,
+        text: (intervention as { text: string }).text,
+      })),
   ]);
   const pile = PAJAMA_PIECES.flatMap((piece) =>
     PAJAMA_COLORS.map((color) => ({ ...piece, color, id: piece.kind + "-" + color })),
   );
   const allWorn = worn.length === 3;
   const otherTotal = PAJAMA_PIECES.length * (PAJAMA_COLORS.length - 1);
+
+  useEffect(() => {
+    if (!allWorn && inBasket.length === 0) setCleanupGoal(pajamaCleanupGoal(plan.difficulty));
+  }, [allWorn, inBasket.length, plan.difficulty]);
+
+  useEffect(() => {
+    if (!wrongReactionRequested.current && !readyReactionRequested.current) {
+      setLivePressure(plan.blackoutPressure);
+    }
+  }, [plan.blackoutPressure]);
+
+  useEffect(() => {
+    if (plan.provider !== "gemini" || aiLineSpoken.current) return;
+    aiLineSpoken.current = true;
+    useGame.getState().say({ speaker: "guest", text: plan.guestLine, ms: 3000 });
+  }, [plan]);
+
   useEffect(() => {
     const state = useGame.getState();
+    const remaining = Math.max(0, cleanupGoal - inBasket.length);
     state.set({
       objective: allWorn
-        ? "Put all the other clothes in the basket."
+        ? `Put ${remaining} more ${remaining === 1 ? "piece" : "pieces"} in the basket.`
         : "Find shirt, pants and socks in your favorite color.",
     });
-  }, [allWorn]);
+  }, [allWorn, cleanupGoal, inBasket.length]);
+
   useEffect(() => {
-    if (ended.current || !allWorn || inBasket.length !== otherTotal) return undefined;
+    if (!allWorn || readyReactionRequested.current) return;
+    readyReactionRequested.current = true;
+    const state = useGame.getState();
+    state.success(Date.now() - chapterStartedAt.current);
+    const requestPhase = state.phaseKey;
+    void runAdaptiveMoment(5, "tasks_complete", "pajamas-ready", {
+      recentMistakes: wrongChoices,
+      elapsedMs: Date.now() - chapterStartedAt.current,
+    }).then((decision) => {
+      const latest = useGame.getState();
+      if (latest.screen !== "ch5" || latest.phaseKey !== requestPhase) return;
+      const nextDifficulty = shiftedDifficulty(plan.difficulty, decision.action);
+      setCleanupGoal((current) =>
+        Math.max(inBasket.length, Math.min(otherTotal, pajamaCleanupGoal(nextDifficulty), current + 3)),
+      );
+      if (decision.action === "ease") {
+        setAssist(true);
+        setLivePressure("merciful");
+      } else if (decision.action === "escalate") {
+        setLivePressure("relentless");
+        latest.set({ flicker: Date.now() });
+      }
+      latest.say({ speaker: "guest", text: decision.line, ms: 3000 });
+    });
+  }, [allWorn, inBasket.length, otherTotal, plan.difficulty, wrongChoices]);
+
+  useEffect(() => {
+    if (!allWorn || ended.current) return;
+    const probability = adaptiveBlackoutProbability(livePressure);
+    const id = window.setInterval(() => {
+      const state = useGame.getState();
+      if (
+        state.screen === "ch5" &&
+        !ended.current &&
+        state.lightsOn &&
+        state.interactive &&
+        !state.paused &&
+        !state.scare &&
+        Math.random() < probability
+      ) {
+        sfx("switch");
+        state.set({ lightsOn: false, flicker: Date.now() });
+      }
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [allWorn, livePressure]);
+
+  useEffect(() => {
+    if (ended.current || !allWorn || inBasket.length < cleanupGoal) return undefined;
     ended.current = true;
     const state = useGame.getState();
     state.success();
-    state.set({ interactive: false, objective: "" });
+    state.set({ interactive: false, objective: "", lightsOn: true });
     state.say({
       speaker: "narrator",
-      text: "Everything is put away. Now the house is quiet.",
+      text: "The basket is heavy enough. The rest of the clothes seem to stop moving.",
       ms: 1500,
+      onDone: () => {
+        if (useGame.getState().screen === "ch5") useGame.getState().go("final");
+      },
     });
-    const t = window.setTimeout(() => {
-      if (useGame.getState().screen === "ch5") useGame.getState().go("final");
-    }, 2100);
-    return () => window.clearTimeout(t);
-  }, [allWorn, inBasket.length, otherTotal]);
+    return undefined;
+  }, [allWorn, cleanupGoal, inBasket.length]);
+
   const pick = (garment: (typeof pile)[number]) => {
     if (!s.interactive || !s.lightsOn) return;
     if (!allWorn) {
       if (garment.color !== s.favColor) {
         sfx("wrong");
         s.mistake();
-        setWrongChoices((n) => n + 1);
+        const nextWrongChoices = wrongChoices + 1;
+        setWrongChoices(nextWrongChoices);
         setMessage("That doesn't match the color you chose earlier.");
+        if (nextWrongChoices >= 2 && !wrongReactionRequested.current) {
+          wrongReactionRequested.current = true;
+          const state = useGame.getState();
+          const requestPhase = state.phaseKey;
+          void runAdaptiveMoment(5, "mistake_streak", "pajama-mistakes", {
+            recentMistakes: nextWrongChoices,
+            elapsedMs: Date.now() - chapterStartedAt.current,
+          }).then((decision) => {
+            const latest = useGame.getState();
+            if (latest.screen !== "ch5" || latest.phaseKey !== requestPhase) return;
+            if (decision.action === "ease") {
+              setAssist(true);
+              setLivePressure("merciful");
+              setMessage("The right color seems brighter now.");
+            } else if (decision.action === "escalate") {
+              setLivePressure("relentless");
+              latest.set({ flicker: Date.now(), shadowPass: Date.now() });
+            }
+            latest.say({ speaker: "guest", text: decision.line, ms: 3000 });
+          });
+        }
         return;
       }
       if (worn.includes(garment.kind)) return;
@@ -763,6 +913,23 @@ function PajamaCh5() {
     setSelected(null);
     sfx("open");
   };
+  // Each wall has its own resting places so the four views never look alike.
+  const SLOTS: { x: number; y: number }[][] = [
+    [{ x: 6, y: 64 }, { x: 38, y: 70 }, { x: 64, y: 56 }],
+    [{ x: 58, y: 74 }, { x: 14, y: 58 }, { x: 34, y: 80 }],
+    [{ x: 70, y: 66 }, { x: 40, y: 54 }, { x: 10, y: 76 }],
+    [{ x: 22, y: 70 }, { x: 62, y: 80 }, { x: 46, y: 60 }],
+  ];
+  const byWall = ([0, 1, 2, 3] as const).map((wall) =>
+    pile.filter((garment) => {
+      const baseWall = pajamaWall(
+        PAJAMA_PIECES.findIndex((item) => item.kind === garment.kind),
+        PAJAMA_COLORS.indexOf(garment.color),
+      );
+      return adaptivePajamaWall(baseWall, plan.puzzleVariant) === wall;
+    }),
+  );
+  const leftOver = Math.max(0, cleanupGoal - inBasket.length);
   return (
     <Stage
       bg={BG.bgBathroom}
@@ -770,84 +937,80 @@ function PajamaCh5() {
       bgPos="50% 50%"
       chapter={5}
       chapterCard
-      progress={
-        allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"
-      }
+      progress={allWorn ? "Basket " + inBasket.length + "/" + cleanupGoal : "Pajamas " + worn.length + "/3"}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[13%] top-[7%] z-10 text-xl text-crimson opacity-80"
-      >
-        {wrongChoices > 0 || inBasket.length >= 3 ? "👁️ 👁️" : ""}
-      </div>
-      <div className="absolute inset-x-[5%] top-[14%] z-10 rounded-lg border-2 border-wood bg-paper/95 p-2 text-ink shadow-xl">
-        <p className="text-center font-display text-[clamp(13px,3.8cqw,18px)] font-semibold">
-          {allWorn ? "Put the rest in the basket" : "Find your matching pajamas"}
-        </p>
-        <div className="mt-1 flex items-center justify-center gap-2 text-xs">
-          <span>Your chosen color:</span>
-          <span
-            className="h-4 w-7 rounded-sm border border-ink/50"
-            style={{ background: "var(--c-" + s.favColor + ")" }}
-          />
-          <span className="font-hand">{s.favColor}</span>
+      {/* a torn scrap taped at the top: the instruction and your colour */}
+      <div className="pointer-events-none absolute left-[8%] right-[8%] top-[8%] z-20 -rotate-1">
+        <div className="paper torn relative px-3 py-1.5 text-center">
+          <span className="absolute -top-2 left-1/2 h-4 w-14 -translate-x-1/2 rotate-2" style={{ background: "var(--c-" + s.favColor + ")", opacity: 0.85 }} />
+          <p className="font-hand text-[clamp(13px,4cqw,17px)] leading-tight" aria-live="polite">{message}</p>
+          <p className="mt-0.5 font-crayon text-[10px] uppercase tracking-widest opacity-60">
+            {allWorn ? `${leftOver} still needed · basket is at the front` : `wearing ${worn.length}/3`} · turn around
+          </p>
         </div>
-        <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">
-          {message}
-        </p>
-        <p className="mb-1 text-center text-xs opacity-75">Turn around: the laundry is spread across all four walls.</p>
-        <div className="grid grid-cols-3 gap-2">
-          {([0, 1, 2, 3] as const).map((wall) => (
-            <OnWall key={wall} n={wall}>
-            {pile.filter((garment) => {
-              const kind = PAJAMA_PIECES.findIndex((item) => item.kind === garment.kind);
-              const color = PAJAMA_COLORS.indexOf(garment.color);
-              return (kind + color) % 4 === wall;
-            }).map((garment) => {
-            const used = garment.color === s.favColor && worn.includes(garment.kind);
-            const away = inBasket.includes(garment.id);
+      </div>
+      {([0, 1, 2, 3] as const).map((wall) => (
+        <OnWall key={wall} n={wall}>
+          {byWall[wall]!.map((g, i) => {
+            const used = g.color === s.favColor && worn.includes(g.kind);
+            const away = inBasket.includes(g.id);
+            if (used || away) return null;
+            const slot = SLOTS[wall]![i % 3]!;
+            const img = PROP3[g.kind];
+            const tint = "var(--c-" + g.color + ")";
             return (
               <button
                 type="button"
-                key={garment.id}
-                disabled={used || away || !s.lightsOn || !s.interactive}
-                aria-label={garment.color + " " + garment.name}
-                aria-pressed={selected === garment.id}
-                onClick={() => pick(garment)}
+                key={g.id}
+                disabled={!s.interactive}
+                aria-label={g.color + " " + g.name}
+                aria-pressed={selected === g.id}
+                onClick={() => pick(g)}
                 className={
-                  "flex min-h-16 touch-manipulation items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs transition-colors duration-100 active:scale-[0.97] disabled:opacity-30 " +
-                  (selected === garment.id
-                    ? "border-crimson bg-rose/30"
-                    : "border-wood/40 bg-paper-deep")
+                  "absolute z-10 touch-manipulation transition-all duration-150 " +
+                  (selected === g.id ? "-translate-y-3 scale-110 " : "") +
+                  (assist && !allWorn && g.color === s.favColor ? "animate-pulse ring-2 ring-honey" : "")
                 }
+                style={{ left: slot.x + "%", top: slot.y + "%", width: "22%", aspectRatio: "1", rotate: ((i * 37) % 30) - 15 + "deg", minWidth: 48 }}
               >
-                <span aria-hidden className="text-base">
-                  {garment.icon}
-                </span>
+                <img src={img} alt="" className="prop absolute inset-0 h-full w-full object-contain" style={{ filter: selected === g.id ? "drop-shadow(0 0 10px var(--honey))" : undefined }} />
                 <span
-                  className="h-3 w-3 shrink-0 rounded-full border border-ink/50"
-                  style={{ background: "var(--c-" + garment.color + ")" }}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background: tint,
+                    mixBlendMode: "multiply",
+                    WebkitMaskImage: "url(" + img + ")",
+                    maskImage: "url(" + img + ")",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
                 />
-                <span className="sr-only">{garment.name}</span>
               </button>
             );
           })}
-            </OnWall>
-          ))}
-        </div>
-        <p className="mt-2 text-center text-xs">
-          Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}
-        </p>
-      </div>
+        </OnWall>
+      ))}
+      {/* the laundry basket stands by the front wall */}
+      <OnWall n={0}>
       <button
         type="button"
         onClick={basket}
-        disabled={!selected || !s.lightsOn || !s.interactive}
-        aria-label="Place selected clothing into the laundry basket"
-        className="stitch-btn honey absolute bottom-[3%] left-1/2 z-10 min-h-12 w-[72%] -translate-x-1/2 disabled:opacity-50"
+        disabled={!s.interactive}
+        aria-label="Laundry basket"
+        className={"absolute bottom-[1%] right-[3%] z-20 w-[30%] touch-manipulation " + (selected ? "animate-pulse" : "")}
       >
-        🧺 {selected ? "Put selected clothing away" : "Laundry basket"}
+        {(wrongChoices > 0 || inBasket.length >= 3) && (
+          <img src={SCARE.face2} alt="" className="pointer-events-none absolute -top-[18%] left-[18%] w-[64%] opacity-70 mix-blend-screen grayscale" />
+        )}
+        <img src={PROP3.basket} alt="" className="prop relative w-full" />
+        {inBasket.length > 0 && <span className="absolute bottom-[8%] left-1/2 -translate-x-1/2 font-crayon text-xs text-paper drop-shadow">{inBasket.length}</span>}
       </button>
+      </OnWall>
     </Stage>
   );
 }
@@ -1047,12 +1210,12 @@ export function LegacyCh5() {
         {
           speaker: "narrator",
           text: `${toyLabel} was ${plan.hidingPlace === "bath" ? "in the bath, cold and damp" : plan.hidingPlace === "laundry" ? "under the laundry, wrapped too carefully" : "behind the towel, still warm"}.`,
+          onDone: () => {
+            sfx("switch");
+            useGame.getState().go("final");
+          },
         },
       ]);
-      window.setTimeout(() => {
-        sfx("switch");
-        useGame.getState().go("final");
-      }, 4500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [found]);

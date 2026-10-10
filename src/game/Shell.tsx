@@ -1,10 +1,11 @@
 // Shared screen chrome: a fixed 2:3 art frame with a HUD bar above it and a dialogue bar
 // below it, so subtitles, objectives and controls never cover the scene art or its hitboxes.
-import { useEffect, useState, type ReactNode, type Ref } from "react";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { Brain, Pause } from "lucide-react";
 import { CHAPTER_TITLE, useGame } from "./store";
 import { stopMusic } from "./audio";
 import { GUEST_MIND_LABEL } from "./guest";
+import { lineDisplayMs, voiceRoleForSpeaker, voiceSafetyMs } from "./voice";
 import { useDreadSignal } from "./dread";
 
 type ShellProps = {
@@ -34,14 +35,28 @@ export function Shell({
   onFrameUp,
   children,
 }: ShellProps) {
+  const tap = useRef<{ x: number; y: number } | null>(null);
   return (
     <div className={`game-shell ${bars ? "" : "no-bars"}`}>
       <div className="shell-bar top">{bars && top}</div>
       <div
         ref={frameRef}
         className={`game-frame ${frameClassName}`}
+        onPointerDownCapture={(e) => { tap.current = { x: e.clientX, y: e.clientY }; }}
+        onClickCapture={(e) => {
+          const target = e.target as Element;
+          const start = tap.current;
+          tap.current = null;
+          const state = useGame.getState();
+          if (!start || !state.line || state.line.voiceOnly || state.paused || state.scare) return;
+          if (target.closest("button, input, textarea, select, [role='dialog'], [role='button']")) return;
+          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 12) state.nextLine(true);
+        }}
         onPointerMove={onFramePointer}
-        onPointerDown={(e) => { onFramePointer?.(e); onFrameDown?.(e); }}
+        onPointerDown={(e) => {
+          onFramePointer?.(e);
+          onFrameDown?.(e);
+        }}
         onPointerUp={onFrameUp}
       >
         {children}
@@ -56,15 +71,17 @@ export function Shell({
 export function useSubtitles() {
   const line = useGame((s) => s.line);
   const paused = useGame((s) => s.paused);
+  const muted = useGame((s) => s.muted);
   useEffect(() => {
     line?.onShow?.();
   }, [line]);
   useEffect(() => {
     if (!line || paused) return;
-    const ms = line.ms ?? Math.max(2200, line.text.length * 55);
+    const voiced = !muted && voiceRoleForSpeaker(line.speaker) !== null;
+    const ms = voiced ? voiceSafetyMs(line.text, line.ms) : lineDisplayMs(line.text, line.ms);
     const t = window.setTimeout(() => useGame.getState().nextLine(), ms);
     return () => window.clearTimeout(t);
-  }, [line, paused]);
+  }, [line, muted, paused]);
 }
 
 const SPEAKER: Record<string, string> = {
@@ -89,7 +106,9 @@ function scramble(text: string): string {
 export function DialogueBar({ right }: { right?: ReactNode }) {
   const line = useGame((s) => s.line);
   const objective = useGame((s) => s.objective);
-  const guest = !!line && (line.speaker === "guest" || line.speaker === "mimic");
+  const visibleLine = line?.voiceOnly ? undefined : line;
+  const guest =
+    !!visibleLine && (visibleLine.speaker === "guest" || visibleLine.speaker === "mimic");
   // For half a second the text goes wrong; the aria labels keep the real words.
   const corrupt = useDreadSignal((d) => d.corrupt);
   const [lie, setLie] = useState<string | null>(null);
@@ -97,25 +116,26 @@ export function DialogueBar({ right }: { right?: ReactNode }) {
     if (!corrupt) return;
     const st = useGame.getState();
     const name = (st.name || "little one").toUpperCase();
-    setLie(st.line ? scramble(st.line.text) : LIST_LIES[Math.floor(Math.random() * LIST_LIES.length)]!(name));
+    const shown = st.line && !st.line.voiceOnly ? st.line : undefined;
+    setLie(shown ? scramble(shown.text) : LIST_LIES[Math.floor(Math.random() * LIST_LIES.length)]!(name));
     const t = window.setTimeout(() => setLie(null), 520);
     return () => window.clearTimeout(t);
   }, [corrupt]);
   return (
     <>
-      {line ? (
+      {visibleLine ? (
         <button
           type="button"
           onClick={() => useGame.getState().nextLine(true)}
           className={`subtitle dialogue-panel ${guest ? "guest" : ""} ${lie ? "corrupt" : ""}`}
           aria-live="polite"
-          aria-label={`${line.text} — tap to continue`}
+          aria-label={`${visibleLine.text} — tap to continue`}
         >
-          {line.speaker !== "narrator" && (
-            <span className="speaker-tag dialogue-label">{SPEAKER[line.speaker]}</span>
+          {visibleLine.speaker !== "narrator" && (
+            <span className="speaker-tag dialogue-label">{SPEAKER[visibleLine.speaker]}</span>
           )}
-          <span key={line.text} className="block animate-float-up" aria-hidden={!!lie}>
-            {lie ?? line.text}
+          <span key={visibleLine.text} className="block animate-float-up" aria-hidden={!!lie}>
+            {lie ?? visibleLine.text}
           </span>
         </button>
       ) : (
@@ -144,13 +164,13 @@ export function CorduraMeter({ value }: { value: number }) {
     <div
       className="chip flex shrink-0 items-center gap-2 px-3 py-1.5"
       role="meter"
-      aria-label="Cordura"
+      aria-label="Fear"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}
     >
       <span className="hidden font-display text-[10px] uppercase tracking-[0.16em] @xs:inline">
-        Cordura
+        Fear
       </span>
       <Brain className="h-3.5 w-3.5 @xs:hidden" strokeWidth={2.25} aria-hidden />
       <span className="relative block h-2 w-12 overflow-hidden rounded-full bg-paper-deep shadow-inner @sm:w-14">

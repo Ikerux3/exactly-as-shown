@@ -1,0 +1,36 @@
+# MG01 — baúl, chaqueta y huellas
+Fecha: 2026-10-10. Responsable: Codex por instrucción de MJ. Rama: main autorizada.
+Base revisada: 32a7aa945ab3acb7d606b3b9b9b799f395798235.
+
+## Cambios verificados en código
+- Cinco juguetes: uno en front/right/left, dos en back (puerta y chaqueta).
+- Back se encuadra al 25% para mostrar la chaqueta original; tocarla aparta un recorte del mismo fondo y revela el juguete x36/y50. El segundo está en suelo x59/y82 con huellas.
+- El baúl se presenta en la pared actual: animación de recogida hacia él, salida de 700 ms y paseo acotado por el suelo. Solo el primer juguete recolectado escapa, una vez; recuperado queda guardado.
+- Fecha de salida persistida para que cambiar de pared no repita la salida. Pausa/oscuridad detienen el paseo. Movimiento reducido mantiene el juguete visible y recuperable.
+- Conservados lock de clic, recuperación persistida, imágenes de Iker y capítulos 2+ idénticos. Stage añade encuadre opcional; sin efecto para las otras escenas.
+
+Archivos: src/game/scenes/Ch1Ch2.tsx, Ch1.test.tsx, src/game/Stage.tsx, roomLayout.ts, roomLayout.test.ts, store.ts, src/styles.css.
+Commit de implementación: eb084068f50058125a24f55b7af07945a6718e52. Ajuste posterior: sustituir parche oscuro por fondo original de la misma pared, conservando los assets.
+
+Pruebas: regresiones de primer muñeco en pared 0 y 2, doble toque, chaqueta/suelo, luz/pausa, completar cinco y persistencia. PROBADO: TypeScript, suite completa local 65/65 en 17 archivos y build de producción. CI de eb084068: TypeScript/Vitest/Production build PASS: https://github.com/Ikerux3/exactly-as-shown/actions/runs/38050687599. Tras el ajuste del fondo: TypeScript y siete regresiones MG01 PASS; CI del commit final f2c8f43f0ecb1829b1724ab933edf6cf3e27211b: TypeScript/Vitest/Production build PASS: https://github.com/Ikerux3/exactly-as-shown/actions/runs/38051126832.
+QA PROBADO: Edge con viewport móvil 390×844 y eventos táctiles, juego real local: chaqueta alineada y apartada, muñeco detrás visible, otro junto a huellas, primer muñeco sale del baúl y camina en pared 2 bajo luz, toque lo guarda (ch1=[elephant]), sin pageerror. Capturas locales qa-jacket-before.png, qa-jacket-after.png, qa-exit.png, qa-walking.png y qa-result.json. El toque del walker se ejecutó sin esperar estabilidad porque está animado. PENDIENTE: móvil físico, despliegue público y recorrido visual completo de otras paredes; no declarar DESPLEGADO.
+Drive no consultado ni modificado, por instrucción expresa de MJ. Handoff en repositorio.
+Siguiente paso: probar móvil físico / URL publicada.
+
+## MJ — corrección de fuga única al continuar (2026-10-10)
+Base: 2513d1142b201727f3a5d1c978a036708a5a46ef. Responsable: Codex; main autorizada.
+VERIFICADO EN CÓDIGO: el guardado previo solo se escribía al entrar en capítulo. La fuga y recuperación de MG01 no se escribían al completarse, por lo que Continuar podía restaurar un estado anterior.
+Cambio: guardar checkpoint tras cada recogida completada, incluyendo fuga y recuperación; no conceder nueva fuga a una partida antigua que ya tiene juguetes guardados. Solo el primer juguete recogido en partida nueva escapa una vez y se mueve en su pared; recuperarlo lo guarda. Sigue repartido entre cuatro paredes, con dos juguetes junto a chaqueta/huellas.
+PROBADO: TypeScript PASS; Vitest 67/67 en 17 archivos PASS; build PASS. Nuevas regresiones para Continue antes/después de recuperar el elefante y guardados anteriores sin toyEscape.
+La causa observada por MJ en su dispositivo no se ha reproducido directamente. QA visual anterior conservada; esta revisión se verificó con tests de persistencia, sin nuevo QA visual ni despliegue público.
+Drive no usado. Siguiente paso: comprobar URL pública actualizada y partida nueva/Continuar en móvil físico.
+
+## MJ — pared detrás de chaqueta y baúl fijo (2026-10-10)
+Base: 3c10012cb909ba224d5583890a9d39dacf77103a. Responsable Codex; main autorizada.
+- Sustituido parche desplazado por clean plate del fondo original: solo se revela la región detrás de chaqueta; resto de imagen de Iker intacta. Nuevo asset src/assets/bg-playroom-2-clean.avif (37 KB).
+- Baúl renderizado exclusivamente en OnWall 0, su primera sala. Recogida y salida en otras paredes no se animan hacia un baúl inexistente. Conservada fuga única y recuperación persistente.
+- PROBADO: TypeScript PASS, Vitest 67/67 (17 archivos) PASS, build PASS. Regresión comprueba que el baúl desaparece al girar y está al volver.
+- QA: Edge móvil 390x844 táctil, pared reconstruida visible, muñeco detrás de chaqueta, otro en suelo/huellas, sin baúl en pared 2, paseo y recuperación del elefante, cero pageerrors.
+- Imagen editada con herramienta integrada imagegen. Prompt: quitar solo chaqueta/percha y reconstruir papel floral y molduras de madera, conservando puerta, suelo, encuadre y luz. Original conservado; versión optimizada en AVIF.
+- URL pública solicitada https://dusk-house-tales.lovable.app. PENDIENTE: verificar publicación de versión nueva en Lovable; push a GitHub no confirma deployment.
+- Drive no usado. Siguiente paso: actualizar publicación de Lovable y confirmar en móvil físico.

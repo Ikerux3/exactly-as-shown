@@ -7,6 +7,8 @@ import { ChapterCard } from "./kit";
 import { GAMEPLAY_RULES, checkpointScreen } from "./gameplayRules";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
 import { CutoutDefs, SanityFX } from "./fx";
+import { Button } from "@/components/ui/button";
+import { Hand, MoveHorizontal } from "lucide-react";
 import { Dread } from "./dread";
 
 // Shared flashlight position (percent of frame) so scenes can test illumination.
@@ -31,6 +33,7 @@ export function OnWall({ n, children }: { n: number; children: ReactNode }) {
 type Props = {
   bg: string;
   bgPos?: string;
+  wallPositions?: readonly string[];
   chapter: number;
   children: ReactNode;
   clues?: ReactNode; // only visible in darkness, glows above it
@@ -45,11 +48,17 @@ type Props = {
   switchHint?: boolean;
   /** Scene places its own props per wall with <OnWall>. Otherwise everything lives on the front wall. */
   spread?: boolean;
+  /** Reports an actual wall turn even when wall content is animated/remounted. */
+  onWallChange?: (wall: number) => void;
+  /** Lock the room to its front wall (scene handles its own views). */
+  noTurn?: boolean;
+  navigationLocked?: boolean;
 };
 
 export function Stage({
   bg,
   bgPos = "50% 50%",
+  wallPositions,
   chapter,
   children,
   clues,
@@ -60,6 +69,9 @@ export function Stage({
   chapterCard,
   switchHint,
   spread,
+  onWallChange,
+  noTurn,
+  navigationLocked = false,
 }: Props) {
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
@@ -68,16 +80,38 @@ export function Stage({
   const lightAcc = useRef(0);
   usePauseKey(true);
 
-  const walls = WALLS[bg];
+  const walls = noTurn ? undefined : WALLS[bg];
   const [wall, setWall] = useState(0);
+  const [swipeCue, setSwipeCue] = useState(false);
+  useEffect(() => {
+    if (!walls || !s.interactive || s.line || s.paused) return;
+    try { if (localStorage.getItem("mwbb-swipe-seen")) return; } catch { /* optional preference */ }
+    const show = window.setTimeout(() => setSwipeCue(true), 2700);
+    const hide = window.setTimeout(() => {
+      setSwipeCue(false);
+      try { localStorage.setItem("mwbb-swipe-seen", "1"); } catch { /* optional preference */ }
+    }, 7000);
+    return () => { window.clearTimeout(show); window.clearTimeout(hide); };
+  }, [!!walls, s.interactive, !!s.line, s.paused]);
+  const onWallChangeRef = useRef(onWallChange);
+  onWallChangeRef.current = onWallChange;
+  const previousWallRef = useRef(0);
+  useEffect(() => {
+    if (wall !== previousWallRef.current) {
+      previousWallRef.current = wall;
+      onWallChangeRef.current?.(wall);
+    }
+  }, [wall]);
   const [dir, setDir] = useState(0);
   const swipe = useRef<{ x: number; y: number; t: number } | null>(null);
   const turn = (d: number) => {
-    if (!walls) return;
+    if (!walls || navigationLocked) return;
     const st = useGame.getState();
     if (st.scare || st.paused) return;
     setDir(d);
     setWall((w) => (w + d + 4) % 4);
+    setSwipeCue(false);
+    try { localStorage.setItem("mwbb-swipe-seen", "1"); } catch { /* optional preference */ }
     sfx("creak");
   };
   useEffect(() => {
@@ -88,11 +122,13 @@ export function Stage({
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   });
-  const shownBg = walls ? walls[wall]! : bg;
-  const shownPos = wall === 0 ? bgPos : "50% 50%";
+  const shownBg = walls?.[wall] ?? bg;
+  const shownPos = wallPositions?.[wall] ?? (wall === 0 ? bgPos : "50% 50%");
 
   // Flashlight follows finger / mouse.
   const move = (e: React.PointerEvent) => {
+    // A touch swipe turns the room, not the lamp. The handheld beam stays centred on phones.
+    if (e.pointerType === "touch") return;
     const r = frame.current?.getBoundingClientRect();
     if (!r) return;
     light.x = ((e.clientX - r.left) / r.width) * 100;
@@ -100,6 +136,11 @@ export function Stage({
     dark.current?.style.setProperty("--lx", `${light.x}%`);
     dark.current?.style.setProperty("--ly", `${light.y}%`);
   };
+  useEffect(() => {
+    light.x = 50; light.y = 55;
+    dark.current?.style.setProperty("--lx", "50%");
+    dark.current?.style.setProperty("--ly", "55%");
+  }, [wall, s.lightsOn]);
 
   // Cordura ticker.
   useEffect(() => {
@@ -225,7 +266,6 @@ export function Stage({
     >
       <WallCtx.Provider value={wall}>
       <img
-        key={wall}
         src={shownBg}
         alt=""
         className={`scene-bg ${dir > 0 ? "wall-in-r" : dir < 0 ? "wall-in-l" : ""}`}
@@ -264,9 +304,9 @@ export function Stage({
       {guest?.show && !s.lightsOn && (
         <GuestVoid
           style={{
-            left: `${guest.x}%`,
-            top: `${guest.y}%`,
-            height: `${guest.h}%`,
+                  left: `${Math.max(25, Math.min(75, guest.x))}%`,
+                  top: `${Math.max(8, Math.min(35, guest.y))}%`,
+                  height: `${Math.min(64, guest.h)}%`,
             transform: "translate(-50%, 0)",
             zIndex: 25,
           }}
@@ -277,10 +317,10 @@ export function Stage({
       {/* Darkness with a small hand-held light */}
       <div
         ref={dark}
-        className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-500"
+        className="flashlight-mask pointer-events-none absolute inset-0 z-20 transition-opacity duration-500"
         style={{
           opacity: s.lightsOn ? 0 : 1,
-          background: `radial-gradient(circle at var(--lx, 50%) var(--ly, 55%), oklch(0.2 0.03 80 / 0.05) 0, oklch(0.1 0.03 275 / 0.35) ${LIGHT_R * 0.6}cqw, oklch(0.05 0.02 275 / 0.97) ${LIGHT_R * 1.5}cqw)`,
+          background: `radial-gradient(circle at var(--lx, 50%) var(--ly, 55%), var(--beam-clear) 0, var(--beam-edge) ${LIGHT_R * 0.6}cqw, var(--beam-dark) ${LIGHT_R * 1.5}cqw)`,
         }}
       />
       {!s.lightsOn && <div className="pointer-events-none absolute inset-0 z-30">{spread || wall === 0 ? clues : null}</div>}
@@ -297,10 +337,11 @@ export function Stage({
         {above}
       </div>
 
-      {walls && !s.scare && (
+      {walls && !s.scare && !navigationLocked && (
         <>
-          <button aria-label="Turn to the left wall" onClick={() => turn(-1)} className="wall-arrow left-1">‹</button>
-          <button aria-label="Turn to the right wall" onClick={() => turn(1)} className="wall-arrow right-1">›</button>
+          <Button variant="game" size="game" aria-label="Turn to the left wall" onClick={() => turn(-1)} className="wall-arrow left-1">‹</Button>
+          <Button variant="game" size="game" aria-label="Turn to the right wall" onClick={() => turn(1)} className="wall-arrow right-1">›</Button>
+          {swipeCue && <div aria-label="Swipe to turn the room" className="swipe-cue pointer-events-none absolute bottom-[12%] left-1/2 z-40 -translate-x-1/2 text-paper"><MoveHorizontal className="h-5 w-14" /><Hand className="swipe-hand mx-auto h-9 w-9" /></div>}
           <div aria-live="polite" className="pointer-events-none absolute left-1/2 top-2 z-40 flex -translate-x-1/2 items-center gap-1.5 rotate-[-2deg] bg-paper px-2 py-0.5 font-display text-[11px] uppercase tracking-widest text-ink shadow-[2px_3px_0_oklch(0_0_0/.5)]">
             {WALL_NAME.map((n, i) => <span key={n} className={`h-2 w-2 ${i === wall ? "bg-ink" : "border border-ink/50"}`} />)}
             <span className="ml-1">{WALL_NAME[wall]}</span>

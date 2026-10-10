@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { loadSave, sanitizeName, useGame } from "@/game/store";
+import {
+  loadMemory,
+  loadSave,
+  loadStoredMemory,
+  sanitizeName,
+  saveMemory,
+  saveCheckpoint,
+  setMemoryForgotten,
+  useGame,
+} from "@/game/store";
 
 describe("chapter checkpoint save", () => {
   beforeEach(() => {
@@ -24,6 +33,23 @@ describe("chapter checkpoint save", () => {
     expect(r.cordura).toBe(30);
     expect(r.toyOrder).toEqual(order);
     expect(r.ch1).toEqual(order);
+  });
+
+  it("remembers the single toy escape and its recovery when continuing MG01", () => {
+    const s = useGame.getState();
+    s.set({ name: "MJ" });
+    s.go("ch1");
+    s.set({ toyEscape: { toy: "elephant", wall: 2, x: 40, y: 82, escapedAt: 1000, recovered: false } });
+    saveCheckpoint();
+    useGame.setState({ toyEscape: undefined });
+    expect(s.continueRun()).toBe(true);
+    expect(useGame.getState().toyEscape).toMatchObject({ toy: "elephant", wall: 2, recovered: false, escapedAt: 1000 });
+    s.set({ ch1: ["elephant"], toyEscape: { ...useGame.getState().toyEscape!, recovered: true } });
+    saveCheckpoint();
+    useGame.setState({ ch1: [], toyEscape: undefined });
+    expect(s.continueRun()).toBe(true);
+    expect(useGame.getState().ch1).toEqual(["elephant"]);
+    expect(useGame.getState().toyEscape?.recovered).toBe(true);
   });
 
   it("a new game wipes the old save", () => {
@@ -57,6 +83,38 @@ describe("chapter checkpoint save", () => {
     s.set({ name: "Lucia", paused: true });
     s.go("ch2k");
     expect(useGame.getState().paused).toBe(false);
+  });
+
+  it("can hide and restore house memory without deleting it", () => {
+    saveMemory({ runs: 3, lastName: "Lucia", lastToy: "train" });
+    expect(setMemoryForgotten(true)).toEqual({ runs: 0, forgotten: true });
+    expect(loadStoredMemory()).toMatchObject({
+      runs: 3,
+      lastName: "Lucia",
+      lastToy: "train",
+      forgotten: true,
+    });
+    expect(loadMemory()).toEqual({ runs: 0, forgotten: true });
+    expect(setMemoryForgotten(false)).toMatchObject({
+      runs: 3,
+      lastName: "Lucia",
+      lastToy: "train",
+    });
+  });
+
+  it("runs line completion only after advancing the finished line", () => {
+    let completed = false;
+    const s = useGame.getState();
+    s.say({
+      speaker: "guest",
+      text: "Let me finish.",
+      onDone: () => {
+        completed = true;
+      },
+    });
+    expect(completed).toBe(false);
+    s.nextLine();
+    expect(completed).toBe(true);
   });
 
   it("keeps behavioural memory bounded and records recovery", () => {

@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BG } from "../assets";
 import {
   CHAPTER_TITLE,
   COLOR_LABEL,
   MOTHER_LABEL,
-  forgetMemory,
   loadMemory,
+  setMemoryForgotten,
   loadSave,
   sanitizeName,
   useGame,
@@ -23,6 +23,8 @@ import { resetOnce } from "../kit";
 import { interpretFavoriteToy } from "../ai/toy";
 import { generateFavoriteToyImage } from "../ai/toy-image";
 import { DialogueBar, Shell } from "../Shell";
+import { useSpokenPrompt } from "../DialogueVoice";
+import { adaptiveQuestion, currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
 
 const CHAPTER_OF: Partial<Record<Screen, number>> = {
   ch1: 1,
@@ -39,7 +41,7 @@ type Panel = "menu" | "how" | "settings" | "character";
 
 export function Title() {
   const muted = useGame((s) => s.muted);
-  const [mem, setMem] = useState<{ runs: number }>({ runs: 0 });
+  const [mem, setMem] = useState<{ runs: number; forgotten?: boolean | undefined }>({ runs: 0 });
   const [saved, setSaved] = useState<Screen | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [panel, setPanel] = useState<Panel>("menu");
@@ -192,7 +194,7 @@ export function Title() {
               show in the dark.
             </li>
             <li>
-              <b className="font-display">Cordura</b> rises in the dark and when something frightens
+              <b className="font-display">Fear</b> rises in the dark and when something frightens
               you. Light brings it back down. If it fills up, you'll have to try that part again.
             </li>
             <li>
@@ -243,14 +245,16 @@ export function Title() {
             <button
               type="button"
               className="stitch-btn w-full"
-              disabled={mem.runs === 0}
+              aria-pressed={!mem.forgotten}
               onClick={() => {
-                forgetMemory();
-                setMem({ runs: 0 });
-                sfx("whisper");
+                const next = setMemoryForgotten(!mem.forgotten);
+                setMem(next);
+                sfx(next.forgotten ? "whisper" : "chime");
               }}
             >
-              {mem.runs === 0 ? "The house doesn't know you" : "Make the house forget you"}
+              {mem.forgotten
+                ? "The house forgot you — let it remember"
+                : "The house remembers you — make it forget"}
             </button>
             <p className="text-xs leading-snug opacity-70">
               The house remembers your past visits on this device, and the game keeps your place at
@@ -302,13 +306,57 @@ export function Intro() {
   const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
+  const [questionLoading, setQuestionLoading] = useState(true);
+  const initialQuestionRequested = useRef(false);
   const name = sanitizeName(raw);
   const invalidName = !!raw.trim() && !name;
-  const confirmName = () => {
-    if (name) {
-      sfx("tap");
-      setStep(1);
-    }
+  const [questionText, setQuestionText] = useState(() => {
+    const kind = knownName ? "color" : "name";
+    return offlineAdaptiveQuestion(
+      currentQuestionContext(kind, profile?.name ? { name: profile.name } : {}),
+    ).text;
+  });
+  useSpokenPrompt(questionText, "mother", !questionLoading);
+
+  useEffect(() => {
+    if (initialQuestionRequested.current) return;
+    initialQuestionRequested.current = true;
+    const kind = knownName ? "color" : "name";
+    void adaptiveQuestion(
+      currentQuestionContext(kind, {
+        ...(profile?.name ? { name: profile.name } : {}),
+        previousQuestions: [questionText],
+      }),
+    ).then((next) => {
+      setQuestionText(next.text);
+      setQuestionLoading(false);
+    });
+    // The first question is resolved once, before the player can answer it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const confirmName = async () => {
+    if (!name || questionLoading) return;
+    sfx("tap");
+    setQuestionLoading(true);
+    const next = await adaptiveQuestion(
+      currentQuestionContext("color", { name, previousQuestions: [questionText] }),
+    );
+    setQuestionText(next.text);
+    setStep(1);
+    setQuestionLoading(false);
+  };
+
+  const prepareToyQuestion = async () => {
+    if (questionLoading) return;
+    sfx("tap");
+    setQuestionLoading(true);
+    const next = await adaptiveQuestion(
+      currentQuestionContext("toy", { name, previousQuestions: [questionText] }),
+    );
+    setQuestionText(next.text);
+    setStep(2);
+    setQuestionLoading(false);
   };
 
   const startGame = async () => {
@@ -363,11 +411,11 @@ export function Intro() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              confirmName();
+              void confirmName();
             }}
           >
             <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
-              "I'm popping out for groceries, sweetheart. What do I call you while I'm gone?"
+              “{questionText}”
             </p>
             <label className="mt-4 block text-xs uppercase tracking-widest opacity-60" htmlFor="nm">
               Your name
@@ -380,7 +428,7 @@ export function Intro() {
               aria-invalid={invalidName}
               aria-describedby={invalidName ? "name-error" : undefined}
               className="mt-1 w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
-              placeholder="e.g. Lucía"
+              placeholder="e.g. Lucy"
               autoComplete="off"
               autoCapitalize="words"
               enterKeyHint="done"
@@ -390,17 +438,19 @@ export function Intro() {
                 That name can't be used.
               </p>
             )}
-            <button type="submit" className="stitch-btn sage mt-4 w-full" disabled={!name}>
-              That's me
+            <button
+              type="submit"
+              className="stitch-btn sage mt-4 w-full"
+              disabled={!name || questionLoading}
+            >
+              {questionLoading ? "Mommy is thinking…" : "That's me"}
             </button>
           </form>
         )}
         {step === 1 && (
           <>
             <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">
-              {knownName
-                ? `"I'm popping out for groceries, ${name}. What's your favourite colour? I'll get you a new cup."`
-                : `"And your favourite colour, ${name}? I'll get you a new cup."`}
+              “{questionText}”
             </p>
             <div
               className="mt-4 grid grid-cols-4 gap-3"
@@ -431,16 +481,18 @@ export function Intro() {
               <span className="font-display">{COLOR_LABEL[s.favColor]}</span> it is. She buttons her{" "}
               {MOTHER_LABEL[s.motherColor]} coat.
             </p>
-            <button className="stitch-btn mt-4 w-full" onClick={() => setStep(2)}>
-              One more thing…
+            <button
+              className="stitch-btn mt-4 w-full"
+              onClick={() => void prepareToyQuestion()}
+              disabled={questionLoading}
+            >
+              {questionLoading ? "Mommy is thinking…" : "One more thing…"}
             </button>
           </>
         )}
         {step === 2 && (
           <>
-            <p className="font-display text-lg leading-snug">
-              "Which toy is your absolute favourite, {name}?"
-            </p>
+            <p className="font-display text-lg leading-snug">“{questionText}”</p>
             <p className="mt-1 text-xs opacity-60">Something behind Mommy seems to lean closer.</p>
             <form
               className="mt-4 space-y-3"

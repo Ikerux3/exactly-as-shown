@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { requestElevenLabsSpeech } from "./voice.provider.server";
 
 const envNames = [
+  "ELEVENLABS_ENABLED",
   "ELEVENLABS_API_KEY",
   "ELEVENLABS_GUEST_VOICE_ID",
   "ELEVENLABS_MOTHER_VOICE_ID",
@@ -21,6 +22,7 @@ afterEach(() => {
 
 describe("ElevenLabs voice provider", () => {
   it("falls back without making a request when it is not configured", async () => {
+    process.env["ELEVENLABS_ENABLED"] = "true";
     delete process.env["ELEVENLABS_API_KEY"];
     delete process.env["ELEVENLABS_GUEST_VOICE_ID"];
     const fetchMock = vi.fn();
@@ -31,6 +33,7 @@ describe("ElevenLabs voice provider", () => {
   });
 
   it("keeps credentials server-side and sends the documented low-latency model", async () => {
+    process.env["ELEVENLABS_ENABLED"] = "true";
     process.env["ELEVENLABS_API_KEY"] = "secret-eleven-key";
     process.env["ELEVENLABS_GUEST_VOICE_ID"] = "guest-voice";
     delete process.env["ELEVENLABS_MODEL"];
@@ -50,5 +53,18 @@ describe("ElevenLabs voice provider", () => {
       text: "Hello.",
       model_id: "eleven_flash_v2_5",
     });
+  });
+
+  it("makes no request while the explicit kill switch is off", async () => {
+    process.env["ELEVENLABS_ENABLED"] = "false";
+    process.env["ELEVENLABS_API_KEY"] = "secret-eleven-key";
+    process.env["ELEVENLABS_GUEST_VOICE_ID"] = "guest-voice";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(requestElevenLabsSpeech("Stay still.", "guest")).resolves.toEqual({
+      available: false,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

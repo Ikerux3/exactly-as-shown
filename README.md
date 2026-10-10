@@ -37,6 +37,6 @@ During chapters 3–5 the director also reacts at safe gameplay checkpoints: com
 
 ## Optional ElevenLabs voices
 
-Character dialogue can use ElevenLabs while keeping credentials on the server. Configure `ELEVENLABS_API_KEY` and the three voice IDs shown in `.env.example`. `ELEVENLABS_MODEL` is optional and defaults to the low-latency `eleven_flash_v2_5` model.
+Character dialogue can use ElevenLabs while keeping credentials on the server. Configure `ELEVENLABS_API_KEY` and the three selected voice IDs shown in `.env.example`. `ELEVENLABS_MODEL` is optional and defaults to the low-latency `eleven_flash_v2_5` model. ElevenLabs is deliberately disabled unless the server-only `ELEVENLABS_ENABLED` secret is exactly `true`, so the voices can be configured without spending credits during fallback testing.
 
 When ElevenLabs is missing, slow, or unavailable, the game automatically uses the browser's English text-to-speech voices. If device speech is unavailable too, dialogue continues through the always-visible subtitles. The existing Sound control mutes music, effects, and speech together.

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { cancelBrowserSpeech, speakWithBrowser, type SpeechRuntime } from "./voice";
+import { cancelBrowserSpeech, speakWithBrowser, voiceSafetyMs, type SpeechRuntime } from "./voice";
 
 class FakeUtterance {
   lang = "";
@@ -65,5 +65,19 @@ describe("browser dialogue voice fallback", () => {
     const speech = runtime();
     cancelBrowserSpeech(speech.value);
     expect(speech.cancel).toHaveBeenCalledOnce();
+  });
+
+  it("reports completion once so dialogue can advance after speech", () => {
+    const speech = runtime();
+    const onEnd = vi.fn();
+    expect(speakWithBrowser("Finished speaking.", speech.value, { onEnd })).toBe(true);
+    const utterance = speech.speak.mock.calls[0]?.[0] as unknown as FakeUtterance;
+    utterance.onend?.();
+    utterance.onerror?.();
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a voiced subtitle alive well beyond its old fixed duration", () => {
+    expect(voiceSafetyMs("A line that must be allowed to finish.", 1600)).toBeGreaterThan(10_000);
   });
 });
