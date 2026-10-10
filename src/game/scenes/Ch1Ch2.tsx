@@ -84,7 +84,7 @@ export function Ch1() {
   const Toy = ({ t, x, y, w, extra }: { t: ToyId; x: number; y: number; w: number; extra?: string }) =>
     got(t) ? null : (
       <button onClick={() => collect(t)} aria-label={`Pick up the ${TOY_LABEL[t]}`}
-        className={`absolute transition-all duration-500 ease-out ${extra ?? ""}`} style={flyStyle(t, x, y, w)}>
+        className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`} style={flyStyle(t, x, y, w)}>
         <img src={TOY_IMG[t]} alt="" className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]" draggable={false} />
       </button>
     );
@@ -124,7 +124,7 @@ export function Ch1() {
       <button aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"} onClick={() => { setDrawer(!drawerOpen); sfx("open"); }} className="absolute" style={{ left: "64%", top: "44%", width: "26%" }}>
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} extra="z-10" />}
+      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !s.lightsOn && (
