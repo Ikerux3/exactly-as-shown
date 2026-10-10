@@ -306,8 +306,11 @@ export function Intro() {
   const [step, setStep] = useState(knownName ? 1 : 0);
   const [toyInput, setToyInput] = useState("");
   const [interpreting, setInterpreting] = useState(false);
-  const [questionLoading, setQuestionLoading] = useState(true);
-  const initialQuestionRequested = useRef(false);
+  // Mommy never "thinks": questions appear instantly; the AI only polishes the wording in the background.
+  const questionLoading = false;
+  const [colorInput, setColorInput] = useState("");
+  const stepRef = useRef(step);
+  stepRef.current = step;
   const name = sanitizeName(raw);
   const invalidName = !!raw.trim() && !name;
   const [questionText, setQuestionText] = useState(() => {
@@ -316,48 +319,30 @@ export function Intro() {
       currentQuestionContext(kind, profile?.name ? { name: profile.name } : {}),
     ).text;
   });
-  useSpokenPrompt(questionText, "mother", !questionLoading);
+  useSpokenPrompt(questionText, "mother");
 
-  useEffect(() => {
-    if (initialQuestionRequested.current) return;
-    initialQuestionRequested.current = true;
-    const kind = knownName ? "color" : "name";
-    void adaptiveQuestion(
-      currentQuestionContext(kind, {
-        ...(profile?.name ? { name: profile.name } : {}),
-        previousQuestions: [questionText],
-      }),
-    ).then((next) => {
-      setQuestionText(next.text);
-      setQuestionLoading(false);
-    });
-    // The first question is resolved once, before the player can answer it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const confirmName = async () => {
-    if (!name || questionLoading) return;
-    sfx("tap");
-    setQuestionLoading(true);
-    const next = await adaptiveQuestion(
-      currentQuestionContext("color", { name, previousQuestions: [questionText] }),
-    );
-    setQuestionText(next.text);
-    setStep(1);
-    setQuestionLoading(false);
+  const askNext = (kind: "color" | "toy", nextStep: number, nm: string) => {
+    const ctx = currentQuestionContext(kind, { name: nm, previousQuestions: [questionText] });
+    setQuestionText(offlineAdaptiveQuestion(ctx).text);
+    setStep(nextStep);
   };
 
-  const prepareToyQuestion = async () => {
-    if (questionLoading) return;
+  const confirmName = () => {
+    if (!name) return;
     sfx("tap");
-    setQuestionLoading(true);
-    const next = await adaptiveQuestion(
-      currentQuestionContext("toy", { name, previousQuestions: [questionText] }),
-    );
-    setQuestionText(next.text);
-    setStep(2);
-    setQuestionLoading(false);
+    askNext("color", 1, name);
   };
+
+  const confirmColor = () => {
+    const parsed = parseColorWord(colorInput);
+    if (!parsed) return;
+    sfx("chime");
+    const key: ColorKey = s.favColor;
+    applyCustomColor(key, parsed.css);
+    s.set({ favColorCss: parsed.css, favColorWord: parsed.word });
+    askNext("toy", 2, name);
+  };
+  void interpreting;
 
   const startGame = async () => {
     const answer = toyInput.trim();
