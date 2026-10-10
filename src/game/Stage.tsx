@@ -7,6 +7,7 @@ import { ChapterCard } from "./kit";
 import { GAMEPLAY_RULES, checkpointScreen } from "./gameplayRules";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
 import { CutoutDefs, SanityFX } from "./fx";
+import { Dread } from "./dread";
 
 // Shared flashlight position (percent of frame) so scenes can test illumination.
 export const light = { x: 50, y: 55 };
@@ -258,6 +259,7 @@ export function Stage({
       <div key={`w${wall}`} className={`absolute inset-0 z-10 ${dir > 0 ? "wall-in-r" : dir < 0 ? "wall-in-l" : ""}`}>{spread || wall === 0 ? children : null}</div>
       <CutoutDefs />
       <SanityFX bg={shownBg} bgPos={shownPos} />
+      <Dread chapter={chapter} bg={shownBg} bgPos={shownPos} lit={illuminated} />
 
       {guest?.show && !s.lightsOn && (
         <GuestVoid

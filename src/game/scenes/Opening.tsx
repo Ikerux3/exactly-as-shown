@@ -18,6 +18,7 @@ import { ChildDoll, GuestVoid, MotherCutout } from "../Props";
 import { loadProfile, type Profile } from "../profile";
 import { CharacterCreator } from "./Creator";
 import { Ransom } from "../fx";
+import { WindowWatcher, flashesSetting, setFlashesSetting } from "../dread";
 import { resetOnce } from "../kit";
 import { interpretFavoriteToy } from "../ai/toy";
 import { generateFavoriteToyImage } from "../ai/toy-image";
@@ -43,10 +44,12 @@ export function Title() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [panel, setPanel] = useState<Panel>("menu");
   const [confirmNew, setConfirmNew] = useState(false);
+  const [flashes, setFlashes] = useState(true);
   useEffect(() => {
     setMem(loadMemory());
     setSaved(loadSave()?.screen ?? null);
     setProfile(loadProfile());
+    setFlashes(flashesSetting());
   }, []);
 
   const newGame = () => {
@@ -91,6 +94,8 @@ export function Title() {
             "linear-gradient(180deg, oklch(0.12 0.04 275 / .2), transparent 40%, oklch(0.06 0.02 275 / .55) 70%, oklch(0.06 0.02 275 / .92) 100%)",
         }}
       />
+      {/* now and then, someone at the upstairs window */}
+      {panel === "menu" && <WindowWatcher left="58.7%" top="51%" />}
       <div className="absolute inset-x-0 top-[7%] px-6 text-center">
         <h1 className="space-y-2 text-[10cqw]" aria-label="Mommy will be back">
           <Ransom text="MOMMY" seed={3} className="block" />
@@ -222,6 +227,18 @@ export function Title() {
               }}
             >
               {muted ? "Sound: off" : "Sound: on"}
+            </button>
+            <button
+              type="button"
+              className="stitch-btn sage w-full"
+              aria-pressed={flashes}
+              onClick={() => {
+                setFlashesSetting(!flashes);
+                setFlashes(!flashes);
+                sfx(flashes ? "tap" : "static");
+              }}
+            >
+              {flashes ? "Glitches & flashes: on" : "Glitches & flashes: off"}
             </button>
             <button
               type="button"

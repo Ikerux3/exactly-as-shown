@@ -1,10 +1,11 @@
 // Shared screen chrome: a fixed 2:3 art frame with a HUD bar above it and a dialogue bar
 // below it, so subtitles, objectives and controls never cover the scene art or its hitboxes.
-import { useEffect, type ReactNode, type Ref } from "react";
+import { useEffect, useState, type ReactNode, type Ref } from "react";
 import { Brain, Pause } from "lucide-react";
 import { CHAPTER_TITLE, useGame } from "./store";
 import { stopMusic } from "./audio";
 import { GUEST_MIND_LABEL } from "./guest";
+import { useDreadSignal } from "./dread";
 
 type ShellProps = {
   /** Show the HUD / dialogue bars. Without them the art fills the shell on phones. */
@@ -73,38 +74,60 @@ const SPEAKER: Record<string, string> = {
   child: "You",
 };
 
+/** What Mommy's list says for a split second when the house gets into it (see dread.tsx). */
+const LIST_LIES = [
+  (n: string) => `${n}, LOOK BEHIND YOU`,
+  () => "MOMMY ISN'T COMING BACK",
+  () => "IT'S IN THE ROOM WITH YOU",
+  () => "DON'T TURN THE LIGHT ON",
+];
+function scramble(text: string): string {
+  return [...text].map((ch) => (/\p{L}/u.test(ch) && Math.random() < 0.35 ? "▓▒░#"[Math.floor(Math.random() * 4)] : ch)).join("");
+}
+
 /** Bottom bar: the current subtitle (tap to skip) or, when nobody is talking, Mommy's list. */
 export function DialogueBar({ right }: { right?: ReactNode }) {
   const line = useGame((s) => s.line);
   const objective = useGame((s) => s.objective);
   const guest = !!line && (line.speaker === "guest" || line.speaker === "mimic");
+  // For half a second the text goes wrong; the aria labels keep the real words.
+  const corrupt = useDreadSignal((d) => d.corrupt);
+  const [lie, setLie] = useState<string | null>(null);
+  useEffect(() => {
+    if (!corrupt) return;
+    const st = useGame.getState();
+    const name = (st.name || "little one").toUpperCase();
+    setLie(st.line ? scramble(st.line.text) : LIST_LIES[Math.floor(Math.random() * LIST_LIES.length)]!(name));
+    const t = window.setTimeout(() => setLie(null), 520);
+    return () => window.clearTimeout(t);
+  }, [corrupt]);
   return (
     <>
       {line ? (
         <button
           type="button"
           onClick={() => useGame.getState().nextLine(true)}
-          className={`subtitle dialogue-panel ${guest ? "guest" : ""}`}
+          className={`subtitle dialogue-panel ${guest ? "guest" : ""} ${lie ? "corrupt" : ""}`}
           aria-live="polite"
           aria-label={`${line.text} — tap to continue`}
         >
           {line.speaker !== "narrator" && (
             <span className="speaker-tag dialogue-label">{SPEAKER[line.speaker]}</span>
           )}
-          <span key={line.text} className="block animate-float-up">
-            {line.text}
+          <span key={line.text} className="block animate-float-up" aria-hidden={!!lie}>
+            {lie ?? line.text}
           </span>
         </button>
       ) : (
         <div
-          className={`subtitle dialogue-panel ${objective ? "" : "is-empty"}`}
+          className={`subtitle dialogue-panel ${objective ? "" : "is-empty"} ${lie && objective ? "corrupt" : ""}`}
           aria-live="polite"
         >
           {objective && (
             <>
               <span className="speaker-tag dialogue-label">Mommy's list</span>
-              <span key={objective} className="block leading-snug animate-float-up">
-                {objective}
+              <span key={objective} className="block leading-snug animate-float-up" aria-label={objective}>
+                {lie ?? objective}
               </span>
             </>
           )}

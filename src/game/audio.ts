@@ -135,11 +135,46 @@ function noise(dur: number, freq: number, vol: number, q = 1) {
   src.start();
 }
 
-export function sfx(kind: "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note" | "step" | "door" | "heartbeat", n = 0) {
+/** A noise swell with its own envelope (breathing, tape hiss). */
+function swell(dur: number, freq: number, peak: number, q: number, attack: number) {
+  const c = ensure();
+  if (!c || !master) return;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const f = c.createBiquadFilter();
+  f.type = "bandpass"; f.frequency.value = freq; f.Q.value = q;
+  const g = c.createGain();
+  const t = c.currentTime + 0.01;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(peak, t + attack);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(master);
+  src.start(t);
+}
+
+export type Sfx =
+  | "tap" | "open" | "switch" | "chime" | "wrong" | "scare" | "whisper" | "creak" | "note" | "step" | "door" | "heartbeat"
+  // ambient dread (see dread.tsx)
+  | "knock" | "upstairs" | "breath" | "static" | "skitter" | "sting";
+
+export function sfx(kind: Sfx, n = 0) {
   const c = ensure();
   if (!c) return;
   const t = c.currentTime + 0.01;
   switch (kind) {
+    case "knock": [0, 330, 640].forEach((ms) => window.setTimeout(() => noise(0.09, 170, 0.55, 2.2), ms)); break;
+    case "upstairs": [0, 640, 1300, 1900].forEach((ms) => window.setTimeout(() => noise(0.14, 105, 0.32, 0.9), ms)); break;
+    case "breath": {
+      swell(1.3, 650, 0.16, 0.7, 0.9);
+      window.setTimeout(() => swell(1.6, 420, 0.12, 0.6, 0.25), 1350);
+      break;
+    }
+    case "static": swell(0.28, 4200, 0.22, 0.3, 0.02); break;
+    case "skitter": for (let i = 0; i < 12; i++) window.setTimeout(() => noise(0.025, 2200 + Math.random() * 900, 0.16, 6), i * (45 + Math.random() * 30)); break;
+    case "sting": [1244.5, 1318.5, 1975.5].forEach((f, i) => bell(f, t + i * 0.012, 0.07, 0.9)); break;
     case "step": noise(0.09, 150 + Math.random() * 40, 0.45, 1.4); break;
     case "door": {
       noise(0.45, 110, 1.0, 0.6);

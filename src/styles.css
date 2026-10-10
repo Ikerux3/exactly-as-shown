@@ -459,3 +459,45 @@
 @keyframes cut-shiver { from { transform: rotate(-1.4deg); } to { transform: rotate(1.4deg) translateX(1%); } }
 @keyframes tear-fall { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(260%) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cut-shiver { animation: none; } }
+
+/* ===== Ambient dread (dread.tsx) ===== */
+/* the ceiling crawler: moves only `left`, in stop-motion steps */
+.dread-crawler { position: absolute; width: 40%; aspect-ratio: 160 / 100; pointer-events: none; animation-name: dread-crawl; animation-timing-function: steps(18); animation-fill-mode: both; }
+@keyframes dread-crawl { from { left: var(--from); } to { left: var(--to); } }
+.dread-crawler .gait-a { animation: dread-gait 0.24s steps(1) infinite; }
+.dread-crawler .gait-b { animation: dread-gait 0.24s steps(1) infinite -0.12s; }
+@keyframes dread-gait { 0% { opacity: 1; } 50% { opacity: 0; } }
+.dread-glint { position: absolute; display: flex; gap: 3px; translate: -50% -50%; }
+.dread-glint::before, .dread-glint::after { content: ""; width: 3px; height: 3px; border-radius: 50%; background: oklch(0.95 0.06 90); box-shadow: 0 0 5px oklch(0.95 0.1 90 / .9); }
+
+/* crayon on the walls, only in the dark: scrawled on, then gone */
+.dread-scrawl {
+  position: absolute; z-index: 31; pointer-events: none; line-height: 1; translate: -50% 0;
+  max-width: 76%; text-align: center; text-wrap: balance;
+  font-family: var(--font-crayon); letter-spacing: 0.04em; color: oklch(0.82 0.06 25 / .85);
+  text-shadow: 0 0 6px oklch(0.6 0.16 25 / .7), 0 0 14px oklch(0.45 0.15 22 / .5);
+  animation: dread-scrawl 5.2s ease-in-out forwards;
+}
+@keyframes dread-scrawl {
+  0% { clip-path: inset(0 100% 0 0); opacity: .9; }
+  25% { clip-path: inset(0 0 0 0); opacity: .9; }
+  70% { opacity: .75; }
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
+
+/* a skipping VHS tape */
+@keyframes tape-slice { 0% { opacity: 1; } 66% { opacity: .85; } 100% { opacity: 0; } }
+.tape-scanlines { background: repeating-linear-gradient(0deg, oklch(0 0 0 / .28) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; animation: tape-slice 0.65s steps(4) forwards; }
+.tape-osd { position: absolute; font-family: "Courier New", monospace; font-weight: 700; font-size: 3.4cqw; letter-spacing: 0.08em; color: oklch(0.96 0.02 120); text-shadow: 2px 0 oklch(0.6 0.2 25 / .8), -2px 0 oklch(0.6 0.15 230 / .8); animation: tape-slice 0.65s steps(2) forwards; }
+
+/* the dialogue bar, corrupted for a moment */
+.dialogue-panel.corrupt { color: var(--crimson); animation: jitter 0.08s steps(2) infinite; }
+
+/* title screen: two eyes at the upstairs window */
+.window-watcher { animation: watcher 1.6s ease-in-out forwards; }
+.window-watcher i { display: block; width: 0.9cqw; height: 0.5cqw; min-width: 3px; min-height: 2px; border-radius: 50%; background: oklch(0.92 0.06 90); box-shadow: 0 0 6px oklch(0.92 0.1 90 / .8); }
+@keyframes watcher { 0%, 100% { opacity: 0; } 15%, 45%, 60%, 85% { opacity: .9; } 50%, 55% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dread-crawler .gait-a, .dread-crawler .gait-b, .dialogue-panel.corrupt { animation: none; }
+}
