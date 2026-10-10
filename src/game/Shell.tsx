@@ -129,13 +129,13 @@ export function CorduraMeter({ value }: { value: number }) {
     <div
       className="chip flex shrink-0 items-center gap-2 px-3 py-1.5"
       role="meter"
-      aria-label="Cordura"
+      aria-label="Fear"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={value}
     >
       <span className="hidden font-display text-[10px] uppercase tracking-[0.16em] @xs:inline">
-        Cordura
+        Fear
       </span>
       <Brain className="h-3.5 w-3.5 @xs:hidden" strokeWidth={2.25} aria-hidden />
       <span className="relative block h-2 w-12 overflow-hidden rounded-full bg-paper-deep shadow-inner @sm:w-14">

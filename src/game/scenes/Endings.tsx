@@ -473,7 +473,7 @@ export function Ending() {
               Behind you, in the room with no light, something sets out {s.favFood ?? "dinner"}{" "}
               beside {s.favToy ?? `the ${TOY_LABEL[toyId]}`}.
             </p>
-            <p className="mt-3 text-xs opacity-60">Cordura at bedtime: {c}</p>
+            <p className="mt-3 text-xs opacity-60">Fear at bedtime: {c}</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <button
                 type="button"
