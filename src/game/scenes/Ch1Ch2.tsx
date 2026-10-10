@@ -158,7 +158,9 @@ export function Ch1() {
         {/* The same artwork supplies the coat cutout, aligned with this wall's crop. */}
         {jacketMoved && <div aria-hidden className="pointer-events-none absolute inset-0 z-20"
           style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
-            background: "radial-gradient(ellipse at 36% 48%, #242025, #51444a)" }} />}
+            }}>
+          <img src={WALLS[BG.bgPlayroom]?.[2]} alt="" className="scene-bg" style={{ objectPosition: "0% 50%", transform: "translateX(20%)" }} />
+        </div>}
         {toy(r4, 3, jacketMoved)}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] transition-transform duration-500 motion-reduce:transition-none"
           style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
