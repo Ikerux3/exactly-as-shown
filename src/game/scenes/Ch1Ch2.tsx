@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
-import { KITCHEN_WALLS, TOY_ESCAPE_SPOTS } from "../roomLayout";
+import { FOURTH_TOY_LANDINGS, KITCHEN_WALLS, TOY_ESCAPE_SPOTS, shouldReleaseFourthToy } from "../roomLayout";
 import { BG, PROP, toyImageFor } from "../assets";
 import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
@@ -68,19 +68,14 @@ export function Ch1() {
   // The ONLY scripted escape: the fourth toy STORED leaves the box after a wall turn.
   // Switching light states never ejects toys, and this only happens once per attempt.
   const onWallChanged = (wall: number) => {
-    if (fourthEscaped.current || !useGame.getState().interactive) return;
     const st = useGame.getState();
-    if (st.ch1.length < 4) return;
+    if (!shouldReleaseFourthToy(st.ch1.length, fourthEscaped.current, st.interactive)) return;
     const toy = st.ch1[3] as ToyId;
     if (!toy) return;
     fourthEscaped.current = true;
     // Always in the wall the player JUST arrived at, away from navigation arrows.
-    const spots = [
-      { x: 28, y: 60 }, { x: 65, y: 67 },
-      { x: 57, y: 62 }, { x: 29, y: 68 },
-    ];
-    const point = spots[wall] ?? spots[0]!;
-    setFourthEscapeSpot({ toy, wall, ...point });
+    const point = FOURTH_TOY_LANDINGS[wall] ?? FOURTH_TOY_LANDINGS[0]!;
+    setFourthEscapeSpot({ toy, ...point });
     setEjected((old) => old.includes(toy) ? old : [...old, toy]);
     st.set({ ch1: st.ch1.filter((id) => id !== toy) });
     sfx("creak");
