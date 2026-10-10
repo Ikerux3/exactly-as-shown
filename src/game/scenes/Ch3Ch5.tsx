@@ -349,6 +349,7 @@ export function Ch4() {
   const inspected = useRef(new Set<string>());
   const nm = s.name || "sweetheart";
   const [leaving, setLeaving] = useState<null | "door" | "wardrobe">(null);
+  const [exitScareDone, setExitScareDone] = useState(false);
 
   const exitBy = (way: "door" | "wardrobe") => {
     if (!s.interactive || leaving) return;
@@ -521,11 +522,12 @@ export function Ch4() {
       }
       above={
         <>
-          {leaving === "wardrobe" && (
+          {leaving === "wardrobe" && !exitScareDone && (
             <JumpScare
               img={CUT.guest}
               ms={1500}
               onDone={() => {
+                setExitScareDone(true);
                 const st = useGame.getState();
                 st.set({ flicker: Date.now() });
                 st.say({ speaker: "guest", text: "You came inside. Good. I'll walk you to the bath.", ms: 2600 });
@@ -566,7 +568,7 @@ export function Ch4() {
         }}
       />
       {wardrobe === 2 && (
-        <GuestVoid style={{ right: "-2%", top: "18%", height: "70%" }} intensity={0.9} />
+        <GuestVoid style={{ left: "55%", top: "22%", height: "60%", transform: "translateX(-50%)" }} intensity={0.9} />
       )}
 
       </OnWall>
@@ -832,6 +834,7 @@ function PajamaCh5() {
       const state = useGame.getState();
       if (
         state.screen === "ch5" &&
+        !ended.current &&
         state.lightsOn &&
         state.interactive &&
         !state.paused &&
@@ -850,7 +853,7 @@ function PajamaCh5() {
     ended.current = true;
     const state = useGame.getState();
     state.success();
-    state.set({ interactive: false, objective: "" });
+    state.set({ interactive: false, objective: "", lightsOn: true });
     state.say({
       speaker: "narrator",
       text: "The basket is heavy enough. The rest of the clothes seem to stop moving.",

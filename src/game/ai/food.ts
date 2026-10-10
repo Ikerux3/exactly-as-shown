@@ -33,7 +33,9 @@ export function offlineFoodInterpretation(answer: string): FoodInterpretation {
     };
   }
   const category = MATCHERS.find(([, pattern]) => pattern.test(normalized))?.[0] ?? "other";
-  const displayFood = CATEGORY_LABEL[category];
+  const displayFood = /\bpizza\b/iu.test(normalized) ? "pizza"
+    : /\b(burger|hamburguesa)\w*/iu.test(normalized) ? "hamburger"
+    : CATEGORY_LABEL[category];
   const opening = displayFood.charAt(0).toUpperCase() + displayFood.slice(1);
   return {
     category,

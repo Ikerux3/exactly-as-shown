@@ -11,6 +11,18 @@ import rabbit from "@/assets/toy-rabbit.png";
 import train from "@/assets/toy-train.png";
 import doll from "@/assets/toy-doll.png";
 import elephant from "@/assets/toy-elephant.png";
+import dinosaur from "@/assets/toy-dinosaur.png";
+import robot from "@/assets/toy-robot.png";
+import car from "@/assets/toy-car.png";
+import kitchenInterior from "@/assets/bg-kitchen-interior.jpg";
+import openToybox from "@/assets/cut-toybox-open.png";
+import guestReveal from "@/assets/cut-guest-reveal.png";
+import pizza from "@/assets/food-pizza.png";
+import burger from "@/assets/food-burger.png";
+import pasta from "@/assets/food-pasta.png";
+import fruit from "@/assets/food-fruit.png";
+import pancakes from "@/assets/food-pancakes.png";
+import cake from "@/assets/food-cake.png";
 import musicbox from "@/assets/musicbox.png";
 import cutEyes from "@/assets/cut-eyes.png";
 import cutGuest from "@/assets/cut-guest.png";
@@ -28,6 +40,23 @@ export const BG = {
   bgHallway,
 };
 export const TOY_IMG: Record<ToyId, string> = { bear, rabbit, train, doll, elephant };
+export const EXTRA_TOYS = { dinosaur, robot, car };
+export const FOOD_IMG = { pizza, burger, pasta, fruit, pancakes, cake };
+export const QOL_ART = { kitchenInterior, openToybox, guestReveal };
+export function preferenceToyImage(description: string): string | undefined {
+  if (/dino|dinosaur|dinosario/iu.test(description)) return dinosaur;
+  if (/robot/iu.test(description)) return robot;
+  if (/car\b|coche|formula|f1|carrito/iu.test(description)) return car;
+  return undefined;
+}
+export function foodImageFor(description: string): string {
+  if (/pizza/iu.test(description)) return pizza;
+  if (/burger|hamburguesa/iu.test(description)) return burger;
+  if (/pasta|spaghetti|macarr|lasa/iu.test(description)) return pasta;
+  if (/fruit|strawber|fresa|fruta|apple|banana/iu.test(description)) return fruit;
+  if (/pancake|crepe|waffle|tortita/iu.test(description)) return pancakes;
+  return cake;
+}
 export function toyImageFor(toy: ToyId, customSlot?: ToyId, customImage?: string): string {
   return customImage && toy === customSlot ? customImage : TOY_IMG[toy];
 }
@@ -44,6 +73,9 @@ export function preloadArt() {
     ...Object.values(WALLS).flat(),
     ...Object.values(PROP2),
     ...Object.values(TOY_IMG),
+    ...Object.values(EXTRA_TOYS),
+    ...Object.values(FOOD_IMG),
+    ...Object.values(QOL_ART),
     MUSICBOX,
     ...Object.values(CUT),
   ];
