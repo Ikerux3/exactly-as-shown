@@ -4,7 +4,7 @@ import { GuestVoid, LightSwitch } from "./Props";
 import { setUnease, sfx } from "./audio";
 import { ChapterCard } from "./kit";
 import { ChapterBar, DialogueBar, PauseMenu, Shell, usePauseKey } from "./Shell";
-import { SanityFX } from "./fx";
+import { CutoutDefs, SanityFX } from "./fx";
 
 // Shared flashlight position (percent of frame) so scenes can test illumination.
 export const light = { x: 50, y: 55 };
@@ -89,7 +89,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
   return (
     <Shell
       frameRef={frame}
-      frameClassName={unstable ? "unstable" : ""}
+      frameClassName={`${unstable ? "unstable" : ""} ${s.lightsOn ? "" : "lights-off"} ${s.cordura >= 50 ? "warp" : ""}`}
       onFramePointer={move}
       top={<ChapterBar chapter={chapter} progress={progress} />}
       bottom={
@@ -118,6 +118,7 @@ export function Stage({ bg, bgPos = "50% 50%", chapter, children, clues, above, 
       )}
 
       <div className="absolute inset-0 z-10">{children}</div>
+      <CutoutDefs />
       <SanityFX bg={bg} bgPos={bgPos} />
 
       {guest?.show && !s.lightsOn && (

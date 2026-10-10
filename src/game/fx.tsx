@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BG, TOY_IMG } from "./assets";
+import { BG, CUT, TOY_IMG } from "./assets";
 import { useGame, type Screen, type ToyId } from "./store";
 import { resetOnce } from "./kit";
 import { startMusic, unlockAudio, sfx } from "./audio";
@@ -64,10 +64,12 @@ export function SanityFX({ bg, bgPos }: { bg: string; bgPos: string }) {
       {dark && c >= 55 && (
         <div className="pointer-events-none absolute inset-0 z-[24]" aria-hidden>
           {eyes.slice(0, c >= 80 ? 5 : 2).map((e, i) => (
-            <span key={i} className="eye-pair" style={{ left: `${e.x}%`, top: `${e.y}%`, fontSize: e.s, animationDelay: `${e.d}s` }}><i /><i /></span>
+            <img key={i} src={CUT.eyes} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
           ))}
         </div>
       )}
+      <ShadowHands c={c} />
+      {c >= 85 && <FaceFlash />}
       <Walkers />
     </>
   );
@@ -160,4 +162,51 @@ export function useChapterJump() {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.clearTimeout(timer); };
   }, []);
   return holding;
+}
+
+/* Shared SVG filters: torn-paper edge for every prop, and a sanity "warp" (Don't Starve-style wobble). */
+export function CutoutDefs() {
+  return (
+    <svg width="0" height="0" className="absolute" aria-hidden>
+      <filter id="torn" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" />
+        <feDisplacementMap in="SourceGraphic" scale="5" />
+      </filter>
+      <filter id="warp">
+        <feTurbulence type="turbulence" baseFrequency="0.012 0.03" numOctaves="1" seed="2">
+          <animate attributeName="baseFrequency" values="0.012 0.03;0.016 0.022;0.012 0.03" dur="6s" repeatCount="indefinite" />
+        </feTurbulence>
+        <feDisplacementMap in="SourceGraphic" scale="9" />
+      </filter>
+    </svg>
+  );
+}
+
+/* Black paper hands creep in from the edges as cordura climbs; light pushes them back. */
+function ShadowHands({ c }: { c: number }) {
+  if (c < 50) return null;
+  const reach = Math.min(1, (c - 50) / 45);
+  const hands = [
+    { side: "left", top: 22, flip: false }, { side: "right", top: 58, flip: true },
+    { side: "left", top: 74, flip: false }, { side: "right", top: 12, flip: true },
+  ].slice(0, c >= 80 ? 4 : c >= 65 ? 3 : 2);
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[23] overflow-hidden" aria-hidden>
+      {hands.map((h, i) => (
+        <img key={i} src={CUT.hand} alt="" className="shadow-hand"
+          style={{ top: `${h.top}%`, [h.side]: `${-55 + reach * 30}%`, scale: h.flip ? "-1 1" : "1 1", animationDelay: `${i * 0.7}s`, opacity: 0.55 + reach * 0.4 }} />
+      ))}
+    </div>
+  );
+}
+
+/* At the edge: the Guest's collage face flashes for a frame. */
+function FaceFlash() {
+  const [k, setK] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => { if (Math.random() < 0.35) setK((x) => x + 1); }, 2600);
+    return () => window.clearInterval(t);
+  }, []);
+  if (!k) return null;
+  return <img key={k} src={CUT.guest} alt="" aria-hidden className="face-flash" />;
 }
