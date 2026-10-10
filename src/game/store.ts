@@ -91,6 +91,8 @@ type State = {
   phaseKey: number;
   scare: boolean;
   scareArmed: boolean;
+  /** Scripted 3s error blackout is charged exactly +9 separately from the normal ticker. */
+  forcedBlackout: boolean;
   flicker: number;
   shadowPass: number;
   queue: Line[];
@@ -154,6 +156,7 @@ const initial = (): Omit<State, "muted"> => ({
   phaseKey: 0,
   scare: false,
   scareArmed: true,
+  forcedBlackout: false,
   flicker: 0,
   shadowPass: 0,
   queue: [],
