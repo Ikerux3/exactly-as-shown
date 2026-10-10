@@ -593,7 +593,7 @@ export function Ch2Dining() {
   const [intruders, setIntruders] = useState<number[]>([]);
   const [intruderCount, setIntruderCount] = useState(0);
   const previousLight = useRef(s.lightsOn);
-  const blackoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blackoutTimer = useRef<number | null>(null);
   const lastPlacement = useRef(0);
   useEffect(() => () => { if (blackoutTimer.current) clearTimeout(blackoutTimer.current); }, []);
   useEffect(() => {
