@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { OnWall, Stage, illuminated } from "../Stage";
-import { FOURTH_TOY_LANDINGS, KITCHEN_WALLS, TOY_ESCAPE_SPOTS, shouldReleaseFourthToy } from "../roomLayout";
+import { OnWall, Stage, useWall } from "../Stage";
+import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
 import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, toyImageFor } from "../assets";
 import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
@@ -12,408 +12,154 @@ import { interpretFavoriteFood } from "../ai/food";
 import { adaptiveQuestion, currentQuestionContext, offlineAdaptiveQuestion } from "../ai/questions";
 import { useSpokenPrompt } from "../DialogueVoice";
 
-/* ---------------- CHAPTER 1 — THE PLAYROOM ---------------- */
+/** Stable component identity keeps the pressed button and its animation alive on store updates. */
+function PlayroomToy({ toy, x, y, flying, walking = false, onCollect }: {
+  toy: ToyId; x: number; y: number; flying: ToyId | null; walking?: boolean;
+  onCollect: (toy: ToyId, wall: number) => void;
+}) {
+  const wall = useWall();
+  const s = useGame();
+  const label = toy === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[toy];
+  return (
+    <div className="absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2"
+      style={{ left: x + "%", top: y + "%" }}>
+      <button type="button" aria-label={`Pick up ${walking ? "the escaped " : "the "}${label}`}
+        disabled={!!flying || !s.interactive || s.paused || s.scare}
+        onClick={() => onCollect(toy, wall)}
+        className={`grid min-h-12 min-w-12 w-full place-items-center rounded-xl touch-manipulation active:scale-95 focus-visible:outline-4 focus-visible:outline-honey ${walking && s.lightsOn && !s.paused && s.interactive ? "mg01-walk" : ""}`}
+        style={{ touchAction: "manipulation" }}>
+        <img src={toyImageFor(toy, s.favToyVisualSlot, s.favToyImage)} alt="" draggable={false}
+          onError={(e) => { const fallback = toyImageFor(toy); if (e.currentTarget.src !== new URL(fallback, window.location.href).href) e.currentTarget.src = fallback; }}
+          className={`pointer-events-none w-full drop-shadow-xl transition-[transform,opacity] duration-200 ${flying === toy ? "scale-50 opacity-0" : "active:scale-95"}`} />
+      </button>
+    </div>
+  );
+}
 
 export function Ch1() {
   const s = useGame();
   const [r1, r2, r3, r4, r5] = s.toyOrder;
-  const got = (t: ToyId) => s.ch1.includes(t);
-  const labelFor = (t: ToyId) => (t === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[t]);
-  const imageFor = (t: ToyId) => toyImageFor(t, s.favToyVisualSlot, s.favToyImage);
   const [cushionMoved, setCushion] = useState(false);
   const [drawerOpen, setDrawer] = useState(false);
-  const [rugLifted, setRug] = useState(false);
+  const [jacketMoved, setJacket] = useState(false);
   const [flying, setFlying] = useState<ToyId | null>(null);
-  const [ejected, setEjected] = useState<ToyId[]>([]);
-  const rapidCollections = useRef<number[]>([]);
-  const fourthEscaped = useRef(false);
-  const [fourthEscapeSpot, setFourthEscapeSpot] = useState<{
-    toy: ToyId;
-    wall: number;
-    x: number;
-    y: number;
-  } | null>(null);
-  const [pos4, setPos4] = useState({ x: 38, y: 71 });
-  const [frozen, setFrozen] = useState(false);
-  const litMs = useRef(0);
-  const target = useRef({ x: 70, y: 80 });
+  const pickupLock = useRef(false);
+  const pickupTimer = useRef<number | null>(null);
   const ended = useRef(false);
+  useSceneIntro("ch1", "Find five toys on the four walls. Look behind the jacket and follow the footprints.", []);
+  useEffect(() => () => { if (pickupTimer.current !== null) window.clearTimeout(pickupTimer.current); }, []);
 
-  useSceneIntro("ch1", "Put all five toys in the toy box.", []);
-
-  const collect = (t: ToyId) => {
-    if (got(t) || flying) return;
+  const collect = (toy: ToyId, wall: number) => {
+    const st = useGame.getState();
+    if (pickupLock.current || !st.interactive || st.paused || st.scare || !st.lightsOn || st.ch1.includes(toy)) return;
+    // Lock synchronously: two click/touch events in the same render cannot schedule two pickups.
+    pickupLock.current = true;
+    setFlying(toy);
     sfx("tap");
-    setFlying(t);
-    window.setTimeout(() => {
-      const st = useGame.getState();
-      if (!st.facts.firstToy) st.fact({ firstToy: t });
-      st.observeChoice(t === st.favToyVisualSlot && st.favToy ? st.favToy : TOY_LABEL[t]);
-      const now = Date.now();
-      rapidCollections.current = [
-        ...rapidCollections.current.filter((time) => now - time < 4000),
-        now,
-      ];
-      if (!st.toyCatapultUsed && rapidCollections.current.length >= 3) {
-        // The Guest catapults the hurriedly boxed toys only once per entire run.
-        const expelled = [...st.ch1, t];
-        st.set({ ch1: [], toyCatapultUsed: true });
-        setEjected(expelled);
-        sfx("scare");
-        st.say({ speaker: "guest", text: "Not so fast. Let's play again.", ms: 2000 });
-      } else {
-        st.set({ ch1: [...st.ch1, t] });
-        setEjected((old) => old.filter((item) => item !== t));
-        setFourthEscapeSpot((spot) => (spot?.toy === t ? null : spot));
-        sfx("chime");
+    pickupTimer.current = window.setTimeout(() => {
+      pickupTimer.current = null;
+      const latest = useGame.getState();
+      if (latest.screen === "ch1" && !latest.scare) {
+        if (!latest.facts.firstToy) latest.fact({ firstToy: toy });
+        latest.observeChoice(toy === latest.favToyVisualSlot && latest.favToy ? latest.favToy : TOY_LABEL[toy]);
+        const firstEscape = !latest.toyEscape;
+        const recovering = latest.toyEscape?.toy === toy && !latest.toyEscape.recovered;
+        if (firstEscape) {
+          // Exactly the first collected toy escapes; neither speed, lights nor wall turns eject others.
+          const point = FIRST_TOY_WALKS[wall] ?? FIRST_TOY_WALKS[0]!;
+          latest.set({ toyEscape: { toy, ...point, recovered: false } });
+          sfx("creak");
+        } else {
+          latest.set({
+            ch1: latest.ch1.includes(toy) ? latest.ch1 : [...latest.ch1, toy],
+            ...(recovering ? { toyEscape: { ...latest.toyEscape!, recovered: true } } : {}),
+          });
+          sfx("chime");
+        }
       }
       setFlying(null);
-      sfx("chime");
-    }, 550);
+      pickupLock.current = false;
+    }, 220);
   };
 
-  // The ONLY scripted escape: the fourth toy STORED leaves the box after a wall turn.
-  // Switching light states never ejects toys, and this only happens once per attempt.
-  const onWallChanged = (wall: number) => {
-    const st = useGame.getState();
-    if (!shouldReleaseFourthToy(st.ch1.length, fourthEscaped.current, st.interactive)) return;
-    const toy = st.ch1[3] as ToyId;
-    if (!toy) return;
-    fourthEscaped.current = true;
-    // Always in the wall the player JUST arrived at, away from navigation arrows.
-    const point = FOURTH_TOY_LANDINGS[wall] ?? FOURTH_TOY_LANDINGS[0]!;
-    setFourthEscapeSpot({ toy, ...point });
-    setEjected((old) => (old.includes(toy) ? old : [...old, toy]));
-    st.set({ ch1: st.ch1.filter((id) => id !== toy) });
-    sfx("creak");
-    st.say({
-      speaker: "narrator",
-      text: "Wait... the fourth toy is on this wall again!",
-      ms: 2000,
-    });
-  };
-
-  // Toy 4: moves in darkness, freezes when held in the light.
   useEffect(() => {
-    if (got(r4)) return;
-    const id = window.setInterval(() => {
-      const st = useGame.getState();
-      if (st.paused) return;
-      if (st.lightsOn || !st.interactive) {
-        litMs.current = 0;
-        return;
-      }
-      setPos4((p) => {
-        if (illuminated(p.x, p.y, 2)) {
-          litMs.current += 120;
-          if (litMs.current > 360) setFrozen(true);
-          return p;
-        }
-        litMs.current = Math.max(0, litMs.current - 240);
-        if (litMs.current === 0) setFrozen(false);
-        const t = target.current;
-        if (Math.hypot(t.x - p.x, t.y - p.y) < 3)
-          target.current = { x: 28 + Math.random() * 37, y: 61 + Math.random() * 19 };
-        return { x: p.x + Math.sign(t.x - p.x) * 0.36, y: p.y + Math.sign(t.y - p.y) * 0.24 };
-      });
-    }, 120);
-    return () => window.clearInterval(id);
-  }, [r4, s.ch1.length]);
-
-  // Once the easy toys are away, Mommy's list points at the one that only moves in the dark.
-  const darkHint = !got(r4) && s.ch1.length >= 2;
-  useEffect(() => {
-    if (useGame.getState().ch1.length >= 5) return;
-    s.set({
-      objective: darkHint
-        ? "One toy is never where you left it. It only moves in the dark — hold it in your light, then grab it."
-        : "Put all five toys in the toy box.",
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [darkHint]);
-
-  // Done -> lights fail, the Guest speaks.
-  useEffect(() => {
-    if (s.ch1.length === 5 && fourthEscaped.current && !ended.current) {
-      ended.current = true;
-      s.set({ interactive: false, objective: "" });
+    if (s.ch1.length !== 5 || !s.toyEscape?.recovered || ended.current) return;
+    ended.current = true;
+    s.set({ interactive: false, objective: "" });
+    const timers = [
       window.setTimeout(() => {
         sfx("switch");
         useGame.getState().set({ lightsOn: false, flicker: Date.now() });
-      }, 900);
-      window.setTimeout(
-        () =>
-          useGame.getState().say([
-            { speaker: "guest", text: "You tidy so nicely." },
-            {
-              speaker: "guest",
-              text: (() => {
-                const state = useGame.getState();
-                const first = state.facts.firstToy ?? r1;
-                const label =
-                  first === state.favToyVisualSlot && state.favToy
-                    ? state.favToy
-                    : TOY_LABEL[first];
-                return `You picked up the ${label} first. I'll remember that.`;
-              })(),
-            },
-            {
-              speaker: "narrator",
-              text: "The lights come back on. Someone is setting the table downstairs.",
-              onShow: () => {
-                sfx("switch");
-                useGame.getState().set({ lightsOn: true });
-              },
-              onDone: () => useGame.getState().go("ch2k"),
-            },
-          ]),
-        1800,
-      );
-    }
-  }, [s.ch1.length]);
+      }, 900),
+      window.setTimeout(() => useGame.getState().say([
+        { speaker: "guest", text: "You tidy so nicely." },
+        { speaker: "guest", text: (() => {
+          const state = useGame.getState();
+          const first = state.facts.firstToy ?? r1;
+          const label = first === state.favToyVisualSlot && state.favToy ? state.favToy : TOY_LABEL[first];
+          return `You picked up the ${label} first. I'll remember that.`;
+        })() },
+        { speaker: "narrator", text: "The lights come back on. Someone is setting the table downstairs.",
+          onShow: () => { sfx("switch"); useGame.getState().set({ lightsOn: true }); } },
+      ]), 1800),
+      window.setTimeout(() => useGame.getState().go("ch2k"), 11000),
+    ];
+    return () => timers.forEach(window.clearTimeout);
+  }, [s.ch1.length, s.toyEscape?.recovered]);
 
-  const box = { x: 74, y: 86 };
-  const flyStyle = (t: ToyId, x: number, y: number, w: number) =>
-    flying === t
-      ? {
-          left: `${box.x}%`,
-          top: `${box.y}%`,
-          width: `${w * 0.4}%`,
-          transform: "translate(-50%,-50%) rotate(-12deg)",
-          opacity: 0.2,
-        }
-      : { left: `${x}%`, top: `${y}%`, width: `${w}%`, transform: "translate(-50%,-50%)" };
-
-  const Toy = ({
-    t,
-    x,
-    y,
-    w,
-    extra,
-  }: {
-    t: ToyId;
-    x: number;
-    y: number;
-    w: number;
-    extra?: string;
-  }) =>
-    got(t) || ejected.includes(t) ? null : (
-      <button
-        onClick={() => collect(t)}
-        aria-label={`Pick up the ${labelFor(t)}`}
-        className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`}
-        style={flyStyle(t, x, y, w)}
-      >
-        <img
-          src={imageFor(t)}
-          alt=""
-          className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]"
-          draggable={false}
-        />
-      </button>
-    );
-
+  const toy = (t: ToyId, slot: number, revealed = true) => {
+    if (!revealed || s.ch1.includes(t) || (s.toyEscape?.toy === t && !s.toyEscape.recovered)) return null;
+    const spot = PLAYROOM_TOYS[slot]!;
+    return <PlayroomToy toy={t} x={spot.x} y={spot.y} flying={flying} onCollect={collect} />;
+  };
+  const canInspect = s.interactive && !s.paused && !s.scare && s.lightsOn;
   return (
-    <Stage
-      bg={BG.bgPlayroom}
-      spread
-      onWallChange={onWallChanged}
-      bgPos="15% 50%"
-      chapter={1}
-      chapterCard
-      progress={`Toys ${s.ch1.length}/5`}
-      guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}
-      clues={
-        !got(r5) && (
-          <OnWall n={2}>
-            {[
-              [52, 96],
-              [46, 91],
-              [39, 87],
-              [32, 83],
-              [26, 79],
-            ].map(([x, y], i) => (
-              <svg
-                key={i}
-                viewBox="0 0 20 30"
-                className="glow-clue absolute w-[3.5%]"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  transform: `rotate(${-50 + (i % 2) * 20}deg)`,
-                  animationDelay: `${i * 0.2}s`,
-                }}
-                aria-hidden
-              >
-                <ellipse cx="10" cy="18" rx="6" ry="10" fill="currentColor" />
-                <circle cx="5" cy="4" r="2.5" fill="currentColor" />
-                <circle cx="10" cy="2.5" r="2.5" fill="currentColor" />
-                <circle cx="15" cy="4" r="2.5" fill="currentColor" />
-              </svg>
-            ))}
-          </OnWall>
-        )
-      }
-    >
-      {/* Only the fourth saved toy moves on a wall change (or a single speed catapult). */}
-      {ejected.map((toy) => {
-        const slot = s.toyOrder.indexOf(toy);
-        const dest =
-          fourthEscapeSpot?.toy === toy ? fourthEscapeSpot : TOY_ESCAPE_SPOTS[Math.max(0, slot)]!;
-        return (
-          <OnWall key={toy} n={dest.wall}>
-            <button
-              type="button"
-              aria-label={`Pick up the escaped ${labelFor(toy)}`}
-              onClick={() => collect(toy)}
-              className="absolute z-40 grid min-h-12 min-w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-xl outline-offset-2 transition-transform duration-200 active:scale-95 focus-visible:outline-4 focus-visible:outline-honey"
-              style={{
-                left: dest.x + "%",
-                top: dest.y + "%",
-                width: "18%",
-                touchAction: "manipulation",
-              }}
-            >
-              <img
-                src={imageFor(toy)}
-                alt=""
-                draggable={false}
-                className="w-full drop-shadow-xl motion-safe:animate-bounce"
-              />
-            </button>
-          </OnWall>
-        );
-      })}
-
+    <Stage bg={BG.bgPlayroom} spread bgPos="15% 50%" chapter={1} chapterCard
+      progress={`Toys ${s.ch1.length}/5`} guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}>
+      {s.toyEscape && !s.toyEscape.recovered && (
+        <OnWall n={s.toyEscape.wall}>
+          <PlayroomToy toy={s.toyEscape.toy} x={s.toyEscape.x} y={s.toyEscape.y}
+            flying={flying} walking onCollect={collect} />
+        </OnWall>
+      )}
+      <div aria-live="polite" className="pointer-events-none absolute bottom-[3%] left-[8%] right-[8%] z-40 rounded bg-void/70 px-2 py-1 text-xs text-paper">
+        {s.toyEscape && !s.toyEscape.recovered ? "The first toy walked away! It is still on the same wall. Turn the light on to pick it up." : "Find toys on every wall. Two are by the door and jacket."}
+      </div>
       <OnWall n={0}>
         <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
-
-        {/* The box is the front-wall collection point. Expelled toys appear across ALL four walls. */}
-        <div
-          aria-live="polite"
-          className="pointer-events-none absolute bottom-[5%] left-[3%] rounded bg-void/70 px-2 py-1 text-xs text-paper"
-        >
-          {ejected.length
-            ? "A toy escaped! Look around."
-            : s.ch1.length >= 4 && !fourthEscaped.current
-              ? "Turn to another wall…"
-              : "Find toys on every wall."}
-        </div>
-
-        {/* Toy 1 — visible behind a little pile of floor cushions, one easy find on front wall. */}
-        <Toy t={r1} x={42} y={66} w={19} />
-        <div
-          className="pointer-events-none absolute left-[34%] top-[73%] z-[21] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40"
-          aria-hidden
-        />
+        {toy(r1, 0)}
+        <div className="pointer-events-none absolute left-[34%] top-[73%] z-[41] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40" aria-hidden />
       </OnWall>
       <OnWall n={3}>
-        {/* Toy 2 — under the sofa cushion */}
-        {cushionMoved && <Toy t={r2} x={63} y={66} w={18} />}
-        <button
-          aria-label="Move the cushion"
-          onClick={() => {
-            if (cushionMoved) useGame.getState().fact({ revisits: s.facts.revisits + 1 });
-            else s.inspect("sofa cushion");
-            setCushion(!cushionMoved);
-            sfx("open");
-          }}
-          className="absolute transition-transform duration-500"
-          style={{
-            left: "14%",
-            top: "38%",
-            width: "21%",
-            zIndex: cushionMoved ? 5 : 30,
-            transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none",
-          }}
-        >
+        {toy(r2, 1, cushionMoved)}
+        <button type="button" aria-label="Move the cushion" disabled={!canInspect}
+          onClick={() => { if (!cushionMoved) s.inspect("sofa cushion"); setCushion((old) => !old); sfx("open"); }}
+          className="absolute min-h-12 min-w-12 touch-manipulation transition-transform duration-200"
+          style={{ left: "14%", top: "38%", width: "21%", zIndex: cushionMoved ? 5 : 30,
+            transform: cushionMoved ? "translate(-30%, -20%) rotate(-24deg)" : "none" }}>
           <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
         </button>
       </OnWall>
-
       <OnWall n={1}>
-        {/* Toy 3 — in the drawer */}
-        <button
-          aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"}
-          onClick={() => {
-            if (!drawerOpen) s.inspect("playroom drawer");
-            setDrawer(!drawerOpen);
-            sfx("open");
-          }}
-          className="absolute"
-          style={{ left: "50%", top: "50%", width: "42%" }}
-        >
+        <button type="button" aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"} disabled={!canInspect}
+          onClick={() => { if (!drawerOpen) s.inspect("playroom drawer"); setDrawer((old) => !old); sfx("open"); }}
+          className="absolute min-h-12 min-w-12 touch-manipulation"
+          style={{ left: "50%", top: "50%", width: "42%" }}>
           <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
         </button>
-        {drawerOpen && <Toy t={r3} x={75} y={69} w={18} />}
+        {toy(r3, 2, drawerOpen)}
       </OnWall>
-
-      <OnWall n={3}>
-        {/* Toy 4 — possessed, only exists in darkness */}
-        {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
-          <button
-            aria-label="Grab the toy that keeps moving"
-            onClick={() => {
-              if (frozen || illuminated(pos4.x, pos4.y, 15)) collect(r4);
-              else {
-                sfx("wrong");
-                s.mistake();
-              }
-            }}
-            className="absolute z-10"
-            style={
-              flying === r4
-                ? flyStyle(r4, 0, 0, 12)
-                : {
-                    left: `${pos4.x}%`,
-                    top: `${pos4.y}%`,
-                    width: "15%",
-                    transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)`,
-                  }
-            }
-          >
-            <img
-              src={imageFor(r4)}
-              alt=""
-              className="w-full"
-              style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }}
-              draggable={false}
-            />
-          </button>
-        )}
-      </OnWall>
-
       <OnWall n={2}>
-        {/* Toy 5 — under the rug edge */}
-        <button
-          aria-label="Lift the edge of the rug"
-          onClick={() => {
-            if (!rugLifted) s.inspect("rug edge");
-            setRug(true);
-            sfx("open");
-          }}
-          className="absolute"
-          style={{ left: "10%", top: "70%", width: "26%", height: "12%" }}
-        >
-          <svg
-            viewBox="0 0 100 40"
-            className="h-full w-full"
-            style={{
-              transform: rugLifted ? "translateY(-30%) skewX(-18deg)" : "none",
-              transition: "transform .5s",
-              opacity: rugLifted ? 1 : 0,
-            }}
-            aria-hidden
-          >
-            <path
-              d="M4 30 Q50 6 96 30 Q50 40 4 30 Z"
-              fill="var(--sage)"
-              stroke="var(--paper)"
-              strokeDasharray="4 4"
-            />
-          </svg>
+        {/* Both door-wall toys are recoverable in normal light; no invisible darkness-only objects. */}
+        <button type="button" aria-label="Move the jacket" disabled={!canInspect || jacketMoved}
+          onClick={() => { s.inspect("jacket"); setJacket(true); sfx("open"); }}
+          className="absolute z-30 min-h-12 min-w-12 rounded-lg border border-paper/60 bg-void/40 px-2 font-hand text-sm text-paper touch-manipulation active:scale-95"
+          style={{ left: "62%", top: "45%", width: "25%", height: "15%" }}>
+          {jacketMoved ? "Jacket moved" : "Move the jacket"}
         </button>
-        {rugLifted && !s.lightsOn && <Toy t={r5} x={22} y={79} w={15} />}
+        {toy(r4, 3, jacketMoved)}
+        {toy(r5, 4)}
+        <div className="pointer-events-none absolute left-[20%] top-[81%] text-paper/80" aria-hidden>👣</div>
       </OnWall>
     </Stage>
   );

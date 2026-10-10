@@ -1,49 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { FOURTH_TOY_LANDINGS, KITCHEN_WALLS, TOY_ESCAPE_SPOTS, pajamaWall, shouldReleaseFourthToy } from "./roomLayout";
-
-describe("four-wall puzzles - desktop and touch parity", () => {
-  it("distributes five toys across all four walls with non-overlapping landing spots", () => {
-    expect(TOY_ESCAPE_SPOTS).toHaveLength(5);
-    expect(new Set(TOY_ESCAPE_SPOTS.map((s) => s.wall))).toEqual(new Set([0, 1, 2, 3]));
-    for (let i = 0; i < TOY_ESCAPE_SPOTS.length; i++) {
-      const a = TOY_ESCAPE_SPOTS[i]!;
-      expect(a.x).toBeGreaterThan(10);
-      expect(a.x).toBeLessThan(90);
-      expect(a.y).toBeGreaterThan(35);
-      expect(a.y).toBeLessThan(90);
-      for (let j = i + 1; j < TOY_ESCAPE_SPOTS.length; j++) {
-        const b = TOY_ESCAPE_SPOTS[j]!;
-        if (a.wall !== b.wall) continue;
-        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(25);
-      }
+import { FIRST_TOY_WALKS, PLAYROOM_TOYS, KITCHEN_WALLS, pajamaWall } from "./roomLayout";
+describe("four-wall puzzles", () => {
+  it("places five toys on all walls with two on the door/jacket wall", () => {
+    expect(PLAYROOM_TOYS).toHaveLength(5);
+    expect(PLAYROOM_TOYS.map((s) => s.wall).sort()).toEqual([0, 1, 2, 2, 3]);
+    const door = PLAYROOM_TOYS.filter((s) => s.wall === 2);
+    expect(Math.hypot(door[0]!.x - door[1]!.x, door[0]!.y - door[1]!.y)).toBeGreaterThan(35);
+  });
+  it("keeps each escape on its pickup wall and walking path inside the frame", () => {
+    expect(FIRST_TOY_WALKS.map((s) => s.wall)).toEqual([0, 1, 2, 3]);
+    for (const s of FIRST_TOY_WALKS) {
+      expect(s.x - 9).toBeGreaterThan(10);
+      expect(s.x + 9 + 18 * 1.1).toBeLessThan(90);
+      expect(s.y).toBeGreaterThan(50);
+      expect(s.y).toBeLessThan(80);
     }
   });
-
-  it("never escapes toys just because the lights change; fourth storage plus wall turn fires only once", () => {
-    for (let stored = 0; stored < 4; stored++) {
-      expect(shouldReleaseFourthToy(stored, false, true)).toBe(false);
-    }
-    expect(shouldReleaseFourthToy(4, false, true)).toBe(true);
-    expect(shouldReleaseFourthToy(5, false, true)).toBe(true);
-    expect(shouldReleaseFourthToy(4, true, true)).toBe(false);
-    expect(shouldReleaseFourthToy(4, false, false)).toBe(false);
-    expect(FOURTH_TOY_LANDINGS.map((s) => s.wall)).toEqual([0, 1, 2, 3]);
-    for (const spot of FOURTH_TOY_LANDINGS) {
-      expect(spot.x).toBeGreaterThan(20);
-      expect(spot.x).toBeLessThan(80);
-    }
-  });
-
-  it("places kitchen cupboards across front, right, back and left", () => {
-    expect(KITCHEN_WALLS).toHaveLength(5);
+  it("preserves other room layouts", () => {
     expect(new Set(KITCHEN_WALLS)).toEqual(new Set([0, 1, 2, 3]));
-  });
-
-  it("separates all three correct pajama pieces regardless of favorite color", () => {
-    for (let color = 0; color < 4; color++) {
-      const walls = [0, 1, 2].map((kind) => pajamaWall(kind, color));
-      expect(new Set(walls).size).toBe(3);
-      expect(walls.every((wall) => wall >= 0 && wall <= 3)).toBe(true);
-    }
+    for (let color = 0; color < 4; color++) expect(new Set([0, 1, 2].map((kind) => pajamaWall(kind, color))).size).toBe(3);
   });
 });

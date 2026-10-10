@@ -2,13 +2,20 @@
 export type WallNumber = 0 | 1 | 2 | 3;
 export type Spot = Readonly<{ wall: WallNumber; x: number; y: number }>;
 
-/** Expelled toys deliberately land away from the toy box and from one another. */
-export const TOY_ESCAPE_SPOTS: readonly Spot[] = [
-  { wall: 0, x: 26, y: 59 },
-  { wall: 1, x: 27, y: 73 },
-  { wall: 2, x: 68, y: 61 },
-  { wall: 3, x: 62, y: 68 },
-  { wall: 0, x: 80, y: 64 },
+/** One toy on front/right/left and two on the back wall with the door and jacket. */
+export const PLAYROOM_TOYS: readonly Spot[] = [
+  { wall: 0, x: 42, y: 66 },
+  { wall: 3, x: 63, y: 66 },
+  { wall: 1, x: 75, y: 69 },
+  { wall: 2, x: 74, y: 64 },
+  { wall: 2, x: 28, y: 79 },
+];
+/** Start a short, bounded walk away from overlays and navigation controls, on the pickup wall. */
+export const FIRST_TOY_WALKS: readonly Spot[] = [
+  { wall: 0, x: 28, y: 60 },
+  { wall: 1, x: 28, y: 72 },
+  { wall: 2, x: 36, y: 73 },
+  { wall: 3, x: 28, y: 72 },
 ];
 
 /** Two cupboards front, one each on right/back/left. */
@@ -19,19 +26,3 @@ export function pajamaWall(kindIndex: number, colorIndex: number): WallNumber {
   return ((kindIndex + colorIndex) % 4) as WallNumber;
 }
 
-/** Wall turns alone can trigger a single fourth-toy escape; light toggles never do. */
-export function shouldReleaseFourthToy(
-  storedCount: number,
-  alreadyEscaped: boolean,
-  playerCanInteract: boolean,
-): boolean {
-  return playerCanInteract && !alreadyEscaped && storedCount >= 4;
-}
-
-/** Landing spots are on the newly entered wall and avoid the navigation arrows. */
-export const FOURTH_TOY_LANDINGS: readonly Spot[] = [
-  { wall: 0, x: 28, y: 60 },
-  { wall: 1, x: 65, y: 67 },
-  { wall: 2, x: 57, y: 62 },
-  { wall: 3, x: 29, y: 68 },
-];
