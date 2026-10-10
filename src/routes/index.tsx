@@ -46,9 +46,9 @@ function Game() {
   const { corridor, veilScreen, endCorridor } = useCorridorTransitions();
   const shown = corridor ? null : screen;
   const k = `${screen}-${phaseKey}`;
-  if (studioOpening) return <StudioSplash onComplete={finishStudioOpening} />;
   return (
     <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      {studioOpening && <StudioSplash onComplete={finishStudioOpening} />}
       {shown === "title" && <Title />}
       {shown === "intro" && <Intro />}
       {shown === "prologue" && <Prologue />}
