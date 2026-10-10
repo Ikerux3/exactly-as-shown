@@ -46,6 +46,8 @@ type Props = {
   spread?: boolean;
   /** Reports an actual wall turn even when wall content is animated/remounted. */
   onWallChange?: (wall: number) => void;
+  /** Lock the room to its front wall (scene handles its own views). */
+  noTurn?: boolean;
 };
 
 export function Stage({
@@ -62,6 +64,7 @@ export function Stage({
   switchHint,
   spread,
   onWallChange,
+  noTurn,
 }: Props) {
   const s = useGame();
   const frame = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export function Stage({
   const lightAcc = useRef(0);
   usePauseKey(true);
 
-  const walls = WALLS[bg];
+  const walls = noTurn ? undefined : WALLS[bg];
   const [wall, setWall] = useState(0);
   const onWallChangeRef = useRef(onWallChange);
   onWallChangeRef.current = onWallChange;

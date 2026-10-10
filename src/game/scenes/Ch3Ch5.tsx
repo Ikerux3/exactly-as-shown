@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
 import { pajamaWall } from "../roomLayout";
-import { BG, MUSICBOX, toyImageFor } from "../assets";
+import { BG, CUT, MUSICBOX, PROP3, SCARE, toyImageFor } from "../assets";
+import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame } from "../store";
 import {
   Clock,
@@ -347,6 +348,27 @@ export function Ch4() {
   const hintRecorded = useRef(false);
   const inspected = useRef(new Set<string>());
   const nm = s.name || "sweetheart";
+  const [leaving, setLeaving] = useState<null | "door" | "wardrobe">(null);
+
+  const exitBy = (way: "door" | "wardrobe") => {
+    if (!s.interactive || leaving) return;
+    if (!hasKey) {
+      sfx(way === "door" ? "door" : "creak");
+      s.say({ speaker: "narrator", text: way === "door" ? "Locked. The key must be somewhere in this room." : "Something inside the wardrobe is breathing. Slowly.", ms: 2600 });
+      return;
+    }
+    setLeaving(way);
+    s.set({ interactive: false, objective: "" });
+    if (way === "door") {
+      sfx("door");
+      s.say({ speaker: "narrator", text: "The key turns. You slip out without a sound.", ms: 2400 });
+      window.setTimeout(() => useGame.getState().go("ch5"), 2600);
+    } else {
+      sfx("creak");
+      s.addCordura(25);
+      s.mistake();
+    }
+  };
 
   useEffect(() => setInput([]), [plan.puzzleVariant]);
   useEffect(() => {
@@ -499,6 +521,18 @@ export function Ch4() {
       }
       above={
         <>
+          {leaving === "wardrobe" && (
+            <JumpScare
+              img={CUT.guest}
+              ms={1500}
+              onDone={() => {
+                const st = useGame.getState();
+                st.set({ flicker: Date.now() });
+                st.say({ speaker: "guest", text: "You came inside. Good. I'll walk you to the bath.", ms: 2600 });
+                window.setTimeout(() => useGame.getState().go("ch5"), 2800);
+              }}
+            />
+          )}
           {note && (
             <button
               onClick={() => setNote(false)}
@@ -655,17 +689,26 @@ export function Ch4() {
           </div>
         </div>
       )}
-      {hasKey && (
-        <button
-          className="stitch-btn honey absolute bottom-[4%] left-[6%] z-20 animate-float-up"
-          onClick={() => {
-            sfx("open");
-            s.go("ch5");
-          }}
-        >
-          Unlock the door and run
-        </button>
+      {hasKey && !leaving && (
+        <p className="pointer-events-none absolute bottom-[4%] left-[6%] right-[6%] z-20 animate-float-up paper px-3 py-2 text-center font-hand text-sm">
+          Turn around. The door… or the wardrobe.
+        </p>
       )}
+      </OnWall>
+      {/* Two ways out, both on the back wall: the door is safe, the wardrobe is not. */}
+      <OnWall n={2}>
+        <button
+          aria-label="The bedroom door"
+          onClick={() => exitBy("door")}
+          className={`absolute touch-manipulation rounded-sm ${hasKey ? "ring-2 ring-honey/60" : ""}`}
+          style={{ left: "7%", top: "25%", width: "32%", height: "53%" }}
+        />
+        <button
+          aria-label="The wardrobe"
+          onClick={() => exitBy("wardrobe")}
+          className="absolute touch-manipulation rounded-sm"
+          style={{ left: "41%", top: "34%", width: "52%", height: "46%" }}
+        />
       </OnWall>
     </Stage>
   );
@@ -687,10 +730,10 @@ const HIDE_SPOTS = {
 } as const;
 
 type PajamaKind = "shirt" | "pants" | "socks";
-const PAJAMA_PIECES: { kind: PajamaKind; name: string; icon: string }[] = [
-  { kind: "shirt", name: "shirt", icon: "👕" },
-  { kind: "pants", name: "pants", icon: "👖" },
-  { kind: "socks", name: "socks", icon: "🧦" },
+const PAJAMA_PIECES: { kind: PajamaKind; name: string }[] = [
+  { kind: "shirt", name: "shirt" },
+  { kind: "pants", name: "pants" },
+  { kind: "socks", name: "socks" },
 ];
 const PAJAMA_COLORS = ["rose", "sage", "honey", "turq"] as const;
 
@@ -764,6 +807,13 @@ function PajamaCh5() {
     setSelected(null);
     sfx("open");
   };
+  const SLOTS = [
+    { x: 6, y: 64 }, { x: 38, y: 70 }, { x: 68, y: 62 }, { x: 16, y: 80 }, { x: 50, y: 82 }, { x: 74, y: 78 },
+  ];
+  const byWall = ([0, 1, 2, 3] as const).map((wall) =>
+    pile.filter((g) => pajamaWall(PAJAMA_PIECES.findIndex((i) => i.kind === g.kind), PAJAMA_COLORS.indexOf(g.color)) === wall),
+  );
+  const leftOver = otherTotal - inBasket.length;
   return (
     <Stage
       bg={BG.bgBathroom}
@@ -771,83 +821,73 @@ function PajamaCh5() {
       bgPos="50% 50%"
       chapter={5}
       chapterCard
-      progress={
-        allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"
-      }
+      progress={allWorn ? "Basket " + inBasket.length + "/" + otherTotal : "Pajamas " + worn.length + "/3"}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[13%] top-[7%] z-10 text-xl text-crimson opacity-80"
-      >
-        {wrongChoices > 0 || inBasket.length >= 3 ? "👁️ 👁️" : ""}
-      </div>
-      <div className="absolute inset-x-[5%] top-[14%] z-10 rounded-lg border-2 border-wood bg-paper/95 p-2 text-ink shadow-xl">
-        <p className="text-center font-display text-[clamp(13px,3.8cqw,18px)] font-semibold">
-          {allWorn ? "Put the rest in the basket" : "Find your matching pajamas"}
-        </p>
-        <div className="mt-1 flex items-center justify-center gap-2 text-xs">
-          <span>Your chosen color:</span>
-          <span
-            className="h-4 w-7 rounded-sm border border-ink/50"
-            style={{ background: "var(--c-" + s.favColor + ")" }}
-          />
-          <span className="font-hand">{s.favColor}</span>
+      {/* a torn scrap taped at the top: the instruction and your colour */}
+      <div className="pointer-events-none absolute left-[8%] right-[8%] top-[8%] z-20 -rotate-1">
+        <div className="paper torn relative px-3 py-1.5 text-center">
+          <span className="absolute -top-2 left-1/2 h-4 w-14 -translate-x-1/2 rotate-2" style={{ background: "var(--c-" + s.favColor + ")", opacity: 0.85 }} />
+          <p className="font-hand text-[clamp(13px,4cqw,17px)] leading-tight" aria-live="polite">{message}</p>
+          <p className="mt-0.5 font-crayon text-[10px] uppercase tracking-widest opacity-60">
+            {allWorn ? `${leftOver} left on the floor` : `wearing ${worn.length}/3`} · turn around
+          </p>
         </div>
-        <p className="my-1 min-h-8 text-center font-hand text-[11px]" aria-live="polite">
-          {message}
-        </p>
-        <p className="mb-1 text-center text-xs opacity-75">Turn around: the laundry is spread across all four walls.</p>
-        <div className="grid grid-cols-3 gap-2">
-          {([0, 1, 2, 3] as const).map((wall) => (
-            <OnWall key={wall} n={wall}>
-            {pile.filter((garment) => {
-              const kind = PAJAMA_PIECES.findIndex((item) => item.kind === garment.kind);
-              const color = PAJAMA_COLORS.indexOf(garment.color);
-              return pajamaWall(kind, color) === wall;
-            }).map((garment) => {
-            const used = garment.color === s.favColor && worn.includes(garment.kind);
-            const away = inBasket.includes(garment.id);
+      </div>
+      {([0, 1, 2, 3] as const).map((wall) => (
+        <OnWall key={wall} n={wall}>
+          {byWall[wall]!.map((g, i) => {
+            const used = g.color === s.favColor && worn.includes(g.kind);
+            const away = inBasket.includes(g.id);
+            if (used || away) return null;
+            const slot = SLOTS[i % SLOTS.length]!;
+            const img = PROP3[g.kind];
+            const tint = "var(--c-" + g.color + ")";
             return (
               <button
                 type="button"
-                key={garment.id}
-                disabled={used || away || !s.lightsOn || !s.interactive}
-                aria-label={garment.color + " " + garment.name}
-                aria-pressed={selected === garment.id}
-                onClick={() => pick(garment)}
-                className={
-                  "flex min-h-16 touch-manipulation items-center justify-center gap-1 rounded-md border-2 px-1 py-1 text-xs transition-colors duration-100 active:scale-[0.97] disabled:opacity-30 " +
-                  (selected === garment.id
-                    ? "border-crimson bg-rose/30"
-                    : "border-wood/40 bg-paper-deep")
-                }
+                key={g.id}
+                disabled={!s.interactive}
+                aria-label={g.color + " " + g.name}
+                aria-pressed={selected === g.id}
+                onClick={() => pick(g)}
+                className={"absolute z-10 touch-manipulation transition-transform duration-150 " + (selected === g.id ? "-translate-y-3 scale-110" : "")}
+                style={{ left: slot.x + "%", top: slot.y + "%", width: "22%", aspectRatio: "1", rotate: ((i * 37) % 30) - 15 + "deg", minWidth: 48 }}
               >
-                <span aria-hidden className="text-base">
-                  {garment.icon}
-                </span>
+                <img src={img} alt="" className="prop absolute inset-0 h-full w-full object-contain" style={{ filter: selected === g.id ? "drop-shadow(0 0 10px var(--honey))" : undefined }} />
                 <span
-                  className="h-3 w-3 shrink-0 rounded-full border border-ink/50"
-                  style={{ background: "var(--c-" + garment.color + ")" }}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background: tint,
+                    mixBlendMode: "multiply",
+                    WebkitMaskImage: "url(" + img + ")",
+                    maskImage: "url(" + img + ")",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                  }}
                 />
-                <span className="sr-only">{garment.name}</span>
               </button>
             );
           })}
-            </OnWall>
-          ))}
-        </div>
-        <p className="mt-2 text-center text-xs">
-          Wearing {worn.length}/3 · Basket {inBasket.length}/{otherTotal}
-        </p>
-      </div>
+        </OnWall>
+      ))}
+      {/* the laundry basket follows you round the room */}
       <button
         type="button"
         onClick={basket}
-        disabled={!selected || !s.lightsOn || !s.interactive}
-        aria-label="Place selected clothing into the laundry basket"
-        className="stitch-btn honey absolute bottom-[3%] left-1/2 z-10 min-h-12 w-[72%] -translate-x-1/2 disabled:opacity-50"
+        disabled={!s.interactive}
+        aria-label="Laundry basket"
+        className={"absolute bottom-[1%] right-[3%] z-20 w-[30%] touch-manipulation " + (selected ? "animate-pulse" : "")}
       >
-        🧺 {selected ? "Put selected clothing away" : "Laundry basket"}
+        {(wrongChoices > 0 || inBasket.length >= 3) && (
+          <img src={SCARE.face2} alt="" className="pointer-events-none absolute -top-[18%] left-[18%] w-[64%] opacity-70 mix-blend-screen grayscale" />
+        )}
+        <img src={PROP3.basket} alt="" className="prop relative w-full" />
+        {inBasket.length > 0 && <span className="absolute bottom-[8%] left-1/2 -translate-x-1/2 font-crayon text-xs text-paper drop-shadow">{inBasket.length}</span>}
       </button>
     </Stage>
   );

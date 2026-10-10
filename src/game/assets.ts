@@ -109,3 +109,23 @@ export const WALLS: Record<string, string[]> = {
   [bgBathroom]: [bgBathroom, ba1, ba2, ba3],
   [bgMother]: [bgMother, mo1, mo2, mo3],
 };
+import cutFace1 from "@/assets/cut-face1.png";
+import cutFace2 from "@/assets/cut-face2.png";
+import cutSmile from "@/assets/cut-smile.png";
+import cutBigplate from "@/assets/cut-bigplate.png";
+import cutBasket from "@/assets/cut-basket.png";
+import cutShirt from "@/assets/cut-shirt.png";
+import cutPants from "@/assets/cut-pants.png";
+import cutSocks from "@/assets/cut-socks.png";
+import cutBread from "@/assets/cut-bread.png";
+import bgTabletop from "@/assets/bg-tabletop.jpg";
+/** Collage jumpscare cut-outs (faces, eyes, the Guest's smile). */
+export const SCARE = { face1: cutFace1, face2: cutFace2, smile: cutSmile };
+/** Late-chapter photo cut-outs. */
+export const PROP3 = { bigplate: cutBigplate, basket: cutBasket, shirt: cutShirt, pants: cutPants, socks: cutSocks, bread: cutBread, tabletop: bgTabletop };
+if (typeof window !== "undefined") {
+  for (const src of [...Object.values(SCARE), ...Object.values(PROP3)]) {
+    const i = new Image();
+    i.src = src;
+  }
+}

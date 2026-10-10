@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BG, CUT, TOY_IMG } from "./assets";
+import { BG, CUT, SCARE, TOY_IMG } from "./assets";
 import { useGame, type Screen, type ToyId } from "./store";
 import { resetOnce } from "./kit";
 import { startMusic, unlockAudio, sfx } from "./audio";
@@ -79,7 +79,7 @@ export function SanityFX({ bg, bgPos }: { bg: string; bgPos: string }) {
       {dark && c >= 55 && (
         <div className="pointer-events-none absolute inset-0 z-[24]" aria-hidden>
           {eyes.slice(0, c >= 80 ? 5 : 2).map((e, i) => (
-            <img key={i} src={CUT.eyes} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
+            <img key={i} src={SCARE.face2} alt="" className="cut-eyes" style={{ left: `${e.x}%`, top: `${e.y}%`, width: `${e.s * 1.4}%`, animationDelay: `${e.d}s`, rotate: `${(rand(i + 2) - 0.5) * 24}deg` }} />
           ))}
         </div>
       )}
@@ -224,4 +224,20 @@ function FaceFlash() {
   }, []);
   if (!k) return null;
   return <img key={k} src={CUT.guest} alt="" aria-hidden className="face-flash" />;
+}
+
+/** Collage jumpscare: a photocopied face slams into the frame, shakes, and is gone. */
+export function JumpScare({ img, onDone, ms = 1100 }: { img: string; onDone: () => void; ms?: number }) {
+  const done = useRef(onDone);
+  done.current = onDone;
+  useEffect(() => {
+    sfx("scare");
+    const t = window.setTimeout(() => done.current(), ms);
+    return () => window.clearTimeout(t);
+  }, [ms]);
+  return (
+    <div className="jumpscare pointer-events-auto absolute inset-0 z-[60] grid place-items-center overflow-hidden" role="alert" aria-label="Something jumps out">
+      <img src={img} alt="" className="jumpscare-img w-[120%] max-w-none" />
+    </div>
+  );
 }
