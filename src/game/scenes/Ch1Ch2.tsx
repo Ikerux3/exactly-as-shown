@@ -24,6 +24,7 @@ export function Ch1() {
   const [ejected, setEjected] = useState<ToyId[]>([]);
   const rapidCollections = useRef<number[]>([]);
   const previousLights = useRef(s.lightsOn);
+  const teleportedOnce = useRef<Set<ToyId>>(new Set());
   const [pos4, setPos4] = useState({ x: 38, y: 71 });
   const [frozen, setFrozen] = useState(false);
   const litMs = useRef(0);
@@ -67,12 +68,16 @@ export function Ch1() {
   useEffect(() => {
     const wentDark = previousLights.current && !s.lightsOn;
     previousLights.current = s.lightsOn;
-    if (!wentDark || !s.interactive || s.ch1.length === 0) return;
-    const moved = s.ch1[s.ch1.length - 1]!;
+    if (!wentDark || !s.interactive) return;
+    // Only the LAST TWO strange toys may briefly escape, never the three easy toys.
+    // Each can be displaced at most once per attempt, not every time the switch changes.
+    const moved = [r4, r5].find((toy) => s.ch1.includes(toy) && !teleportedOnce.current.has(toy));
+    if (!moved) return;
+    teleportedOnce.current.add(moved);
     setEjected((old) => (old.includes(moved) ? old : [...old, moved]));
     useGame.getState().set({ ch1: useGame.getState().ch1.filter((item) => item !== moved) });
     sfx("creak");
-  }, [s.lightsOn, s.interactive, s.ch1.length]);
+  }, [s.lightsOn, s.interactive, s.ch1, r4, r5]);
 
   // Toy 4: moves in darkness, freezes when held in the light.
   useEffect(() => {
