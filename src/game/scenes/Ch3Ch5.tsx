@@ -378,7 +378,7 @@ export function Ch4() {
           if (state.screen !== "ch4" || state.phaseKey !== requestPhase) return;
           if (decision.action === "ease") {
             setNote(true);
-            state.addCordura(-5);
+            // AI may reveal a hint but cannot change deterministic Cordura rates.
           }
           if (decision.action === "escalate")
             state.set({ flicker: Date.now(), shadowPass: Date.now() });
@@ -404,9 +404,8 @@ export function Ch4() {
         }).then((decision) => {
           const state = useGame.getState();
           if (state.screen !== "ch4" || state.phaseKey !== requestPhase) return;
-          if (decision.action === "ease") state.addCordura(-4);
+          // AI reactions stay narrative; only darkness and actual scares change Cordura.
           if (decision.action === "escalate") {
-            state.addCordura(4);
             state.set({ flicker: Date.now(), shadowPass: Date.now() });
           }
           state.say({ speaker: "guest", text: decision.line, ms: 3000 });
