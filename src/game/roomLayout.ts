@@ -18,3 +18,20 @@ export const KITCHEN_WALLS: readonly WallNumber[] = [0, 1, 2, 3, 0];
 export function pajamaWall(kindIndex: number, colorIndex: number): WallNumber {
   return ((kindIndex + colorIndex) % 4) as WallNumber;
 }
+
+/** Wall turns alone can trigger a single fourth-toy escape; light toggles never do. */
+export function shouldReleaseFourthToy(
+  storedCount: number,
+  alreadyEscaped: boolean,
+  playerCanInteract: boolean,
+): boolean {
+  return playerCanInteract && !alreadyEscaped && storedCount >= 4;
+}
+
+/** Landing spots are on the newly entered wall and avoid the navigation arrows. */
+export const FOURTH_TOY_LANDINGS: readonly Spot[] = [
+  { wall: 0, x: 28, y: 60 },
+  { wall: 1, x: 65, y: 67 },
+  { wall: 2, x: 57, y: 62 },
+  { wall: 3, x: 29, y: 68 },
+];
