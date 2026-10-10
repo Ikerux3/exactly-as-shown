@@ -84,7 +84,7 @@ export function Ch1() {
   const Toy = ({ t, x, y, w, extra }: { t: ToyId; x: number; y: number; w: number; extra?: string }) =>
     got(t) ? null : (
       <button onClick={() => collect(t)} aria-label={`Pick up the ${TOY_LABEL[t]}`}
-        className={`absolute transition-all duration-500 ease-out ${extra ?? ""}`} style={flyStyle(t, x, y, w)}>
+        className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`} style={flyStyle(t, x, y, w)}>
         <img src={TOY_IMG[t]} alt="" className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]" draggable={false} />
       </button>
     );
@@ -124,7 +124,7 @@ export function Ch1() {
       <button aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"} onClick={() => { setDrawer(!drawerOpen); sfx("open"); }} className="absolute" style={{ left: "64%", top: "44%", width: "26%" }}>
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} extra="z-10" />}
+      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !s.lightsOn && (
@@ -210,24 +210,43 @@ export function Ch2Kitchen() {
       <ChapterCard n={2} title="Table for Three" />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
+        const toggle = () => { sfx("open"); setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]); };
+        const aspect = u.kind === "door" ? "4 / 5" : "12 / 7";
         return (
-          <div key={i} className="absolute" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%` }}>
-            {/* interior */}
-            {isOpen && (
-              <div className={`absolute inset-x-[6%] ${u.kind === "door" ? "top-[4%] bottom-[4%] flex-col" : "top-[40%] h-[90%]"} z-0 flex items-center justify-around gap-1 rounded bg-[oklch(0.22_0.03_50)] p-1`} style={u.kind === "drawer" ? { transform: "translateY(26%)" } : undefined}>
-                {u.contents.filter((c) => !s.ch2Items.includes(c)).map((c) => (
-                  <button key={c} onClick={() => take(c)} aria-label={c.startsWith("decoy") ? "A very large dish" : `Take ${c.replace("-", " for ")}`} className={c.startsWith("decoy") ? "w-[70%]" : "w-[48%]"}>
-                    <ItemArt id={c} big={c.startsWith("decoy")} />
+          <div key={i} className="absolute" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, zIndex: isOpen ? 5 : 1 }}>
+            {!isOpen ? (
+              <button aria-label="Open the cupboard" className="block w-full" onClick={toggle}>
+                <Cupboard kind={u.kind} open={false} style={{ width: "100%", display: "block" }} />
+              </button>
+            ) : (
+              <div className="relative w-full" style={{ aspectRatio: aspect }}>
+                {/* the door / drawer front, swung clear of the opening — tap it to close */}
+                {u.kind === "door" ? (
+                  <button aria-label="Close the cupboard" onClick={toggle}
+                    className="absolute -left-[14%] top-[2%] h-[96%] w-[14%] rounded-sm"
+                    style={{ background: "linear-gradient(90deg, oklch(0.45 0.05 140), var(--sage))", boxShadow: "var(--shadow-contact)" }} />
+                ) : (
+                  <button aria-label="Close the drawer" onClick={toggle}
+                    className="absolute left-[4%] top-full h-[38%] w-[92%] rounded-b-md"
+                    style={{ background: "var(--sage)", boxShadow: "var(--shadow-contact)" }}>
+                    <span className="mx-auto block h-1.5 w-1/4 rounded bg-brass" />
                   </button>
-                ))}
+                )}
+                {/* interior with contents, always on top and tappable */}
+                <div className={`absolute inset-0 flex items-center justify-around gap-1 rounded p-1.5 ${u.kind === "door" ? "flex-col" : ""}`}
+                  style={{ background: "linear-gradient(oklch(0.16 0.02 50), oklch(0.24 0.03 50))", boxShadow: "inset 0 4px 10px oklch(0 0 0 / .6)" }}>
+                  {u.kind === "door" && <div className="pointer-events-none absolute inset-x-0 top-1/2 h-1 bg-wood-light" />}
+                  {u.contents.filter((c) => !s.ch2Items.includes(c)).map((c) => (
+                    <button key={c} onClick={() => take(c)} aria-label={c.startsWith("decoy") ? "A very large dish" : `Take ${c.replace("-", " for ")}`}
+                      className={`relative z-10 ${c.startsWith("decoy") ? "w-[80%]" : u.kind === "door" ? "w-[62%]" : "w-[42%]"}`}>
+                      <ItemArt id={c} big={c.startsWith("decoy")} />
+                    </button>
+                  ))}
+                  {u.contents.every((c) => s.ch2Items.includes(c) || c.startsWith("decoy")) && u.contents.every((c) => !c.startsWith("decoy") || false) && (
+                    <span className="font-hand text-xs text-paper/50">empty</span>
+                  )}
+                </div>
               </div>
-            )}
-            <button aria-label={isOpen ? "Close" : "Open the cupboard"} className="relative block w-full" style={{ pointerEvents: isOpen && u.kind === "door" ? "none" : undefined }}
-              onClick={() => { sfx("open"); setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]); }}>
-              <Cupboard kind={u.kind} open={isOpen} style={{ width: "100%", display: "block" }} />
-            </button>
-            {isOpen && u.kind === "door" && (
-              <button onClick={() => setOpen(open.filter((o) => o !== i))} className="absolute -top-6 right-0 font-hand text-xs text-paper/80">close</button>
             )}
           </div>
         );
