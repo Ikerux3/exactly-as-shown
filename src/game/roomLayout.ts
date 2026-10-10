@@ -7,15 +7,15 @@ export const PLAYROOM_TOYS: readonly Spot[] = [
   { wall: 0, x: 42, y: 66 },
   { wall: 3, x: 63, y: 66 },
   { wall: 1, x: 75, y: 69 },
-  { wall: 2, x: 74, y: 64 },
-  { wall: 2, x: 28, y: 79 },
+  { wall: 2, x: 36, y: 50 },
+  { wall: 2, x: 59, y: 82 },
 ];
 /** Start a short, bounded walk away from overlays and navigation controls, on the pickup wall. */
 export const FIRST_TOY_WALKS: readonly Spot[] = [
-  { wall: 0, x: 28, y: 60 },
-  { wall: 1, x: 28, y: 72 },
-  { wall: 2, x: 36, y: 73 },
-  { wall: 3, x: 28, y: 72 },
+  { wall: 0, x: 40, y: 82 },
+  { wall: 1, x: 40, y: 82 },
+  { wall: 2, x: 40, y: 82 },
+  { wall: 3, x: 40, y: 82 },
 ];
 
 /** Two cupboards front, one each on right/back/left. */

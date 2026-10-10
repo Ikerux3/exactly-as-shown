@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OnWall, Stage, useWall } from "../Stage";
 import { KITCHEN_WALLS, PLAYROOM_TOYS, FIRST_TOY_WALKS } from "../roomLayout";
-import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, toyImageFor } from "../assets";
+import { BG, MUSICBOX, PROP, PROP2, PROP3, SCARE, WALLS, toyImageFor } from "../assets";
 import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
@@ -13,24 +13,29 @@ import { adaptiveQuestion, currentQuestionContext, offlineAdaptiveQuestion } fro
 import { useSpokenPrompt } from "../DialogueVoice";
 
 /** Stable component identity keeps the pressed button and its animation alive on store updates. */
-function PlayroomToy({ toy, x, y, flying, walking = false, onCollect }: {
-  toy: ToyId; x: number; y: number; flying: ToyId | null; walking?: boolean;
+function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect }: {
+  toy: ToyId; x: number; y: number; flying: ToyId | null; walking?: boolean; escapedAt?: number | undefined;
   onCollect: (toy: ToyId, wall: number) => void;
 }) {
   const wall = useWall();
   const s = useGame();
+  const [walkDelay] = useState(() => -Math.max(0, Date.now() - (escapedAt ?? Date.now() - 1000)) / 1000);
   const label = toy === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[toy];
   return (
-    <div className="absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2"
-      style={{ left: x + "%", top: y + "%" }}>
+    <div className={`absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2 ${walking ? "mg01-exit-and-walk" : ""}`}
+      data-toy={toy} data-wall={wall}
+      style={{ left: x + "%", top: y + "%", "--box-dx": `${76 - x}cqw`, "--box-dy": `${(82 - y) * 1.5}cqw`,
+        animationDelay: walking ? `${walkDelay}s, ${walkDelay + 0.7}s` : undefined,
+        animationPlayState: s.lightsOn && !s.paused && s.interactive && !flying ? "running" : "paused" } as CSSProperties}>
       <button type="button" aria-label={`Pick up ${walking ? "the escaped " : "the "}${label}`}
         disabled={!!flying || !s.interactive || s.paused || s.scare}
         onClick={() => onCollect(toy, wall)}
-        className={`grid min-h-12 min-w-12 w-full place-items-center rounded-xl touch-manipulation active:scale-95 focus-visible:outline-4 focus-visible:outline-honey ${walking && s.lightsOn && !s.paused && s.interactive ? "mg01-walk" : ""}`}
+        className={`grid min-h-12 min-w-12 w-full place-items-center rounded-xl touch-manipulation active:scale-95 focus-visible:outline-4 focus-visible:outline-honey `}
         style={{ touchAction: "manipulation" }}>
         <img src={toyImageFor(toy, s.favToyVisualSlot, s.favToyImage)} alt="" draggable={false}
           onError={(e) => { const fallback = toyImageFor(toy); if (e.currentTarget.src !== new URL(fallback, window.location.href).href) e.currentTarget.src = fallback; }}
-          className={`pointer-events-none w-full drop-shadow-xl transition-[transform,opacity] duration-200 ${flying === toy ? "scale-50 opacity-0" : "active:scale-95"}`} />
+          className="pointer-events-none w-full drop-shadow-xl transition-[transform,opacity] duration-200"
+          style={{ transform: flying === toy ? "translate(var(--box-dx), var(--box-dy)) scale(.35)" : undefined, opacity: flying === toy ? .25 : 1 }} />
       </button>
     </div>
   );
@@ -67,7 +72,7 @@ export function Ch1() {
         if (firstEscape) {
           // Exactly the first collected toy escapes; neither speed, lights nor wall turns eject others.
           const point = FIRST_TOY_WALKS[wall] ?? FIRST_TOY_WALKS[0]!;
-          latest.set({ toyEscape: { toy, ...point, recovered: false } });
+          latest.set({ toyEscape: { toy, ...point, escapedAt: Date.now(), recovered: false } });
           sfx("creak");
         } else {
           latest.set({
@@ -114,19 +119,19 @@ export function Ch1() {
   };
   const canInspect = s.interactive && !s.paused && !s.scare && s.lightsOn;
   return (
-    <Stage bg={BG.bgPlayroom} spread bgPos="15% 50%" chapter={1} chapterCard
+    <Stage bg={BG.bgPlayroom} spread bgPos="15% 50%" wallPositions={["15% 50%", "50% 50%", "25% 50%", "50% 50%"]} chapter={1} chapterCard
       progress={`Toys ${s.ch1.length}/5`} guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}>
       {s.toyEscape && !s.toyEscape.recovered && (
         <OnWall n={s.toyEscape.wall}>
           <PlayroomToy toy={s.toyEscape.toy} x={s.toyEscape.x} y={s.toyEscape.y}
-            flying={flying} walking onCollect={collect} />
+            flying={flying} walking escapedAt={s.toyEscape.escapedAt} onCollect={collect} />
         </OnWall>
       )}
       <div aria-live="polite" className="pointer-events-none absolute bottom-[3%] left-[8%] right-[8%] z-40 rounded bg-void/70 px-2 py-1 text-xs text-paper">
         {s.toyEscape && !s.toyEscape.recovered ? "The first toy walked away! It is still on the same wall. Turn the light on to pick it up." : "Find toys on every wall. Two are by the door and jacket."}
       </div>
+      <ToyBox style={{ position: "absolute", left: "61%", top: "74.5%", width: "30%" }} glow={!!flying} />
       <OnWall n={0}>
-        <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
         {toy(r1, 0)}
         <div className="pointer-events-none absolute left-[34%] top-[73%] z-[41] h-[3%] w-[20%] rotate-[-7deg] rounded-full bg-wood/40" aria-hidden />
       </OnWall>
@@ -150,16 +155,30 @@ export function Ch1() {
         {toy(r3, 2, drawerOpen)}
       </OnWall>
       <OnWall n={2}>
-        {/* Both door-wall toys are recoverable in normal light; no invisible darkness-only objects. */}
-        <button type="button" aria-label="Move the jacket" disabled={!canInspect || jacketMoved}
-          onClick={() => { s.inspect("jacket"); setJacket(true); sfx("open"); }}
-          className="absolute z-30 min-h-12 min-w-12 rounded-lg border border-paper/60 bg-void/40 px-2 font-hand text-sm text-paper touch-manipulation active:scale-95"
-          style={{ left: "62%", top: "45%", width: "25%", height: "15%" }}>
-          {jacketMoved ? "Jacket moved" : "Move the jacket"}
-        </button>
+        {/* The same artwork supplies the coat cutout, aligned with this wall's crop. */}
+        {jacketMoved && <div aria-hidden className="pointer-events-none absolute inset-0 z-20"
+          style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
+            background: "radial-gradient(ellipse at 36% 48%, #242025, #51444a)" }} />}
         {toy(r4, 3, jacketMoved)}
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] transition-transform duration-500 motion-reduce:transition-none"
+          style={{ clipPath: "polygon(32% 36%,40% 36%,44% 40%,52% 51%,47% 53%,46% 57%,28% 57%,27% 53%,20% 51%,28% 40%)",
+            transformOrigin: "36% 33%", transform: jacketMoved ? "rotate(-36deg)" : undefined }}>
+          <img src={WALLS[BG.bgPlayroom]?.[2]} alt="" className="scene-bg" style={{ objectPosition: "25% 50%" }} />
+        </div>
+        {!jacketMoved && <button type="button" aria-label="Move the jacket" disabled={!canInspect}
+          onClick={() => { s.inspect("jacket"); setJacket(true); sfx("open"); }}
+          className="absolute z-[46] min-h-12 min-w-12 touch-manipulation focus-visible:outline-4 focus-visible:outline-honey"
+          style={{ left: "20%", top: "35%", width: "32%", height: "23%" }}>
+          <span className="sr-only">Move the jacket</span>
+        </button>}
         {toy(r5, 4)}
-        <div className="pointer-events-none absolute left-[20%] top-[81%] text-paper/80" aria-hidden>👣</div>
+        <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full text-paper/60" viewBox="0 0 100 150">
+          {[[78,139], [73,135], [69,130], [64,126]].map(([x,y], i) => (
+            <g key={i} transform={`translate(${x} ${y}) rotate(-35) scale(.35)`} fill="currentColor">
+              <ellipse rx="2" ry="4" /><circle cx="-1.5" cy="-6" r="1" /><circle cy="-7" r="1" /><circle cx="1.5" cy="-6" r="1" />
+            </g>
+          ))}
+        </svg>
       </OnWall>
     </Stage>
   );

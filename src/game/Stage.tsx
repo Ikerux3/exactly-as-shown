@@ -30,6 +30,7 @@ export function OnWall({ n, children }: { n: number; children: ReactNode }) {
 type Props = {
   bg: string;
   bgPos?: string;
+  wallPositions?: readonly string[];
   chapter: number;
   children: ReactNode;
   clues?: ReactNode; // only visible in darkness, glows above it
@@ -53,6 +54,7 @@ type Props = {
 export function Stage({
   bg,
   bgPos = "50% 50%",
+  wallPositions,
   chapter,
   children,
   clues,
@@ -103,7 +105,7 @@ export function Stage({
     return () => window.removeEventListener("keydown", k);
   });
   const shownBg = walls ? walls[wall]! : bg;
-  const shownPos = wall === 0 ? bgPos : "50% 50%";
+  const shownPos = wallPositions?.[wall] ?? (wall === 0 ? bgPos : "50% 50%");
 
   // Flashlight follows finger / mouse.
   const move = (e: React.PointerEvent) => {

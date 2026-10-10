@@ -28,7 +28,7 @@ vi.mock("../ai/food", () => ({ interpretFavoriteFood: vi.fn() }));
 vi.mock("../fx", () => ({ JumpScare: () => null }));
 vi.mock("../DialogueVoice", () => ({ useSpokenPrompt: vi.fn() }));
 vi.mock("../ai/questions", () => ({ adaptiveQuestion: vi.fn(), currentQuestionContext: vi.fn(), offlineAdaptiveQuestion: vi.fn() }));
-vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
+vi.mock("../assets", () => ({ MUSICBOX: "musicbox.png", WALLS: { room: ["room", "window", "coat", "shelves"] }, PROP2: {}, PROP3: {}, SCARE: {}, BG: { bgPlayroom: "room" }, PROP: {}, toyImageFor: (toy: string) => "/" + toy + ".png" }));
 vi.mock("../Props", () => ({ Cupboard: () => null, Cushion: () => null, Cutlery: () => null, Dresser: () => null, Glass: () => null, Plate: () => null, ToyBox: () => null }));
 import { Ch1 } from "./Ch1Ch2";
 
@@ -50,6 +50,23 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); model.listeners.clear(); });
 
 describe("MG01 first pickup escape", () => {
+  it("lets the first pickup on the jacket wall escape from its chest once on that wall", () => {
+    render(<Ch1 />);
+    turn(2);
+    pick("Pick up the elephant");
+    expect(model.state.toyEscape).toMatchObject({ toy: "elephant", wall: 2, y: 82, recovered: false });
+    expect(screen.getByRole("button", { name: "Pick up the escaped elephant" })).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1500));
+    turn(4);
+    const walker = document.querySelector(".mg01-exit-and-walk") as HTMLElement;
+    expect(parseFloat(walker.style.animationDelay)).toBeLessThan(-1);
+    pick("Pick up the escaped elephant");
+    turn(2);
+    pick("Pick up the bear");
+    expect(model.state.ch1).toEqual(["elephant", "bear"]);
+    expect(model.state.toyEscape).toMatchObject({ toy: "elephant", recovered: true });
+  });
+
   it("accepts one action for repeated taps, remembers its wall, recovers once and preserves it after remount", () => {
     const view = render(<Ch1 />);
     const button = screen.getByRole("button", { name: "Pick up the bear" });
@@ -70,12 +87,18 @@ describe("MG01 first pickup escape", () => {
 
   it("has two light-visible toys by door/jacket and completes all five without catapult at any speed", () => {
     render(<Ch1 />);
-    pick("Pick up the bear"); pick("Pick up the escaped bear");
+    pick("Pick up the bear");
+    expect(document.querySelector(".mg01-exit-and-walk")).toBeInTheDocument();
+    expect(model.state.toyEscape.escapedAt).toEqual(expect.any(Number));
+    pick("Pick up the escaped bear");
     turn(); fireEvent.click(screen.getByRole("button", { name: "Open the drawer" })); pick("Pick up the train");
     turn();
     expect(screen.getByRole("button", { name: "Pick up the elephant" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Pick up the doll" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Move the jacket" })).toHaveStyle({ left: "20%", top: "35%" });
+    expect(document.querySelector('[data-toy="elephant"]')).toHaveStyle({ left: "59%", top: "82%" });
     fireEvent.click(screen.getByRole("button", { name: "Move the jacket" }));
+    expect(document.querySelector('[data-toy="doll"]')).toHaveStyle({ left: "36%", top: "50%" });
     pick("Pick up the doll"); pick("Pick up the elephant");
     turn(); fireEvent.click(screen.getByRole("button", { name: "Move the cushion" })); pick("Pick up the rabbit");
     expect(new Set(model.state.ch1).size).toBe(5);

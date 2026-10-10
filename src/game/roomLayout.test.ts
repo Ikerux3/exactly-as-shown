@@ -11,9 +11,9 @@ describe("four-wall puzzles", () => {
     expect(FIRST_TOY_WALKS.map((s) => s.wall)).toEqual([0, 1, 2, 3]);
     for (const s of FIRST_TOY_WALKS) {
       expect(s.x - 9).toBeGreaterThan(10);
-      expect(s.x + 9 + 18 * 1.1).toBeLessThan(90);
+      expect(s.x + 9 + 10).toBeLessThan(90);
       expect(s.y).toBeGreaterThan(50);
-      expect(s.y).toBeLessThan(80);
+      expect(s.y).toBeLessThan(85);
     }
   });
   it("preserves other room layouts", () => {

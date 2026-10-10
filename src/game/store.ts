@@ -117,7 +117,7 @@ type State = {
   adaptiveMoments: Record<string, RealtimeDecision>;
   finalCordura?: number | undefined;
   /** First MG01 pickup escapes once on its original wall, even across scare remounts. */
-  toyEscape?: { toy: ToyId; wall: number; x: number; y: number; recovered: boolean } | undefined;
+  toyEscape?: { toy: ToyId; wall: number; x: number; y: number; escapedAt?: number | undefined; recovered: boolean } | undefined;
   // checkpoints
   ch1: ToyId[];
   ch2Items: string[];
