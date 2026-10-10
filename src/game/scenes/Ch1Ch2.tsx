@@ -7,7 +7,7 @@ import { JumpScare } from "../fx";
 import { Button } from "@/components/ui/button";
 import { QOL_ART, foodImageFor } from "../assets";
 import { TOY_LABEL, useGame, saveCheckpoint, type ToyId } from "../store";
-import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
+import { Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
 import { sfx } from "../audio";
 import { chooseInterventions } from "../guest";
