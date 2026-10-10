@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Stage, illuminated } from "../Stage";
+import { OnWall, Stage, illuminated } from "../Stage";
 import { BG, PROP, toyImageFor } from "../assets";
 import { GAMEPLAY_RULES, wrongTableBlackoutPenalty } from "../gameplayRules";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
@@ -197,6 +197,7 @@ export function Ch1() {
   return (
     <Stage
       bg={BG.bgPlayroom}
+      spread
       bgPos="15% 50%"
       chapter={1}
       chapterCard
@@ -204,7 +205,7 @@ export function Ch1() {
       guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}
       clues={
         !got(r5) && (
-          <>
+          <OnWall n={2}>
             {[
               [52, 96],
               [46, 91],
@@ -230,10 +231,11 @@ export function Ch1() {
                 <circle cx="15" cy="4" r="2.5" fill="currentColor" />
               </svg>
             ))}
-          </>
+          </OnWall>
         )
       }
     >
+      <OnWall n={0}>
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
 
       {/* Clearly visible toy teleport: previously boxed toys land back on the floor. */}
@@ -252,6 +254,8 @@ export function Ch1() {
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
 
+      </OnWall>
+      <OnWall n={3}>
       {/* Toy 2 — under the sofa cushion */}
       {cushionMoved && <Toy t={r2} x={24} y={43} w={14} />}
       <button
@@ -273,7 +277,9 @@ export function Ch1() {
       >
         <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
       </button>
+      </OnWall>
 
+      <OnWall n={1}>
       {/* Toy 3 — in the drawer */}
       <button
         aria-label={drawerOpen ? "Close the drawer" : "Open the drawer"}
@@ -283,12 +289,14 @@ export function Ch1() {
           sfx("open");
         }}
         className="absolute"
-        style={{ left: "64%", top: "44%", width: "26%" }}
+        style={{ left: "50%", top: "50%", width: "42%" }}
       >
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
+      {drawerOpen && <Toy t={r3} x={71} y={67} w={14} />}
+      </OnWall>
 
+      <OnWall n={3}>
       {/* Toy 4 — possessed, only exists in darkness */}
       {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
         <button
@@ -321,7 +329,9 @@ export function Ch1() {
           />
         </button>
       )}
+      </OnWall>
 
+      <OnWall n={2}>
       {/* Toy 5 — under the rug edge */}
       <button
         aria-label="Lift the edge of the rug"
@@ -352,6 +362,7 @@ export function Ch1() {
         </svg>
       </button>
       {rugLifted && !s.lightsOn && <Toy t={r5} x={22} y={79} w={15} />}
+      </OnWall>
     </Stage>
   );
 }

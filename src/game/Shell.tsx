@@ -16,6 +16,8 @@ type ShellProps = {
   frameRef?: Ref<HTMLDivElement>;
   frameClassName?: string;
   onFramePointer?: (e: React.PointerEvent) => void;
+  onFrameDown?: ((e: React.PointerEvent) => void) | undefined;
+  onFrameUp?: ((e: React.PointerEvent) => void) | undefined;
   children: ReactNode;
 };
 
@@ -27,6 +29,8 @@ export function Shell({
   frameRef,
   frameClassName = "",
   onFramePointer,
+  onFrameDown,
+  onFrameUp,
   children,
 }: ShellProps) {
   return (
@@ -36,7 +40,8 @@ export function Shell({
         ref={frameRef}
         className={`game-frame ${frameClassName}`}
         onPointerMove={onFramePointer}
-        onPointerDown={onFramePointer}
+        onPointerDown={(e) => { onFramePointer?.(e); onFrameDown?.(e); }}
+        onPointerUp={onFrameUp}
       >
         {children}
       </div>

@@ -39,7 +39,14 @@ let preloaded = false;
 export function preloadArt() {
   if (preloaded || typeof window === "undefined") return;
   preloaded = true;
-  const urls = [...Object.values(BG), ...Object.values(TOY_IMG), MUSICBOX, ...Object.values(CUT)];
+  const urls = [
+    ...Object.values(BG),
+    ...Object.values(WALLS).flat(),
+    ...Object.values(PROP2),
+    ...Object.values(TOY_IMG),
+    MUSICBOX,
+    ...Object.values(CUT),
+  ];
   const load = () =>
     urls.forEach((u) => {
       const i = new Image();
@@ -66,4 +73,39 @@ export const PROP = {
   toybox: cutToybox,
   cushion: cutCushion,
   clock: cutClock,
+};
+import cutDresser from "@/assets/cut-dresser.png";
+import cutPhotoframe from "@/assets/cut-photoframe.png";
+import cutTrinketbox from "@/assets/cut-trinketbox.png";
+import cutPajamas from "@/assets/cut-pajamas.png";
+import cutToothbrush from "@/assets/cut-toothbrush.png";
+import cutKey from "@/assets/cut-key.png";
+import cutSwitch from "@/assets/cut-switch.png";
+export const PROP2 = { dresser: cutDresser, photoframe: cutPhotoframe, trinketbox: cutTrinketbox, pajamas: cutPajamas, toothbrush: cutToothbrush, key: cutKey, switch: cutSwitch };
+import pr1 from "@/assets/bg-playroom-1.jpg";
+import pr2 from "@/assets/bg-playroom-2.jpg";
+import pr3 from "@/assets/bg-playroom-3.jpg";
+import ki1 from "@/assets/bg-kitchen-1.jpg";
+import ki2 from "@/assets/bg-kitchen-2.jpg";
+import ki3 from "@/assets/bg-kitchen-3.jpg";
+import di1 from "@/assets/bg-dining-1.jpg";
+import di2 from "@/assets/bg-dining-2.jpg";
+import di3 from "@/assets/bg-dining-3.jpg";
+import be1 from "@/assets/bg-bedroom-1.jpg";
+import be2 from "@/assets/bg-bedroom-2.jpg";
+import be3 from "@/assets/bg-bedroom-3.jpg";
+import ba1 from "@/assets/bg-bathroom-1.jpg";
+import ba2 from "@/assets/bg-bathroom-2.jpg";
+import ba3 from "@/assets/bg-bathroom-3.jpg";
+import mo1 from "@/assets/bg-mother-1.jpg";
+import mo2 from "@/assets/bg-mother-2.jpg";
+import mo3 from "@/assets/bg-mother-3.jpg";
+/** The four sides of each room: [front, right, back, left]. */
+export const WALLS: Record<string, string[]> = {
+  [bgPlayroom]: [bgPlayroom, pr1, pr2, pr3],
+  [bgKitchen]: [bgKitchen, ki1, ki2, ki3],
+  [bgDining]: [bgDining, di1, di2, di3],
+  [bgBedroom]: [bgBedroom, be1, be2, be3],
+  [bgBathroom]: [bgBathroom, ba1, ba2, ba3],
+  [bgMother]: [bgMother, mo1, mo2, mo3],
 };

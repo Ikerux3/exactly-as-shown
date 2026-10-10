@@ -16,3 +16,4 @@
 - Scene art is generated raster backgrounds with SVG/PNG props positioned in percent of a fixed 2:3 frame — never stretch art to fit hitboxes.
 - HUD (chapter, progress, Cordura, pause) and the dialogue bar (subtitles / Mommy's list + light switch) live in `src/game/Shell.tsx` bars above and below the art frame — don't overlay UI on the art, so it never hides props or hitboxes.
 - The game saves a checkpoint at the start of each chapter (`go()` in the store); the title menu offers Continue from it.
+- Rooms have four walls (WALLS in assets.ts); Stage handles swipe/arrows and scenes opt in with `spread` + `<OnWall n>`, otherwise content stays on the front wall — lets chapters spread puzzles without breaking older scenes.

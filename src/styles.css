@@ -432,3 +432,21 @@
 @media (prefers-reduced-motion: reduce) {
   .final-heartbeat-shake { animation: none; }
 }
+
+/* Four-wall room turning */
+@keyframes wall-r { from { transform: translateX(18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
+@keyframes wall-l { from { transform: translateX(-18%) scale(1.04); filter: blur(4px) brightness(.5); opacity: .3 } to { transform: none; filter: none; opacity: 1 } }
+.wall-in-r { animation: wall-r .45s cubic-bezier(.2,.8,.2,1) both; }
+.wall-in-l { animation: wall-l .45s cubic-bezier(.2,.8,.2,1) both; }
+.wall-arrow {
+  position: absolute; top: 50%; z-index: 40; translate: 0 -50%;
+  width: 34px; height: 58px; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 34px; line-height: 1;
+  background: var(--paper); color: var(--ink); opacity: .75;
+  box-shadow: 2px 3px 0 oklch(0 0 0 / .55);
+  clip-path: polygon(6% 2%, 96% 0, 100% 48%, 94% 100%, 2% 97%, 0 52%);
+  touch-action: manipulation;
+}
+.wall-arrow.left-1 { rotate: -3deg; }
+.wall-arrow.right-1 { rotate: 3deg; }
+.wall-arrow:active { scale: .92; opacity: 1; }
