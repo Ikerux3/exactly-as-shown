@@ -9,6 +9,7 @@ import { Ending } from "@/game/scenes/Endings";
 import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
 import { Prologue } from "@/game/scenes/Prologue";
+import { Corridor, useCorridorTransitions } from "@/game/scenes/Corridor";
 import { HOLD_MS, TransitionVeil, useChapterJump } from "@/game/fx";
 import { useDialogueVoice } from "@/game/DialogueVoice";
 
@@ -41,22 +42,26 @@ function Game() {
     return () => document.removeEventListener("touchmove", prevent);
   }, []);
   const holding = useChapterJump();
+  // Between chapters the child walks down the hall first; the next room mounts on arrival.
+  const { corridor, veilScreen, endCorridor } = useCorridorTransitions();
+  const shown = corridor ? null : screen;
   const k = `${screen}-${phaseKey}`;
   if (studioOpening) return <StudioSplash onComplete={finishStudioOpening} />;
   return (
     <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      {screen === "title" && <Title />}
-      {screen === "intro" && <Intro />}
-      {screen === "prologue" && <Prologue />}
-      {screen === "ch1" && <Ch1 key={k} />}
-      {screen === "ch2k" && <Ch2Kitchen key={k} />}
-      {screen === "ch2d" && <Ch2Dining key={k} />}
-      {screen === "ch3" && <Ch3 key={k} />}
-      {screen === "ch4" && <Ch4 key={k} />}
-      {screen === "ch5" && <Ch5 key={k} />}
-      {screen === "final" && <Final />}
-      {screen === "ending" && <Ending />}
-      <TransitionVeil screen={screen} />
+      {shown === "title" && <Title />}
+      {shown === "intro" && <Intro />}
+      {shown === "prologue" && <Prologue />}
+      {shown === "ch1" && <Ch1 key={k} />}
+      {shown === "ch2k" && <Ch2Kitchen key={k} />}
+      {shown === "ch2d" && <Ch2Dining key={k} />}
+      {shown === "ch3" && <Ch3 key={k} />}
+      {shown === "ch4" && <Ch4 key={k} />}
+      {shown === "ch5" && <Ch5 key={k} />}
+      {shown === "final" && <Final />}
+      {shown === "ending" && <Ending />}
+      {corridor && <Corridor key={corridor.to} to={corridor.to} onDone={endCorridor} />}
+      <TransitionVeil screen={veilScreen} />
       {holding && (
         <div className="paper fixed bottom-4 left-1/2 z-[110] -translate-x-1/2 px-4 py-2 text-sm">
           Skipping to chapter {holding}…
