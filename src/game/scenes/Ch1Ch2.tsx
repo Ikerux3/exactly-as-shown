@@ -191,7 +191,7 @@ export function Ch1() {
       guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}
       clues={
         !got(r5) && (
-          <>
+          <OnWall n={2}>
             {[
               [52, 96],
               [46, 91],
@@ -217,7 +217,7 @@ export function Ch1() {
                 <circle cx="15" cy="4" r="2.5" fill="currentColor" />
               </svg>
             ))}
-          </>
+          </OnWall>
         )
       }
     >
