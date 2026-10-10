@@ -18,6 +18,9 @@ export function Ch1() {
   const [drawerOpen, setDrawer] = useState(false);
   const [rugLifted, setRug] = useState(false);
   const [flying, setFlying] = useState<ToyId | null>(null);
+  const [ejected, setEjected] = useState<ToyId[]>([]);
+  const rapidCollections = useRef<number[]>([]);
+  const previousLights = useRef(s.lightsOn);
   const [pos4, setPos4] = useState({ x: 30, y: 72 });
   const [frozen, setFrozen] = useState(false);
   const litMs = useRef(0);
@@ -34,11 +37,36 @@ export function Ch1() {
       const st = useGame.getState();
       if (!st.facts.firstToy) st.fact({ firstToy: t });
       st.observeChoice(TOY_LABEL[t]);
-      st.set({ ch1: [...st.ch1, t] });
+      const now = Date.now();
+      rapidCollections.current = [...rapidCollections.current.filter((time) => now - time < 4000), now];
+      if (!st.toyCatapultUsed && rapidCollections.current.length >= 3) {
+        // The Guest catapults the hurriedly boxed toys only once per entire run.
+        const expelled = [...st.ch1, t];
+        st.set({ ch1: [], toyCatapultUsed: true });
+        setEjected(expelled);
+        sfx("scare");
+        st.say({ speaker: "guest", text: "Not so fast. Let's play again.", ms: 2000 });
+      } else {
+        st.set({ ch1: [...st.ch1, t] });
+        setEjected((old) => old.filter((item) => item !== t));
+        sfx("chime");
+      }
       setFlying(null);
       sfx("chime");
     }, 550);
   };
+
+  // Every genuine lights-off can teleport one boxed toy back into the room.
+  // Unlike the one-time catapult, this is a small visible, recoverable interruption.
+  useEffect(() => {
+    const wentDark = previousLights.current && !s.lightsOn;
+    previousLights.current = s.lightsOn;
+    if (!wentDark || !s.interactive || s.ch1.length === 0) return;
+    const moved = s.ch1[s.ch1.length - 1]!;
+    setEjected((old) => old.includes(moved) ? old : [...old, moved]);
+    useGame.getState().set({ ch1: useGame.getState().ch1.filter((item) => item !== moved) });
+    sfx("creak");
+  }, [s.lightsOn, s.interactive, s.ch1.length]);
 
   // Toy 4: moves in darkness, freezes when held in the light.
   useEffect(() => {
@@ -136,7 +164,7 @@ export function Ch1() {
     w: number;
     extra?: string;
   }) =>
-    got(t) ? null : (
+    got(t) || ejected.includes(t) ? null : (
       <button
         onClick={() => collect(t)}
         aria-label={`Pick up the ${TOY_LABEL[t]}`}
@@ -194,6 +222,16 @@ export function Ch1() {
     >
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
 
+      {/* Clearly visible toy teleport: previously boxed toys land back on the floor. */}
+      {ejected.map((toy, index) => (
+        <button key={toy} aria-label={`Return the expelled ${TOY_LABEL[toy]} to the box`}
+          onClick={() => collect(toy)}
+          className="absolute z-30 w-[16%] transition-transform duration-200 motion-safe:animate-bounce"
+          style={{ left: `${24 + (index % 3) * 18}%`, top: `${76 + Math.floor(index / 3) * 8}%` }}>
+          <img src={TOY_IMG[toy]} alt="" className="w-full drop-shadow-xl" />
+        </button>
+      ))}
+
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
 
@@ -235,7 +273,7 @@ export function Ch1() {
       {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
 
       {/* Toy 4 — possessed, only exists in darkness */}
-      {!got(r4) && !s.lightsOn && (
+      {!got(r4) && !ejected.includes(r4) && !s.lightsOn && (
         <button
           aria-label="Grab the toy that keeps moving"
           onClick={() => {
@@ -296,7 +334,7 @@ export function Ch1() {
           />
         </svg>
       </button>
-      {rugLifted && <Toy t={r5} x={22} y={79} w={15} />}
+      {rugLifted && !s.lightsOn && <Toy t={r5} x={22} y={79} w={15} />}
     </Stage>
   );
 }
