@@ -1,7 +1,7 @@
 // Hand-built SVG props in a felt / wood / clay vocabulary.
 import type { CSSProperties } from "react";
 import type React from "react";
-import { CUT, PROP } from "./assets";
+import { CUT, PROP, PROP2 } from "./assets";
 
 function Tape({ color }: { color: string }) {
   return <span aria-hidden className="pointer-events-none absolute left-1/2 top-[38%] h-[18%] min-h-2 w-[46%] -translate-x-1/2 -rotate-6 opacity-85 mix-blend-multiply" style={{ background: color, boxShadow: "0 1px 2px oklch(0 0 0 / .4)" }} />;
@@ -30,28 +30,11 @@ export function Cushion({ style }: { style?: CSSProperties; color?: string }) {
 
 export function Dresser({ style, open }: { style?: CSSProperties; open: boolean }) {
   return (
-    <svg viewBox="0 0 180 200" style={style} className="prop" aria-hidden overflow="visible">
-      <rect x="10" y="10" width="160" height="12" rx="3" fill={woodL} />
-      <rect x="16" y="22" width="148" height="160" fill={wood} />
-      <rect x="22" y="128" width="136" height="46" fill="var(--void)" opacity="0.9" />
-      {/* top drawer */}
-      <rect x="24" y="32" width="132" height="42" rx="3" fill={woodL} stroke="oklch(0.3 0.05 50)" />
-      <circle cx="90" cy="53" r="5" fill={brass} />
-      {/* middle drawer (the one that opens) */}
-      <g style={{ transform: open ? "translate(0px, 26px) scale(1.08)" : "none", transformOrigin: "90px 105px", transition: "transform 0.5s cubic-bezier(.2,.8,.2,1)" }}>
-        {open && <path d="M24 82 L156 82 L166 76 L14 76 Z" fill="oklch(0.22 0.03 50)" />}
-        <rect x="24" y="82" width="132" height="42" rx="3" fill={woodL} stroke="oklch(0.3 0.05 50)" />
-        <circle cx="90" cy="103" r="5" fill={brass} />
-      </g>
-      {!open && (
-        <>
-          <rect x="24" y="132" width="132" height="42" rx="3" fill={woodL} stroke="oklch(0.3 0.05 50)" />
-          <circle cx="90" cy="153" r="5" fill={brass} />
-        </>
-      )}
-      <rect x="20" y="182" width="10" height="14" fill={wood} />
-      <rect x="150" y="182" width="10" height="14" fill={wood} />
-    </svg>
+    <Cut src={PROP2.dresser} style={style} ratio="1 / 1">
+      {/* the middle drawer slides out toward the player */}
+      <span aria-hidden className="pointer-events-none absolute left-[22%] top-[43%] h-[14%] w-[56%] transition-all duration-500"
+        style={{ background: "oklch(0.12 0.02 50)", opacity: open ? 0.95 : 0, transform: open ? "translateY(18%) scale(1.12)" : "none", boxShadow: open ? "0 6px 0 oklch(0.3 0.04 50), 0 10px 12px oklch(0 0 0 / .6)" : "none" }} />
+    </Cut>
   );
 }
 
@@ -105,73 +88,33 @@ export function LightSwitch({ on, onToggle, disabled, hint }: { on: boolean; onT
       aria-pressed={on}
       className={`relative h-full shrink-0 aspect-[3/4] transition-[transform,opacity] active:scale-95 disabled:opacity-40 ${hint && !disabled ? "switch-hint" : ""}`}
     >
-      <svg viewBox="0 0 60 80" className="h-full w-full drop-shadow-lg" aria-hidden>
-        <rect x="4" y="4" width="52" height="72" rx="8" fill="var(--paper-deep)" stroke="var(--brass)" strokeWidth="3" />
-        <circle cx="30" cy="12" r="2.5" fill="var(--brass)" />
-        <circle cx="30" cy="68" r="2.5" fill="var(--brass)" />
-        <rect x="20" y="22" width="20" height="36" rx="5" fill="oklch(0.3 0.03 60)" />
-        <rect x="22" y={on ? 24 : 38} width="16" height="18" rx="4" fill="var(--brass)" style={{ transition: "y .15s" }} />
-      </svg>
+      <img src={PROP2.switch} alt="" draggable={false} className="h-full w-full object-contain"
+        style={{ filter: `sepia(.35) contrast(1.1) drop-shadow(2px 3px 0 oklch(0 0 0 / .55))${on ? "" : " brightness(.7)"}`, transform: on ? "none" : "scaleY(-1)", transition: "transform .15s" }} />
     </button>
   );
 }
 
 export function PhotoFrame({ style, wrong }: { style?: CSSProperties; wrong?: boolean }) {
   return (
-    <svg viewBox="0 0 80 100" style={style} className="prop" aria-hidden>
-      <rect x="2" y="2" width="76" height="96" rx="3" fill="var(--brass)" />
-      <rect x="10" y="10" width="60" height="80" fill="oklch(0.75 0.04 70)" />
-      <circle cx="32" cy="40" r="9" fill="oklch(0.45 0.04 50)" />
-      <path d="M18 88 Q32 56 46 88 Z" fill="oklch(0.45 0.06 340)" />
-      <circle cx="54" cy="56" r="6" fill="oklch(0.45 0.04 50)" />
-      <path d="M44 88 Q54 66 64 88 Z" fill="oklch(0.55 0.05 30)" />
-      {wrong && <path d="M66 30 C70 50 70 70 66 90 L60 90 C58 70 58 50 62 30 Z" fill="var(--void)" />}
-    </svg>
+    <Cut src={PROP2.photoframe} style={style} ratio="752 / 896">
+      {wrong && <span aria-hidden className="pointer-events-none absolute right-[22%] top-[28%] h-[52%] w-[14%] rounded-full" style={{ background: "var(--void)", filter: "blur(2px)" }} />}
+    </Cut>
   );
 }
 export function Clock({ style }: { style?: CSSProperties }) {
   return <Cut src={PROP.clock} style={style} ratio="1 / 1" />;
 }
 export function TrinketBox({ style, open }: { style?: CSSProperties; open?: boolean }) {
-  return (
-    <svg viewBox="0 0 100 70" style={style} className="prop" aria-hidden>
-      <rect x="10" y="28" width="80" height="38" rx="4" fill="var(--c-plum)" />
-      <path d="M14 32 L86 32" stroke="var(--brass)" strokeDasharray="4 3" strokeWidth="2" />
-      <g style={{ transform: open ? "rotate(-25deg)" : "none", transformOrigin: "10px 28px", transition: "transform .4s" }}>
-        <rect x="6" y="16" width="88" height="14" rx="4" fill="var(--rose)" />
-      </g>
-      <rect x="45" y="36" width="10" height="8" rx="2" fill="var(--brass)" />
-    </svg>
-  );
+  return <Cut src={PROP2.trinketbox} style={{ ...style, transform: open ? "rotate(-4deg) translateY(-3%)" : style?.transform }} ratio="896 / 752" />;
 }
 export function Pajamas({ style, color }: { style?: CSSProperties; color: string }) {
-  return (
-    <svg viewBox="0 0 120 70" style={style} className="prop" aria-hidden>
-      <path d="M6 30 Q60 18 114 30 L110 62 Q60 72 10 62 Z" fill={color} />
-      <path d="M6 30 Q60 40 114 30" stroke="oklch(1 0 0 / .4)" strokeWidth="2" fill="none" />
-      {[20, 45, 70, 95].map((x) => (
-        <circle key={x} cx={x} cy={48} r="3" fill="var(--paper)" opacity=".8" />
-      ))}
-      <path d="M12 58 Q60 66 108 58" stroke="var(--paper)" strokeDasharray="4 4" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
+  return <Cut src={PROP2.pajamas} style={style} ratio="896 / 752"><Tape color={color} /></Cut>;
 }
 export function Toothbrush({ style }: { style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 30 100" style={style} className="prop" aria-hidden>
-      <rect x="11" y="20" width="8" height="78" rx="4" fill="var(--turq)" />
-      <rect x="9" y="2" width="12" height="22" rx="2" fill="var(--paper)" />
-      {[5, 9, 13, 17].map((y) => <path key={y} d={`M9 ${y} L21 ${y}`} stroke="var(--paper-deep)" />)}
-    </svg>
-  );
+  return <Cut src={PROP2.toothbrush} style={style} ratio="672 / 992" />;
 }
 export function Key({ style }: { style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 100 50" style={style} className="prop" aria-hidden>
-      <circle cx="20" cy="25" r="15" fill="none" stroke="var(--brass)" strokeWidth="7" />
-      <path d="M35 25 L92 25 M78 25 L78 40 M88 25 L88 36" stroke="var(--brass)" strokeWidth="7" strokeLinecap="round" />
-    </svg>
-  );
+  return <Cut src={PROP2.key} style={style} ratio="992 / 672" />;
 }
 
 /* ---- Black cardboard cut-out characters (pinned with a strip of masking tape) ---- */
