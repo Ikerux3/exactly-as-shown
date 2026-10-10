@@ -935,9 +935,9 @@ export function Ch2Dining() {
         }}
       >
         {/* view tabs */}
-        <div className="absolute inset-x-0 top-[36%] z-30 flex justify-center gap-3">
+        <div className="absolute inset-x-0 top-[3%] z-40 flex justify-center gap-3">
           {(["tray", "table"] as const).map((v) => (
-            <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`wall-arrow relative px-3 py-1 font-crayon text-xs ${view === v ? "" : "opacity-60"}`} style={{ position: "relative" }}>
+            <button key={v} onClick={() => { sfx("creak"); setView(v); }} className={`stitch-btn px-3 py-1 text-xs ${view === v ? "honey" : "opacity-70"}`}>
               {v === "tray" ? "Tray" : "Table"}
             </button>
           ))}
@@ -980,7 +980,7 @@ export function Ch2Dining() {
                     key={k}
                     aria-label={`Table spot ${x + 1}, ${y + 1}`}
                     onClick={() => tapCell(x, y)}
-                    className="absolute touch-manipulation border border-paper/15"
+                    className="absolute touch-manipulation border border-dashed border-paper/30"
                     style={box(x, y, 1, 1)}
                   />
                 );
