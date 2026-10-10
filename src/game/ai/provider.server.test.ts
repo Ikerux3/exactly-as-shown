@@ -18,7 +18,7 @@ describe("Lovable AI structured provider", () => {
     ).resolves.toEqual({ ok: true });
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toContain("ai.gateway.lovable.dev");
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-key");
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe("Bearer test-key");
     expect(JSON.parse(init.body).response_format.json_schema.schema).toEqual({ type: "object" });
   });
 
