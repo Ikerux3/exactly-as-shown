@@ -1,7 +1,13 @@
 import type { VoiceRole } from "./voice";
 
+export type ElevenLabsUnavailableReason =
+  | "disabled"
+  | "missing_api_key"
+  | "missing_voice_id";
+
 export type ElevenLabsSpeechResult =
-  { available: false } | { available: true; audioBase64: string; mimeType: "audio/mpeg" };
+  | { available: false; reason: ElevenLabsUnavailableReason }
+  | { available: true; audioBase64: string; mimeType: "audio/mpeg" };
 
 const DEFAULT_MODEL = "eleven_flash_v2_5";
 const MAX_AUDIO_BYTES = 2_500_000;
@@ -52,10 +58,20 @@ export async function requestElevenLabsSpeech(
   text: string,
   role: VoiceRole,
 ): Promise<ElevenLabsSpeechResult> {
-  if (!elevenLabsEnabled()) return { available: false };
+  if (!elevenLabsEnabled()) {
+    console.warn("[voice] ElevenLabs unavailable: disabled");
+    return { available: false, reason: "disabled" };
+  }
   const apiKey = process.env["ELEVENLABS_API_KEY"]?.trim();
   const voiceId = voiceIdForRole(role);
-  if (!apiKey || !voiceId) return { available: false };
+  if (!apiKey) {
+    console.warn("[voice] ElevenLabs unavailable: missing_api_key");
+    return { available: false, reason: "missing_api_key" };
+  }
+  if (!voiceId) {
+    console.warn(`[voice] ElevenLabs unavailable for ${role}: missing_voice_id`);
+    return { available: false, reason: "missing_voice_id" };
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -78,12 +94,22 @@ export async function requestElevenLabsSpeech(
       },
     );
 
-    if (!response.ok) throw new Error(`ElevenLabs unavailable (${response.status})`);
+    if (!response.ok) {
+      console.error(`[voice] ElevenLabs ${role} HTTP ${response.status}`);
+      throw new Error(`ElevenLabs unavailable (${response.status})`);
+    }
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.length === 0 || bytes.length > MAX_AUDIO_BYTES) {
       throw new Error("Invalid ElevenLabs audio response");
     }
+    console.info(`[voice] ElevenLabs ${role} ready (${bytes.length} bytes)`);
     return { available: true, audioBase64: bytesToBase64(bytes), mimeType: "audio/mpeg" };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error(`[voice] ElevenLabs ${role} timed out`);
+      throw new Error("ElevenLabs unavailable (timeout)");
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

@@ -82,7 +82,15 @@ export function useDialogueVoice() {
     void synthesizeDialogueVoice({ data: { role, text } })
       .then((result) => {
         if (!active || finished) return;
-        if (!result.available || typeof Audio === "undefined") {
+        if (!result.available) {
+          console.warn(
+            `[voice] ElevenLabs ${role} unavailable (${result.reason}); using browser fallback`,
+          );
+          browserFallback();
+          return;
+        }
+        if (typeof Audio === "undefined") {
+          console.warn(`[voice] Audio playback unavailable; using browser fallback for ${role}`);
           browserFallback();
           return;
         }

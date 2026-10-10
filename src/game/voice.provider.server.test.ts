@@ -28,7 +28,10 @@ describe("ElevenLabs voice provider", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(requestElevenLabsSpeech("Hello.", "guest")).resolves.toEqual({ available: false });
+    await expect(requestElevenLabsSpeech("Hello.", "guest")).resolves.toEqual({
+      available: false,
+      reason: "missing_api_key",
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -64,6 +67,7 @@ describe("ElevenLabs voice provider", () => {
 
     await expect(requestElevenLabsSpeech("Stay still.", "guest")).resolves.toEqual({
       available: false,
+      reason: "disabled",
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
