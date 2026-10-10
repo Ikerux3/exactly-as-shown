@@ -25,6 +25,15 @@ describe("offline toy interpretation", () => {
     });
   });
 
+  it("treats a concise safe unknown toy as a custom visual", () => {
+    expect(offlineToyInterpretation("slime")).toMatchObject({
+      category: "other",
+      displayToy: "slime",
+      customVisual: true,
+      provider: "offline",
+    });
+  });
+
   it("does not generate or remember a profane custom toy", () => {
     expect(offlineToyInterpretation("f.u.c.k robot")).toMatchObject({
       category: "other",

@@ -25,6 +25,10 @@ function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect 
   const [shy, setShy] = useState({ x: 0, y: 0 });
   const [walkDelay] = useState(() => -Math.max(0, Date.now() - (escapedAt ?? Date.now() - 1000)) / 1000);
   const label = toy === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[toy];
+  const neutralLabel = label.replace(/^your\s+/iu, "");
+  const pickupLabel = walking
+    ? `Pick up the escaped ${neutralLabel}`
+    : `Pick up ${/^your\s+/iu.test(label) ? label : `the ${label}`}`;
   return (
     <div className={`absolute z-40 w-[18%] -translate-x-1/2 -translate-y-1/2 ${walking ? "mg01-exit-and-walk" : ""}`}
       data-toy={toy} data-wall={wall}
@@ -36,7 +40,7 @@ function PlayroomToy({ toy, x, y, flying, walking = false, escapedAt, onCollect 
       style={{ left: x + "%", top: y + "%", translate: `${shy.x}px ${shy.y}px`, transition: "left .18s linear, top .18s linear, translate .3s ease", "--box-dx": `${wall === 0 ? 76 - x : 0}cqw`, "--box-dy": `${wall === 0 ? (82 - y) * 1.5 : 0}cqw`,
         animationDelay: walking ? `${walkDelay}s, ${walkDelay + 0.7}s` : undefined,
         animationPlayState: !s.paused && s.interactive && !flying ? "running" : "paused" } as CSSProperties}>
-      <button type="button" aria-label={`Pick up ${walking ? "the escaped " : "the "}${label}`}
+      <button type="button" aria-label={pickupLabel}
         disabled={!!flying || !s.interactive || s.paused || s.scare}
         onClick={() => onCollect(toy, wall)}
         className={`grid min-h-12 min-w-12 w-full place-items-center rounded-xl touch-manipulation active:scale-95 focus-visible:outline-4 focus-visible:outline-honey `}

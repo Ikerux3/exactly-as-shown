@@ -52,6 +52,14 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); model.listeners.clear(); });
 
 describe("MG01 first pickup escape", () => {
+  it("does not duplicate the article for a generic favourite-toy label", () => {
+    model.state.favToy = "your favourite toy";
+    model.state.favToyVisualSlot = "bear";
+    render(<Ch1 />);
+    expect(screen.getByRole("button", { name: "Pick up your favourite toy" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pick up the your favourite toy" })).toBeNull();
+  });
+
   it.each(["Move the jacket", "Look behind the keepsake box"])("reveals the coat-hidden toy in shuffled runs via %s, preserving both interactions", (action) => {
     model.state.toyOrder = ["rabbit", "bear", "train", "doll", "elephant"];
     render(<Ch1 />);
