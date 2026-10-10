@@ -17,3 +17,14 @@ import type { ToyId } from "./store";
 export const BG = { bgTitle, bgPlayroom, bgKitchen, bgDining, bgBedroom, bgMother, bgBathroom, bgHallway };
 export const TOY_IMG: Record<ToyId, string> = { bear, rabbit, train, doll, elephant };
 export const MUSICBOX = musicbox;
+
+/** Warm the browser cache so rooms don't flash black when a chapter starts. */
+let preloaded = false;
+export function preloadArt() {
+  if (preloaded || typeof window === "undefined") return;
+  preloaded = true;
+  const urls = [...Object.values(BG), ...Object.values(TOY_IMG), MUSICBOX];
+  const load = () => urls.forEach((u) => { const i = new Image(); i.decoding = "async"; i.src = u; });
+  // Let the title screen paint first, then fetch the rest in the background.
+  setTimeout(load, 600);
+}

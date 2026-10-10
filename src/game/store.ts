@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { setMuted as setAudioMuted } from "./audio";
 
 export type Screen =
   | "title" | "intro" | "ch1" | "ch2k" | "ch2d" | "ch3" | "ch4" | "ch5" | "final" | "ending";
@@ -17,7 +18,17 @@ export const TOY_LABEL: Record<ToyId, string> = {
   bear: "teddy bear", rabbit: "felt rabbit", train: "wooden train", doll: "rag doll", elephant: "knitted elephant",
 };
 
-export type Line = { speaker: "mother" | "guest" | "mimic" | "child" | "narrator"; text: string; ms?: number | undefined };
+export const CHAPTER_TITLE: Record<number, string> = {
+  1: "The Playroom", 2: "Table for Three", 3: "The Music Box", 4: "Mother's Room", 5: "Bedtime",
+};
+
+export type Line = {
+  speaker: "mother" | "guest" | "mimic" | "child" | "narrator";
+  text: string;
+  ms?: number | undefined;
+  /** Runs once when the line appears on screen (keeps cutscene effects in sync with skipping). */
+  onShow?: (() => void) | undefined;
+};
 
 export type Facts = {
   firstToy?: ToyId | undefined;
@@ -46,7 +57,7 @@ type State = {
   queue: Line[];
   line?: Line | undefined;
   objective: string;
-  objectiveOpen: boolean;
+  paused: boolean;
   muted: boolean;
   facts: Facts;
   finalCordura?: number | undefined;
@@ -67,6 +78,8 @@ type Actions = {
   fact: (f: Partial<Facts>) => void;
   mistake: () => void;
   newRun: () => void;
+  continueRun: () => boolean;
+  setMute: (m: boolean) => void;
 };
 
 function shuffle<T>(a: T[]): T[] {
@@ -96,7 +109,7 @@ const initial = (): Omit<State, "muted"> => ({
   queue: [],
   line: undefined,
   objective: "",
-  objectiveOpen: true,
+  paused: false,
   facts: { mistakes: 0, darkSeconds: 0, lightToggles: 0, revisits: 0, previousRuns: 0 },
   finalCordura: undefined,
   ch1: [],
@@ -109,7 +122,11 @@ export const useGame = create<State & Actions>((set, get) => ({
   ...initial(),
   muted: false,
   set: (p) => set(p),
-  go: (screen) => set({ screen, queue: [], line: undefined, lightsOn: true, interactive: false, objectiveOpen: true }),
+  go: (screen) => {
+    set({ screen, queue: [], line: undefined, lightsOn: true, interactive: false, paused: false, objective: "" });
+    if (RESUMABLE.includes(screen)) writeSave(get());
+    else if (screen === "final" || screen === "ending") clearSave();
+  },
   say: (lines) => {
     const arr = Array.isArray(lines) ? lines : [lines];
     const s = get();
@@ -129,9 +146,70 @@ export const useGame = create<State & Actions>((set, get) => ({
     const muted = get().muted;
     const prev = loadMemory();
     const base = initial();
+    clearSave();
     set({ ...base, muted, facts: { ...base.facts, previousRuns: prev.runs } });
   },
+  continueRun: () => {
+    const save = loadSave();
+    if (!save) return false;
+    const base = initial();
+    set({ ...base, muted: get().muted, ...save, screen: "title" });
+    get().go(save.screen);
+    return true;
+  },
+  setMute: (m) => {
+    set({ muted: m });
+    setAudioMuted(m);
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ muted: m })); } catch { /* ignore */ }
+  },
 }));
+
+const SETTINGS_KEY = "mwbb-settings-v1";
+/** Restore persisted player settings (call once on the client). */
+export function restoreSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") as { muted?: unknown };
+    if (s.muted === true) useGame.getState().setMute(true);
+  } catch { /* ignore */ }
+}
+
+/* ---- Chapter checkpoint save (resume from the start of the last chapter reached) ---- */
+const SAVE_KEY = "mwbb-save-v1";
+const RESUMABLE: Screen[] = ["ch1", "ch2k", "ch2d", "ch3", "ch4", "ch5"];
+const TOYS: ToyId[] = ["bear", "rabbit", "train", "doll", "elephant"];
+type Save = Pick<
+  State,
+  "screen" | "name" | "favColor" | "motherColor" | "favFood" | "toyOrder" | "cordura" | "facts" | "ch1" | "ch2Items" | "ch2Placed" | "ch3Rounds"
+>;
+
+function writeSave(s: State) {
+  const save: Save = {
+    screen: s.screen, name: s.name, favColor: s.favColor, motherColor: s.motherColor, favFood: s.favFood,
+    toyOrder: s.toyOrder, cordura: s.cordura, facts: s.facts, ch1: s.ch1, ch2Items: s.ch2Items,
+    ch2Placed: s.ch2Placed, ch3Rounds: s.ch3Rounds,
+  };
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* ignore */ }
+}
+
+export function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+}
+
+export function loadSave(): Save | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "null") as Save | null;
+    const valid =
+      !!s && RESUMABLE.includes(s.screen) && typeof s.name === "string" && s.name.length > 0 &&
+      s.favColor in COLOR_LABEL && s.motherColor in MOTHER_LABEL &&
+      Array.isArray(s.toyOrder) && s.toyOrder.length === 5 && s.toyOrder.every((t) => TOYS.includes(t)) &&
+      typeof s.cordura === "number" && !!s.facts && Array.isArray(s.ch1) && Array.isArray(s.ch2Items) &&
+      Array.isArray(s.ch2Placed) && typeof s.ch3Rounds === "number";
+    return valid ? s : null;
+  } catch {
+    return null;
+  }
+}
 
 const MEM_KEY = "mwbb-memory-v1";
 export type Memory = { runs: number; lastName?: string; lastToy?: ToyId; lastEnding?: "composed" | "crying" };
@@ -145,6 +223,9 @@ export function loadMemory(): Memory {
 }
 export function saveMemory(m: Memory) {
   try { localStorage.setItem(MEM_KEY, JSON.stringify(m)); } catch { /* ignore */ }
+}
+export function forgetMemory() {
+  try { localStorage.removeItem(MEM_KEY); } catch { /* ignore */ }
 }
 
 export function sanitizeName(raw: string): string {

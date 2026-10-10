@@ -1,20 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BG, TOY_IMG } from "../assets";
-import { COLOR_LABEL, MOTHER_LABEL, loadMemory, sanitizeName, saveMemory, useGame, type ColorKey } from "../store";
+import {
+  CHAPTER_TITLE, COLOR_LABEL, MOTHER_LABEL, forgetMemory, loadMemory, loadSave, sanitizeName, saveMemory, useGame,
+  type ColorKey, type Screen,
+} from "../store";
 import { sfx, startMusic, stopMusic, unlockAudio } from "../audio";
 import { GuestVoid } from "../Props";
 import { resetOnce } from "../kit";
+import { DialogueBar, Shell } from "../Shell";
+
+const CHAPTER_OF: Partial<Record<Screen, number>> = { ch1: 1, ch2k: 2, ch2d: 2, ch3: 3, ch4: 4, ch5: 5 };
+
+/* ---------------- TITLE / START MENU ---------------- */
+
+type Panel = "menu" | "how" | "settings";
 
 export function Title() {
-  const s = useGame();
+  const muted = useGame((s) => s.muted);
   const [mem, setMem] = useState<{ runs: number }>({ runs: 0 });
-  useEffect(() => setMem(loadMemory()), []);
+  const [saved, setSaved] = useState<Screen | null>(null);
+  const [panel, setPanel] = useState<Panel>("menu");
+  const [confirmNew, setConfirmNew] = useState(false);
+  useEffect(() => {
+    setMem(loadMemory());
+    setSaved(loadSave()?.screen ?? null);
+  }, []);
+
+  const newGame = () => {
+    if (saved && !confirmNew) { setConfirmNew(true); sfx("tap"); return; }
+    unlockAudio(); sfx("chime"); resetOnce();
+    const s = useGame.getState();
+    s.newRun(); s.go("intro");
+  };
+  const resume = () => {
+    unlockAudio(); sfx("chime"); resetOnce();
+    if (useGame.getState().continueRun() && useGame.getState().screen !== "ch4") startMusic();
+  };
+  const open = (p: Panel) => { unlockAudio(); sfx("tap"); setPanel(p); setConfirmNew(false); };
+  const savedChapter = saved ? CHAPTER_OF[saved] : undefined;
+
   return (
-    <div className="game-frame">
+    <Shell bars={false}>
       <img src={BG.bgTitle} alt="A small handmade house at dusk" className="scene-bg" style={{ objectPosition: "50% 50%" }} />
-      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, oklch(0.12 0.04 275 / .2), transparent 40%, oklch(0.06 0.02 275 / .85) 100%)" }} />
-      <div className="absolute inset-x-0 top-[8%] px-6 text-center">
-        <h1 className="title-word text-[13vw] leading-[0.9] text-paper drop-shadow-[0_4px_0_var(--wood)] sm:text-6xl">
+      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, oklch(0.12 0.04 275 / .2), transparent 40%, oklch(0.06 0.02 275 / .55) 70%, oklch(0.06 0.02 275 / .92) 100%)" }} />
+      <div className="absolute inset-x-0 top-[7%] px-6 text-center">
+        <h1 className="title-word text-[13cqw] leading-[0.9] text-paper drop-shadow-[0_4px_0_var(--wood)]">
           <span className="block">MOMMY</span>
           <span className="block text-[0.62em] text-honey">will be</span>
           <span className="relative block">
@@ -23,22 +53,85 @@ export function Title() {
             </span>K
           </span>
         </h1>
-        <p className="mx-auto mt-4 max-w-[16rem] font-hand text-base text-paper/80">
-          {mem.runs > 0 ? "The house remembers you." : "Be good while she's gone. It won't take long."}
-        </p>
+        {panel === "menu" && (
+          <p className="mx-auto mt-3 max-w-[16rem] font-hand text-base text-paper/85 drop-shadow">
+            {mem.runs > 0 ? "The house remembers you." : "Be good while she's gone. It won't take long."}
+          </p>
+        )}
       </div>
-      <div className="absolute inset-x-0 bottom-[8%] flex flex-col items-center gap-3">
-        <button
-          className="stitch-btn honey text-lg"
-          onClick={() => { unlockAudio(); sfx("chime"); resetOnce(); s.newRun(); s.go("intro"); }}
-        >
-          Open the little house
-        </button>
-        <p className="font-hand text-xs text-paper/60">Psychological horror · best with sound · subtitles always on</p>
+
+      {panel === "menu" && (
+        <nav className="absolute inset-x-0 bottom-[6%] flex flex-col items-center gap-3 px-[12%] animate-float-up" aria-label="Main menu">
+          {saved ? (
+            <>
+              <button type="button" className="stitch-btn honey w-full text-lg leading-tight" onClick={resume}>
+                Continue
+                {savedChapter && (
+                  <span className="block font-hand text-sm opacity-75">Chapter {savedChapter} · {CHAPTER_TITLE[savedChapter]}</span>
+                )}
+              </button>
+              <button type="button" className={`stitch-btn w-full ${confirmNew ? "" : "ghost"}`} onClick={newGame}>
+                {confirmNew ? "Start over? Tap again" : "New game"}
+              </button>
+            </>
+          ) : (
+            <button type="button" className="stitch-btn honey w-full text-lg" onClick={newGame}>
+              Open the little house
+            </button>
+          )}
+          <div className="grid w-full grid-cols-2 gap-3">
+            <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("how")}>How to play</button>
+            <button type="button" className="stitch-btn ghost px-2 text-sm" onClick={() => open("settings")}>Settings</button>
+          </div>
+          <p className="mt-1 text-center font-hand text-xs text-paper/60">Psychological horror · best with sound · subtitles always on</p>
+        </nav>
+      )}
+
+      {panel === "how" && (
+        <MenuPanel title="How to play" onBack={() => open("menu")}>
+          <ul className="space-y-2 text-left font-hand text-[clamp(13px,3.8cqw,15px)] leading-snug">
+            <li><b className="font-display">Tap</b> things in the house to look at them, open them and pick them up.</li>
+            <li><b className="font-display">The light switch</b> sits at the bottom of the screen. In the dark you hold a small light — drag your finger to look around. Some things only show in the dark.</li>
+            <li><b className="font-display">Cordura</b> rises in the dark and when something frightens you. Light brings it back down. If it fills up, you'll have to try that part again.</li>
+            <li><b className="font-display">Subtitles</b> are always on. Tap them to skip ahead. Mommy's list shows what to do next.</li>
+          </ul>
+        </MenuPanel>
+      )}
+
+      {panel === "settings" && (
+        <MenuPanel title="Settings" onBack={() => open("menu")}>
+          <div className="space-y-3">
+            <button type="button" className="stitch-btn sage w-full" aria-pressed={!muted}
+              onClick={() => { unlockAudio(); useGame.getState().setMute(!muted); if (muted) sfx("chime"); }}>
+              {muted ? "Sound: off" : "Sound: on"}
+            </button>
+            <button type="button" className="stitch-btn w-full" disabled={mem.runs === 0}
+              onClick={() => { forgetMemory(); setMem({ runs: 0 }); sfx("whisper"); }}>
+              {mem.runs === 0 ? "The house doesn't know you" : "Make the house forget you"}
+            </button>
+            <p className="text-xs leading-snug opacity-70">
+              The house remembers your past visits on this device, and the game keeps your place at the start of each chapter.
+            </p>
+          </div>
+        </MenuPanel>
+      )}
+    </Shell>
+  );
+}
+
+function MenuPanel({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
+  return (
+    <div className="absolute inset-x-[6%] bottom-[5%] flex max-h-[66%] flex-col" role="dialog" aria-label={title}>
+      <div className="paper flex min-h-0 flex-1 flex-col p-5 animate-float-up">
+        <p className="title-word text-center text-2xl">{title}</p>
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
+        <button type="button" className="stitch-btn honey mt-4 w-full" onClick={onBack}>Back</button>
       </div>
     </div>
   );
 }
+
+/* ---------------- INTRO ---------------- */
 
 const COLORS: ColorKey[] = ["rose", "sage", "honey", "turq"];
 
@@ -47,43 +140,46 @@ export function Intro() {
   const [raw, setRaw] = useState("");
   const [step, setStep] = useState(0);
   const name = sanitizeName(raw);
+  const confirmName = () => { if (name) { sfx("tap"); setStep(1); } };
   return (
-    <div className="game-frame">
+    <Shell bars={false}>
       <img src={BG.bgPlayroom} alt="" className="scene-bg" style={{ objectPosition: "15% 50%" }} />
       <div className="absolute inset-0 bg-void/30" />
       {/* Mother: a felt silhouette by the door */}
-      <svg viewBox="0 0 60 160" className="absolute bottom-[8%] right-[6%] h-[42%] drop-shadow-2xl" aria-hidden>
+      <svg viewBox="0 0 60 160" className="absolute bottom-[4%] right-[7%] h-[38%] drop-shadow-2xl" aria-hidden>
         <circle cx="30" cy="22" r="14" fill="oklch(0.78 0.05 60)" />
         <path d="M16 18 Q30 -4 44 18 Q46 34 40 40 L20 40 Q14 34 16 18 Z" fill="oklch(0.35 0.05 40)" />
         <path d="M14 46 Q30 36 46 46 L56 156 L4 156 Z" fill={`var(--c-${s.motherColor})`} />
         <path d="M18 50 L42 50" stroke="var(--paper)" strokeDasharray="3 3" />
         <rect x="44" y="96" width="14" height="18" rx="3" fill="var(--wood-light)" />
       </svg>
-      <div className="absolute inset-x-[6%] top-[10%] paper animate-float-up p-5">
+      <div className="absolute inset-x-[6%] top-[5%] paper animate-float-up p-5">
         {step === 0 && (
-          <>
-            <p className="font-display text-lg leading-snug">"I'm popping out for groceries, sweetheart. What do I call you while I'm gone?"</p>
+          <form onSubmit={(e) => { e.preventDefault(); confirmName(); }}>
+            <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">"I'm popping out for groceries, sweetheart. What do I call you while I'm gone?"</p>
             <label className="mt-4 block text-xs uppercase tracking-widest opacity-60" htmlFor="nm">Your name</label>
             <input
               id="nm" value={raw} maxLength={14} onChange={(e) => setRaw(e.target.value)}
               className="mt-1 w-full rounded-md border-2 border-dashed border-wood-light bg-paper-deep/60 px-3 py-2 font-hand text-xl text-ink outline-none focus:border-honey"
-              placeholder="e.g. Lucía" autoComplete="off"
+              placeholder="e.g. Lucía" autoComplete="off" autoCapitalize="words" enterKeyHint="done"
             />
-            <button className="stitch-btn sage mt-4 w-full" disabled={!name} onClick={() => setStep(1)}>That's me</button>
-          </>
+            <button type="submit" className="stitch-btn sage mt-4 w-full" disabled={!name}>That's me</button>
+          </form>
         )}
         {step === 1 && (
           <>
-            <p className="font-display text-lg leading-snug">"And your favourite colour, {name}? I'll get you a new cup."</p>
-            <div className="mt-4 grid grid-cols-4 gap-3">
+            <p className="font-display text-[clamp(15px,4.6cqw,19px)] leading-snug">"And your favourite colour, {name}? I'll get you a new cup."</p>
+            <div className="mt-4 grid grid-cols-4 gap-3" role="radiogroup" aria-label="Favourite colour">
               {COLORS.map((c) => (
-                <button key={c} onClick={() => s.set({ favColor: c })} aria-label={COLOR_LABEL[c]}
-                  className={`aspect-square rounded-full shadow-md transition ${s.favColor === c ? "ring-4 ring-ink ring-offset-2 ring-offset-paper" : ""}`}
+                <button key={c} type="button" role="radio" aria-checked={s.favColor === c} onClick={() => { sfx("tap"); s.set({ favColor: c }); }} aria-label={COLOR_LABEL[c]}
+                  className={`aspect-square rounded-full shadow-md transition ${s.favColor === c ? "scale-105 ring-4 ring-ink ring-offset-2 ring-offset-paper" : ""}`}
                   style={{ background: `var(--c-${c})`, outline: "2px dashed oklch(1 0 0 / .6)", outlineOffset: -5 }} />
               ))}
             </div>
-            <p className="mt-3 text-sm opacity-70">She buttons her {MOTHER_LABEL[s.motherColor]} coat.</p>
-            <button className="stitch-btn mt-4 w-full" onClick={() => {
+            <p className="mt-3 text-sm opacity-70">
+              <span className="font-display">{COLOR_LABEL[s.favColor]}</span> it is. She buttons her {MOTHER_LABEL[s.motherColor]} coat.
+            </p>
+            <button type="button" className="stitch-btn mt-4 w-full" onClick={() => {
               s.set({ name });
               startMusic();
               s.go("ch1");
@@ -96,13 +192,16 @@ export function Intro() {
           </>
         )}
       </div>
-    </div>
+    </Shell>
   );
 }
+
+/* ---------------- FINAL ---------------- */
 
 export function Final() {
   const s = useGame();
   const [phase, setPhase] = useState<"blackout" | "door">("blackout");
+  const [canRun, setCanRun] = useState(false);
   useEffect(() => {
     stopMusic();
     s.set({ interactive: false, lightsOn: false, objective: "" });
@@ -113,35 +212,34 @@ export function Final() {
       sfx("open");
       useGame.getState().say([
         { speaker: "narrator", text: "A key turns in the front door. Warm light spills across the floor." },
-        { speaker: "mother", text: `${s.name || "Sweetheart"}? I'm home! I'm so sorry I took so long.` },
+        { speaker: "mother", text: `${s.name || "Sweetheart"}? I'm home! I'm so sorry I took so long.`, onShow: () => setCanRun(true) },
       ]);
     }, 5000);
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  if (phase === "blackout") {
-    return (
-      <div className="game-frame grid place-items-center bg-void">
-        <p className="subtitle guest px-4 py-3 text-lg animate-float-up [animation-delay:1.2s]">{s.name || "little one"}…</p>
-      </div>
-    );
-  }
   return (
-    <div className="game-frame">
-      <img src={BG.bgHallway} alt="The front door opening" className="scene-bg" style={{ objectPosition: "60% 50%" }} />
-      <GuestVoid style={{ left: "2%", top: "8%", height: "70%", opacity: 0.6 }} intensity={0.6} />
-      {s.line && (
-        <button onClick={() => s.nextLine()} className={`subtitle absolute bottom-[18%] left-[5%] right-[5%] px-4 py-3 text-left animate-float-up`}>
-          {s.line.speaker === "mother" && <span className="block text-xs uppercase tracking-widest opacity-70">Mommy</span>}
-          {s.line.text}
-        </button>
+    <Shell bottom={<DialogueBar />}>
+      {phase === "blackout" ? (
+        <div className="absolute inset-0 grid place-items-center bg-void">
+          <p className="subtitle guest px-4 py-3 text-lg animate-float-up [animation-delay:1.2s]">{s.name || "little one"}…</p>
+        </div>
+      ) : (
+        <>
+          <img src={BG.bgHallway} alt="The front door opening" className="scene-bg animate-in fade-in duration-1000" style={{ objectPosition: "60% 50%" }} />
+          <GuestVoid style={{ left: "2%", top: "8%", height: "70%", opacity: 0.6 }} intensity={0.6} />
+          {canRun && (
+            <div className="absolute inset-x-0 bottom-[6%] flex justify-center animate-float-up">
+              <button type="button" className="stitch-btn honey text-lg" onClick={() => { s.set({ line: undefined, queue: [] }); s.go("ending"); }}>Run to Mommy</button>
+            </div>
+          )}
+        </>
       )}
-      <div className="absolute inset-x-0 bottom-[5%] flex justify-center">
-        <button className="stitch-btn honey text-lg" onClick={() => { s.set({ line: undefined, queue: [] }); s.go("ending"); }}>Run to Mommy</button>
-      </div>
-    </div>
+    </Shell>
   );
 }
+
+/* ---------------- ENDING ---------------- */
 
 export function Ending() {
   const s = useGame();
@@ -153,25 +251,28 @@ export function Ending() {
     saveMemory({ runs: (m.runs || 0) + 1, lastName: s.name, lastToy: toy, lastEnding: crying ? "crying" : "composed" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const again = () => { unlockAudio(); sfx("chime"); resetOnce(); s.newRun(); s.go("intro"); };
   return (
-    <div className="game-frame">
+    <Shell bars={false}>
       <img src={BG.bgHallway} alt="" className="scene-bg" style={{ objectPosition: "55% 50%", filter: "saturate(1.1)" }} />
       <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 45%, oklch(0.85 0.12 75 / .35), transparent 60%)" }} />
       <GuestVoid style={{ left: "1%", top: "6%", height: "74%" }} intensity={0.5} />
-      <img src={TOY_IMG[toy]} alt="" className="absolute bottom-[30%] left-[52%] w-[16%] drop-shadow-xl" />
+      {/* your toy stays behind, in the room with no light */}
+      <img src={TOY_IMG[toy]} alt="" className="absolute left-[12%] top-[34%] w-[15%] drop-shadow-xl" style={{ filter: "brightness(.55) saturate(.6)" }} />
       <div className="absolute inset-x-[6%] bottom-[5%] paper animate-float-up p-5">
         <p className="font-hand text-xs uppercase tracking-widest opacity-60">{crying ? "Ending — Tears" : "Ending — Brave"}</p>
-        <p className="mt-2 font-display text-[17px] leading-snug">
+        <p className="mt-2 font-display text-[clamp(15px,4.4cqw,17px)] leading-snug">
           {crying
             ? `Mommy finds ${s.name || "you"} in the hall, crying too hard to speak. She holds on and doesn't ask. She doesn't need to. She can see it in your eyes.`
             : `Mommy finds ${s.name || "you"} in the hall, pale but standing. "Were you good?" You nod. You don't tell her about the room upstairs.`}
         </p>
         <p className="mt-3 text-sm opacity-70">Behind you, in the room with no light, something sets a fourth place at the table.</p>
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs opacity-60">Cordura at bedtime: {c}</span>
-          <button className="stitch-btn sage" onClick={() => { s.newRun(); s.go("title"); }}>Again</button>
+        <p className="mt-3 text-xs opacity-60">Cordura at bedtime: {c}</p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button type="button" className="stitch-btn" onClick={() => { s.newRun(); s.go("title"); }}>Menu</button>
+          <button type="button" className="stitch-btn sage" onClick={again}>Play again</button>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }

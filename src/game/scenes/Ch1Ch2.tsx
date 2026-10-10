@@ -3,7 +3,7 @@ import { Stage, illuminated } from "../Stage";
 import { BG, TOY_IMG } from "../assets";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
-import { ChapterCard, useSceneIntro } from "../kit";
+import { useSceneIntro } from "../kit";
 import { sfx } from "../audio";
 import { chooseInterventions } from "../guest";
 
@@ -43,6 +43,7 @@ export function Ch1() {
     if (got(r4)) return;
     const id = window.setInterval(() => {
       const st = useGame.getState();
+      if (st.paused) return;
       if (st.lightsOn || !st.interactive) { litMs.current = 0; return; }
       setPos4((p) => {
         if (illuminated(p.x, p.y, 2)) {
@@ -60,6 +61,18 @@ export function Ch1() {
     return () => window.clearInterval(id);
   }, [r4, s.ch1.length]);
 
+  // Once the easy toys are away, Mommy's list points at the one that only moves in the dark.
+  const darkHint = !got(r4) && s.ch1.length >= 2;
+  useEffect(() => {
+    if (useGame.getState().ch1.length >= 5) return;
+    s.set({
+      objective: darkHint
+        ? "One toy is never where you left it. It only moves in the dark — hold it in your light, then grab it."
+        : "Put all five toys in the toy box.",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [darkHint]);
+
   // Done -> lights fail, the Guest speaks.
   useEffect(() => {
     if (s.ch1.length === 5 && !ended.current) {
@@ -69,7 +82,11 @@ export function Ch1() {
       window.setTimeout(() => useGame.getState().say([
         { speaker: "guest", text: "You tidy so nicely." },
         { speaker: "guest", text: `You picked up the ${TOY_LABEL[useGame.getState().facts.firstToy ?? r1]} first. I'll remember that.` },
-        { speaker: "narrator", text: "The lights come back on. Someone is setting the table downstairs." },
+        {
+          speaker: "narrator",
+          text: "The lights come back on. Someone is setting the table downstairs.",
+          onShow: () => { sfx("switch"); useGame.getState().set({ lightsOn: true }); },
+        },
       ]), 1800);
       window.setTimeout(() => useGame.getState().go("ch2k"), 11000);
     }
@@ -91,7 +108,7 @@ export function Ch1() {
 
   return (
     <Stage
-      bg={BG.bgPlayroom} bgPos="15% 50%" chapter={1}
+      bg={BG.bgPlayroom} bgPos="15% 50%" chapter={1} chapterCard progress={`Toys ${s.ch1.length}/5`}
       guest={{ x: 88, y: 18, h: 60, show: s.ch1.length >= 3 }}
       clues={
         !got(r5) && (
@@ -106,17 +123,16 @@ export function Ch1() {
         )
       }
     >
-      <ChapterCard n={1} title="The Playroom" />
       <ToyBox style={{ left: "58%", top: "76%", width: "32%" }} glow={!!flying} />
-      <div className="absolute left-[60%] top-[72%] font-hand text-sm text-paper drop-shadow">{s.ch1.length}/5</div>
 
       {/* Toy 1 — on the floor */}
       <Toy t={r1} x={42} y={66} w={19} />
 
       {/* Toy 2 — under the sofa cushion */}
-      <Toy t={r2} x={24} y={43} w={14} />
+      {cushionMoved && <Toy t={r2} x={24} y={43} w={14} />}
       <button aria-label="Move the cushion" onClick={() => { if (cushionMoved) useGame.getState().fact({ revisits: s.facts.revisits + 1 }); setCushion(!cushionMoved); sfx("open"); }}
-        className="absolute transition-transform duration-500" style={{ left: "14%", top: "38%", width: "21%", transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none" }}>
+        className="absolute transition-transform duration-500"
+        style={{ left: "14%", top: "38%", width: "21%", zIndex: cushionMoved ? 5 : 30, transform: cushionMoved ? "translate(-60%, -20%) rotate(-24deg)" : "none" }}>
         <Cushion color="var(--sage)" style={{ position: "static", width: "100%" }} />
       </button>
 
@@ -132,9 +148,6 @@ export function Ch1() {
           className="absolute z-10" style={flying === r4 ? flyStyle(r4, 0, 0, 12) : { left: `${pos4.x}%`, top: `${pos4.y}%`, width: "15%", transform: `translate(-50%,-50%) rotate(${frozen ? 0 : Math.sin(pos4.x) * 8}deg)` }}>
           <img src={TOY_IMG[r4]} alt="" className="w-full" style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }} draggable={false} />
         </button>
-      )}
-      {!got(r4) && s.lightsOn && s.ch1.length >= 2 && (
-        <p className="absolute left-[6%] top-[60%] max-w-[40%] font-hand text-sm text-paper/80 drop-shadow">One toy is never where you left it. It only moves when it's dark.</p>
       )}
 
       {/* Toy 5 — under the rug edge */}
@@ -200,14 +213,16 @@ export function Ch2Kitchen() {
   };
   return (
     <Stage
-      bg={BG.bgKitchen} bgPos="50% 50%" chapter={2}
+      bg={BG.bgKitchen} bgPos="50% 50%" chapter={2} chapterCard progress={`Tray ${s.ch2Items.length}/6`}
       clues={UNITS.map((u, i) =>
         u.contents.some((c) => remaining.includes(c as ItemId)) && !open.includes(i) ? (
           <div key={i} className="glow-clue absolute rounded-md border-2 border-current" style={{ left: `${u.x}%`, top: `${u.y}%`, width: `${u.w}%`, height: u.kind === "door" ? "17.5%" : "9.7%" }} />
         ) : null,
       )}
     >
-      <ChapterCard n={2} title="Table for Three" />
+      {/* cabinet body the doors and drawers are set into */}
+      <div className="pointer-events-none absolute left-[1.5%] right-[1.5%] top-[58%] h-[31%] rounded-md"
+        style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact), inset 0 2px 0 oklch(1 0 0 / .15)" }} />
       {UNITS.map((u, i) => {
         const isOpen = open.includes(i);
         const toggle = () => { sfx("open"); setOpen(isOpen ? open.filter((o) => o !== i) : [...open, i]); };
@@ -260,7 +275,9 @@ export function Ch2Kitchen() {
         ))}
       </div>
       {s.ch2Items.length === 6 && (
-        <button className="stitch-btn honey absolute left-1/2 top-[38%] z-20 -translate-x-1/2 animate-float-up" onClick={() => s.go("ch2d")}>Carry the tray to the table</button>
+        <div className="pointer-events-none absolute inset-x-0 bottom-[54%] z-20 flex justify-center animate-float-up">
+          <button className="stitch-btn honey pointer-events-auto whitespace-nowrap text-[clamp(13px,4.2cqw,16px)]" onClick={() => { sfx("tap"); s.go("ch2d"); }}>Carry the tray to the table</button>
+        </div>
       )}
     </Stage>
   );
@@ -334,7 +351,7 @@ export function Ch2Dining() {
 
   return (
     <Stage
-      bg={BG.bgDining} bgPos="50% 50%" chapter={2}
+      bg={BG.bgDining} bgPos="50% 50%" chapter={2} progress={`Table ${correct}/6`}
       guest={{ x: 50, y: 22, h: 46, show: correct >= 1 }}
       clues={
         <>
@@ -364,7 +381,7 @@ export function Ch2Dining() {
         </div>
       )}
       {/* Tray */}
-      <div className="absolute bottom-[3%] left-[4%] right-[22%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))" }}>
+      <div className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center gap-1 rounded-lg px-2" style={{ background: "linear-gradient(var(--wood-light), var(--wood))", boxShadow: "var(--shadow-contact)" }}>
         {(s.ch2Items as ItemId[]).filter((i) => !placed.includes(i)).map((i) => (
           <button key={i} onClick={() => { sfx("tap"); setSel(sel === i ? null : i); }} aria-label={`Pick ${i}`}
             className={`h-full flex-1 rounded transition ${sel === i ? "-translate-y-2 bg-honey/40" : ""}`}>
