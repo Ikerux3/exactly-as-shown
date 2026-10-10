@@ -1,6 +1,6 @@
-// The Guest's director chooses only from a validated list of interventions using
-// structured game facts. Gemini interprets one player preference when configured;
-// this director stays deterministic so the whole game remains playable offline.
+// The local Guest director chooses only from a validated list of interventions.
+// Gemini can add grounded reactions at safe checkpoints, while these deterministic
+// rules keep the whole game playable and adaptive offline.
 import { TOY_LABEL, type Facts } from "./store";
 
 export const GUEST_MIND_LABEL = "Guest mind: Gemini adaptive director · validated offline fallback";

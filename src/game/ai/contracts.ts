@@ -59,3 +59,39 @@ export type AdaptiveContext = {
     previousRuns: number;
   };
 };
+
+export const REALTIME_EVENTS = [
+  "round_complete",
+  "mistake_streak",
+  "puzzle_solved",
+  "tasks_complete",
+  "search_miss",
+] as const;
+export const REALTIME_ACTIONS = ["ease", "hold", "escalate"] as const;
+
+export type RealtimeEvent = (typeof REALTIME_EVENTS)[number];
+export type RealtimeAction = (typeof REALTIME_ACTIONS)[number];
+
+export type RealtimeObservation = {
+  recentMistakes: number;
+  round?: number;
+  elapsedMs?: number;
+  choice?: string;
+};
+
+export type RealtimeContext = AdaptiveContext & {
+  checkpoint: string;
+  event: RealtimeEvent;
+  name?: string;
+  firstToy?: string;
+  recent: RealtimeObservation;
+  previousLines: string[];
+};
+
+export type RealtimeDecision = {
+  action: RealtimeAction;
+  line: string;
+  groundedIn: string;
+  fallbackUsed: boolean;
+  provider: "gemini" | "offline";
+};
