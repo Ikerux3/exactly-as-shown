@@ -254,7 +254,7 @@ export function Final() {
     const st = useGame.getState();
     // Unique exception to the standard darkness timer: six seconds add just +5 TOTAL.
     // No Stage is mounted in the finale, so the regular 100% reset cannot run here.
-    const frozen = Math.min(100, st.cordura + 5);
+    const frozen = st.finalCordura ?? Math.min(100, st.cordura + 5);
     st.set({ interactive: false, lightsOn: false, objective: "", cordura: frozen, finalCordura: frozen });
     sfx("heartbeat");
     const beating = window.setInterval(() => sfx("heartbeat"), 960);
