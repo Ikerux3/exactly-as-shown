@@ -63,6 +63,7 @@
   /* Horror palette */
   --night: oklch(0.16 0.04 275);
   --void: oklch(0.06 0.01 270);
+  --studio-background: oklch(0 0 0);
   --crimson: oklch(0.45 0.15 22);
   --glow: oklch(0.88 0.1 160);
 
@@ -536,3 +537,7 @@
 .dish-drop { animation: dish-drop .9s ease-in both; }
 @keyframes dish-drop { 0%, 15% { transform: none; opacity: 1; } 100% { transform: translateY(65%) rotate(28deg) scale(.7); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .toy-bounce, .swipe-hand, .carry-table, .jumpscare-img, .smile-rise, .dish-shard, .dish-drop { animation: none !important; } }
+.studio-splash { background: var(--studio-background); }
+.studio-logo { animation: studio-intro 2.6s ease-in-out both; }
+@keyframes studio-intro { 0% { opacity: 0; } 22%, 82% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .studio-logo { animation: none; } }

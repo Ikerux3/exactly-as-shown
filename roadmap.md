@@ -5,3 +5,5 @@
 - [x] Offline toy/food visual variety for player preferences.
 - [x] Chapter one dark wandering, pointer avoidance, opening chest and varied hiding places.
 - [x] Regression tests and desktop/mobile interaction checks.
+- [ ] Verify the interrupted quality-of-life patch and resolve remaining regressions.
+- [ ] MUFI opening splash and uploaded eye favicon, with browser verification.

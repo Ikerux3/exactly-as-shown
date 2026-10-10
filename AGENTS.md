@@ -21,3 +21,4 @@
 - Apply sanity displacement only to scene artwork, never overlay roots or SVG definitions — prevents blank rooms and moving flashlight masks.
 - Curated preference props resolve through assets.ts and curated cache keys before image generation — known toy preferences stay visually distinct offline without changing the five checkpoint slots.
 - Kitchen close-ups lock Stage navigation and use a full-frame shelf photograph; dining begins at the packing table — keeps object picking and touch placement separate from wall gestures.
+- The studio splash mounts once per app opening before any game scene, with image-load timing, a tap skip and a timeout fallback — chapter changes and menu returns must not replay it or get stuck on a failed image.
