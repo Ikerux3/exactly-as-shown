@@ -783,12 +783,13 @@ export function Ch2Dining() {
   return (
     <Stage
       bg={BG.bgDining}
+      spread
       bgPos="50% 50%"
       chapter={2}
       progress={`Table ${correct}/6`}
       guest={{ x: 50, y: 22, h: 46, show: correct >= 1 }}
       clues={
-        <>
+        <OnWall n={0}>
           {(["L", "R"] as const).map((side) => {
             const owner: Owner = (side === "L") === childLeft ? "child" : "mother";
             const x = side === "L" ? 25 : 75;
@@ -823,9 +824,10 @@ export function Ch2Dining() {
               </div>
             );
           })}
-        </>
+        </OnWall>
       }
     >
+      <OnWall n={0}>
       {/* Seat colors match the player's answer and the dress from Mom's introduction. */}
       <div
         className="pointer-events-none absolute left-[15%] top-[41%] h-[10%] w-[22%] rounded-t-lg border-4 border-wood shadow-md"
@@ -837,10 +839,15 @@ export function Ch2Dining() {
       />
       <Mat side="L" x={25} />
       <Mat side="R" x={75} />
+      </OnWall>
+      {/* The Guest scatters its corrupted third place to DIFFERENT walls. */}
+      <div className="pointer-events-none absolute top-[7%] left-[8%] z-30 rounded bg-void/70 px-2 py-1 text-xs text-paper">
+        {intruders.length ? "Something was laid out elsewhere in the room…" : "Table for Mommy and you"}
+      </div>
       {/* The Guest's plate, fork and glass appear one per blackout, removable in light. */}
       {intruders.map((id) => (
+        <OnWall key={id} n={id + 1}>
         <button
-          key={id}
           type="button"
           disabled={!s.lightsOn || !s.interactive}
           aria-label={"Remove corrupt " + (["plate", "fork", "glass"][id] ?? "utensil")}
@@ -848,18 +855,21 @@ export function Ch2Dining() {
             sfx("chime");
             setIntruders((items) => items.filter((i) => i !== id));
           }}
-          className="absolute z-20 grid h-[8%] w-[13%] place-items-center rounded-lg border-2 border-crimson bg-void text-2xl text-paper disabled:opacity-50"
-          style={{ left: 34 + id * 15 + "%", top: "33%" }}
+          className="absolute z-40 grid min-h-14 min-w-14 h-[13%] w-[25%] touch-manipulation place-items-center rounded-lg border-2 border-crimson bg-void text-3xl text-paper shadow-lg active:scale-[0.96] focus-visible:outline-4 focus-visible:outline-honey disabled:opacity-50"
+          style={{ left: 35 + id * 9 + "%", top: "49%" }}
         >
           {["🍽️", "🍴", "🥛"][id]}
         </button>
+        </OnWall>
       ))}
+      <OnWall n={0}>
       {third && (
         <div className="absolute left-1/2 top-[52%] w-[22%] -translate-x-1/2 animate-float-up text-center">
           <Plate color={col.child} style={{ width: "100%" }} />
           <p className="font-hand text-xs leading-tight text-paper drop-shadow">{s.favFood}</p>
         </div>
       )}
+      </OnWall>
       {/* Tray */}
       <div
         className="absolute bottom-[3%] left-[4%] right-[4%] flex h-[10%] items-center justify-center gap-1 rounded-lg px-2"
