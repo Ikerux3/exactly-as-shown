@@ -25,6 +25,7 @@ export type ToyInterpretation = {
   category: ToyCategory;
   displayToy: string;
   monsterLine: string;
+  customVisual: boolean;
   fallbackUsed: boolean;
   provider: "gemini" | "offline";
 };

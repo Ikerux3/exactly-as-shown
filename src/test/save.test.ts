@@ -101,4 +101,22 @@ describe("chapter checkpoint save", () => {
     expect(useGame.getState().facts.dialogueSkips).toBe(0);
     expect(useGame.getState().facts.choiceTrail).toEqual([]);
   });
+
+  it("persists only the generated toy cache key, never its image bytes", () => {
+    const s = useGame.getState();
+    s.set({
+      name: "Lucia",
+      favToy: "Formula One car",
+      favToyVisualSlot: "train",
+      favToyAssetKey: "v1-example",
+      favToyImage: "data:image/png;base64,very-large-image",
+    });
+    s.go("ch3");
+
+    const raw = localStorage.getItem("mwbb-save-v1")!;
+    const save = loadSave();
+    expect(save?.favToyVisualSlot).toBe("train");
+    expect(save?.favToyAssetKey).toBe("v1-example");
+    expect(raw).not.toContain("very-large-image");
+  });
 });

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AdaptiveChapter, AdaptivePlan, RealtimeDecision } from "./ai/contracts";
+import { restoreFavoriteToyImage } from "./ai/toy-image";
 import { setMuted as setAudioMuted } from "./audio";
 
 export type Screen =
@@ -82,6 +83,12 @@ type State = {
   favFood?: string | undefined;
   favToy?: string | undefined;
   favToyId?: ToyId | undefined;
+  /** Static slot replaced by the generated favourite-toy prop. */
+  favToyVisualSlot?: ToyId | undefined;
+  /** Small persistent cache key; the generated image bytes never enter localStorage. */
+  favToyAssetKey?: string | undefined;
+  /** Runtime data/blob URL, deliberately excluded from chapter saves. */
+  favToyImage?: string | undefined;
   /** What the Guest says about your favourite toy; spoken at the end of the prologue. */
   introGuestLine?: string | undefined;
   toyOrder: [ToyId, ToyId, ToyId, ToyId, ToyId]; // role index -> toy
@@ -122,6 +129,8 @@ type Actions = {
   observeChoice: (choice: string) => void;
   useHint: () => void;
   inspect: (choice?: string) => void;
+  setFavoriteToyAsset: (asset: { key: string; imageUrl: string }) => void;
+  hydrateFavoriteToyAsset: () => Promise<void>;
   newRun: () => void;
   continueRun: () => boolean;
   setMute: (m: boolean) => void;
@@ -144,6 +153,9 @@ const initial = (): Omit<State, "muted"> => ({
   favFood: undefined,
   favToy: undefined,
   favToyId: undefined,
+  favToyVisualSlot: undefined,
+  favToyAssetKey: undefined,
+  favToyImage: undefined,
   introGuestLine: undefined,
   toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]) as State["toyOrder"],
   cordura: 0,
@@ -270,6 +282,17 @@ export const useGame = create<State & Actions>((set, get) => ({
     set((s) => ({ facts: { ...s.facts, inspections: s.facts.inspections + 1 } }));
     if (choice) get().observeChoice(choice);
   },
+  setFavoriteToyAsset: ({ key, imageUrl }) => {
+    set({ favToyAssetKey: key, favToyImage: imageUrl });
+    const state = get();
+    if (RESUMABLE.includes(state.screen)) writeSave(state);
+  },
+  hydrateFavoriteToyAsset: async () => {
+    const { favToyAssetKey, favToyImage } = get();
+    if (!favToyAssetKey || favToyImage) return;
+    const imageUrl = await restoreFavoriteToyImage(favToyAssetKey);
+    if (imageUrl && get().favToyAssetKey === favToyAssetKey) set({ favToyImage: imageUrl });
+  },
   newRun: () => {
     const muted = get().muted;
     const prev = loadMemory();
@@ -291,6 +314,7 @@ export const useGame = create<State & Actions>((set, get) => ({
       screen: "title",
     });
     get().go(save.screen);
+    void get().hydrateFavoriteToyAsset();
     return true;
   },
   setMute: (m) => {
@@ -328,6 +352,8 @@ type Save = Pick<
   | "favFood"
   | "favToy"
   | "favToyId"
+  | "favToyVisualSlot"
+  | "favToyAssetKey"
   | "toyOrder"
   | "cordura"
   | "facts"
@@ -348,6 +374,8 @@ function writeSave(s: State) {
     favFood: s.favFood,
     favToy: s.favToy,
     favToyId: s.favToyId,
+    favToyVisualSlot: s.favToyVisualSlot,
+    favToyAssetKey: s.favToyAssetKey,
     toyOrder: s.toyOrder,
     cordura: s.cordura,
     facts: s.facts,

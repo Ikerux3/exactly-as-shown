@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, illuminated } from "../Stage";
-import { BG, MUSICBOX, TOY_IMG } from "../assets";
+import { BG, MUSICBOX, toyImageFor } from "../assets";
 import { TOY_LABEL, useGame } from "../store";
 import {
   Clock,
@@ -642,7 +642,8 @@ export function Ch5() {
   const s = useGame();
   const incomingPlan = useAdaptiveChapter(5);
   const plan = useRef(incomingPlan).current;
-  const toy = s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
+  const toy = s.favToyVisualSlot ?? s.favToyId ?? s.facts.firstToy ?? s.toyOrder[0];
+  const toyImage = toyImageFor(toy, s.favToyVisualSlot, s.favToyImage);
   const toyLabel = s.favToy ?? TOY_LABEL[toy];
   const [brush, setBrush] = useState(0); // 0 no brush, 1 holding, 2 done
   const [scrub, setScrub] = useState(0);
@@ -867,7 +868,7 @@ export function Ch5() {
             style={{ left: `${hidingSpot.clueX}%`, top: `${hidingSpot.clueY}%`, width: "18%" }}
           >
             <img
-              src={TOY_IMG[toy]}
+              src={toyImage}
               alt=""
               className="w-full opacity-80"
               style={{ filter: "saturate(.4) brightness(1.2) drop-shadow(0 0 8px var(--glow))" }}

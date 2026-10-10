@@ -16,4 +16,12 @@ describe("offline toy interpretation", () => {
     expect(result.displayToy).toBe("your favourite toy");
     expect(result.monsterLine).not.toContain("reveal");
   });
+
+  it("keeps a Formula One car distinct from the wooden train", () => {
+    expect(offlineToyInterpretation("un F1")).toMatchObject({
+      category: "other",
+      displayToy: "Formula One car",
+      customVisual: true,
+    });
+  });
 });

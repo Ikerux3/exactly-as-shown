@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, illuminated } from "../Stage";
-import { BG, TOY_IMG, PROP } from "../assets";
+import { BG, PROP, toyImageFor } from "../assets";
 import { TOY_LABEL, useGame, type ToyId } from "../store";
 import { Cupboard, Cushion, Cutlery, Dresser, Glass, Plate, ToyBox } from "../Props";
 import { useSceneIntro } from "../kit";
@@ -14,6 +14,8 @@ export function Ch1() {
   const s = useGame();
   const [r1, r2, r3, r4, r5] = s.toyOrder;
   const got = (t: ToyId) => s.ch1.includes(t);
+  const labelFor = (t: ToyId) => (t === s.favToyVisualSlot && s.favToy ? s.favToy : TOY_LABEL[t]);
+  const imageFor = (t: ToyId) => toyImageFor(t, s.favToyVisualSlot, s.favToyImage);
   const [cushionMoved, setCushion] = useState(false);
   const [drawerOpen, setDrawer] = useState(false);
   const [rugLifted, setRug] = useState(false);
@@ -33,7 +35,7 @@ export function Ch1() {
     window.setTimeout(() => {
       const st = useGame.getState();
       if (!st.facts.firstToy) st.fact({ firstToy: t });
-      st.observeChoice(TOY_LABEL[t]);
+      st.observeChoice(t === st.favToyVisualSlot && st.favToy ? st.favToy : TOY_LABEL[t]);
       st.set({ ch1: [...st.ch1, t] });
       setFlying(null);
       sfx("chime");
@@ -94,7 +96,15 @@ export function Ch1() {
             { speaker: "guest", text: "You tidy so nicely." },
             {
               speaker: "guest",
-              text: `You picked up the ${TOY_LABEL[useGame.getState().facts.firstToy ?? r1]} first. I'll remember that.`,
+              text: (() => {
+                const state = useGame.getState();
+                const first = state.facts.firstToy ?? r1;
+                const label =
+                  first === state.favToyVisualSlot && state.favToy
+                    ? state.favToy
+                    : TOY_LABEL[first];
+                return `You picked up the ${label} first. I'll remember that.`;
+              })(),
             },
             {
               speaker: "narrator",
@@ -139,12 +149,12 @@ export function Ch1() {
     got(t) ? null : (
       <button
         onClick={() => collect(t)}
-        aria-label={`Pick up the ${TOY_LABEL[t]}`}
+        aria-label={`Pick up the ${labelFor(t)}`}
         className={`absolute z-20 transition-all duration-500 ease-out ${extra ?? ""}`}
         style={flyStyle(t, x, y, w)}
       >
         <img
-          src={TOY_IMG[t]}
+          src={imageFor(t)}
           alt=""
           className="w-full drop-shadow-[0_6px_6px_oklch(0.1_0.02_50/.7)]"
           draggable={false}
@@ -258,7 +268,7 @@ export function Ch1() {
           }
         >
           <img
-            src={TOY_IMG[r4]}
+            src={imageFor(r4)}
             alt=""
             className="w-full"
             style={{ filter: frozen ? "drop-shadow(0 0 8px var(--glow))" : "brightness(.8)" }}
