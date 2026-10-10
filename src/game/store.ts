@@ -73,7 +73,7 @@ function shuffle<T>(a: T[]): T[] {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [b[i], b[j]] = [b[j], b[i]];
+    [b[i], b[j]] = [b[j]!, b[i]!];
   }
   return b;
 }
@@ -82,7 +82,7 @@ const initial = (): Omit<State, "muted"> => ({
   screen: "title",
   name: "",
   favColor: "rose",
-  motherColor: (["plum", "navy", "mustard"] as MotherColor[])[Math.floor(Math.random() * 3)],
+  motherColor: (["plum", "navy", "mustard"] as MotherColor[])[Math.floor(Math.random() * 3)]!,
   favFood: undefined,
   toyOrder: shuffle<ToyId>(["bear", "rabbit", "train", "doll", "elephant"]) as State["toyOrder"],
   cordura: 0,

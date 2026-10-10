@@ -127,7 +127,7 @@ export function Cutlery({ color, big, style }: { color: string; big?: boolean | 
 }
 
 export type Sym = "star" | "moon" | "heart" | "key" | "flower" | "eye";
-export function Symbol({ s, size = 48, className, color = "currentColor" }: { s: Sym; size?: number; className?: string; color?: string }) {
+export function Symbol({ s, size = 48, className, color = "currentColor" }: { s: Sym; size?: number; className?: string | undefined; color?: string | undefined }) {
   const p = {
     star: "M50 8 L61 38 L94 38 L67 58 L77 90 L50 70 L23 90 L33 58 L6 38 L39 38 Z",
     moon: "M62 10 A40 40 0 1 0 90 66 A32 32 0 1 1 62 10 Z",

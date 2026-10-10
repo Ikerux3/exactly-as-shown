@@ -10,7 +10,7 @@ import { chooseInterventions } from "../guest";
 /* ---------------- CHAPTER 3 — THE MUSIC BOX ---------------- */
 const SYMS: Sym[] = ["star", "moon", "heart", "key"];
 const LENS = [3, 4, 5, 7];
-const SYM_COLOR: Record<string, string> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
+const SYM_COLOR: Record<Sym, string> = { star: "var(--honey)", moon: "var(--turq)", heart: "var(--rose)", key: "var(--brass)" };
 
 export function Ch3() {
   const s = useGame();
@@ -27,7 +27,7 @@ export function Ch3() {
 
   useEffect(() => {
     if (round >= 4) return;
-    setSeq(Array.from({ length: LENS[round] }, () => SYMS[Math.floor(Math.random() * 4)]));
+    setSeq(Array.from({ length: LENS[round] }, () => SYMS[Math.floor(Math.random() * 4)]!));
     setInput([]);
   }, [round]);
 
@@ -37,7 +37,7 @@ export function Ch3() {
     let i = 0;
     const id = window.setInterval(() => {
       const idx = i % (seq.length + 2);
-      if (idx < seq.length) { setShow(idx); sfx("note", SYMS.indexOf(seq[idx])); } else setShow(-1);
+      if (idx < seq.length) { setShow(idx); sfx("note", SYMS.indexOf(seq[idx]!)); } else setShow(-1);
       i++;
     }, 850);
     return () => window.clearInterval(id);
