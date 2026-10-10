@@ -3,7 +3,7 @@ import { Stage, illuminated } from "../Stage";
 import { BG, MUSICBOX, TOY_IMG } from "../assets";
 import { TOY_LABEL, useGame } from "../store";
 import { Clock, GuestVoid, Key, Pajamas, PhotoFrame, Symbol, Toothbrush, TrinketBox, type Sym } from "../Props";
-import { ChapterCard, useSceneIntro } from "../kit";
+import { useSceneIntro } from "../kit";
 import { sfx, startMusic, stopMusic } from "../audio";
 import { chooseInterventions } from "../guest";
 import { useAdaptiveChapter } from "../ai/adapt";
@@ -89,7 +89,7 @@ export function Ch3() {
 
   return (
     <Stage
-      bg={BG.bgBedroom} bgPos="55% 50%" chapter={3}
+      bg={BG.bgBedroom} bgPos="55% 50%" chapter={3} chapterCard progress={`Song ${Math.min(round + 1, 4)}/4`}
       guest={{ x: 12, y: 20, h: 55, show: round >= 2 }}
       clues={show >= 0 && seq[show] && (
         <div key={`${round}-${show}`} className="glow-clue absolute left-[45%] top-[18%] -translate-x-1/2 animate-float-up">
@@ -97,7 +97,6 @@ export function Ch3() {
         </div>
       )}
     >
-      <ChapterCard n={3} title="The Music Box" />
       <div className="paper absolute left-[6%] top-[24%] max-w-[34%] rotate-[-4deg] px-2 py-1 font-hand text-[11px] leading-tight">
         for {s.favToy ?? "your toy"}<br />after {s.favFood ?? "dinner"}
       </div>
@@ -129,9 +128,9 @@ export function Ch3() {
 /* ---------------- CHAPTER 4 — MOTHER'S ROOM ---------------- */
 const PANEL: Sym[] = ["flower", "star", "moon", "heart", "eye", "key"];
 const PUZZLES: Record<"garden" | "keepsake" | "night", { answer: Sym[]; clue: string[]; positions: Array<[number, number]> }> = {
-  garden: { answer: ["flower", "moon", "eye"], clue: ["what blooms", "what sleeps in the sky", "what is always watching"], positions: [[19, 18], [22, 58], [55, 16]] },
-  keepsake: { answer: ["heart", "key", "star"], clue: ["what you keep", "what opens", "what guides you home"], positions: [[19, 18], [22, 58], [55, 16]] },
-  night: { answer: ["moon", "eye", "key"], clue: ["what follows night", "what watches", "what lets you leave"], positions: [[19, 18], [22, 58], [55, 16]] },
+  garden: { answer: ["flower", "moon", "eye"], clue: ["what blooms", "what sleeps in the sky", "what is always watching"], positions: [[19, 11], [22, 58], [55, 16]] },
+  keepsake: { answer: ["heart", "key", "star"], clue: ["what you keep", "what opens", "what guides you home"], positions: [[19, 11], [22, 58], [55, 16]] },
+  night: { answer: ["moon", "eye", "key"], clue: ["what follows night", "what watches", "what lets you leave"], positions: [[19, 11], [22, 58], [55, 16]] },
 };
 
 export function Ch4() {
@@ -190,7 +189,8 @@ export function Ch4() {
 
   return (
     <Stage
-      bg={BG.bgMother} bgPos="75% 50%" chapter={4}
+      bg={BG.bgMother} bgPos="75% 50%" chapter={4} chapterCard
+      progress={hasKey ? "You have the key" : solved ? "The drawer is open" : `Lock ${input.length}/3`}
       guest={{ x: 88, y: 14, h: 62, show: true }}
       clues={!solved && (
         <>
@@ -213,12 +213,11 @@ export function Ch4() {
         </>
       }
     >
-      <ChapterCard n={4} title="Mother's Room" />
       {/* wardrobe opening */}
       <div className="pointer-events-none absolute right-0 top-[17%] h-[78%] bg-void transition-all duration-[3000ms]" style={{ width: wardrobe === 0 ? "3%" : wardrobe === 1 ? "9%" : "14%", opacity: 0.92, filter: "blur(2px)" }} />
       {wardrobe === 2 && <GuestVoid style={{ right: "-2%", top: "18%", height: "70%" }} intensity={0.9} />}
 
-      <button className="absolute left-[18%] top-[16%] w-[14%]" aria-label="The photograph" onClick={() => s.say({ speaker: "narrator", text: "You and Mommy. Someone is standing behind you in the picture. You don't remember them.", ms: 3500 })}>
+      <button className="absolute left-[18%] top-[9%] w-[14%]" aria-label="The photograph" onClick={() => s.say({ speaker: "narrator", text: "You and Mommy. Someone is standing behind you in the picture. You don't remember them.", ms: 3500 })}>
         <PhotoFrame wrong style={{ position: "static", width: "100%" }} />
       </button>
       <button className="absolute left-[54%] top-[14%] w-[13%]" aria-label="The clock" onClick={() => s.say({ speaker: "narrator", text: "The clock ticks. It is not counting forwards.", ms: 2600 })}>
@@ -240,8 +239,8 @@ export function Ch4() {
       </div>
 
       {!solved && (
-        <div className="absolute bottom-[3%] left-[4%] right-[22%] paper p-2">
-          <p className="mb-1 text-center text-[11px] opacity-70">A little lock under the footboard: {input.length}/3</p>
+        <div className="absolute bottom-[3%] left-[4%] right-[4%] paper px-3 py-2.5">
+          <p className="mb-1.5 text-center text-xs opacity-70">A little lock under the footboard</p>
           <div className="grid grid-cols-6 gap-1">
             {PANEL.map((p) => (
               <button key={p} onClick={() => press(p)} disabled={!s.lightsOn} aria-label={p} className="grid aspect-square place-items-center rounded-md bg-paper-deep disabled:opacity-40">
@@ -292,6 +291,14 @@ export function Ch5() {
     useGame.getState().say({ speaker: "guest", text: plan.guestLine });
   }, [plan]);
 
+  // Mommy's list keeps track of what's still left before bed.
+  const todo = [brush < 2 && "teeth", !pj && "pyjamas", !found && toyLabel].filter((t): t is string => !!t);
+  useEffect(() => {
+    if (found) return;
+    s.set({ objective: `Get ready for bed. Still to do: ${todo.join(", ")}.` });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todo.join()]);
+
   // The house turns the light off on its own after the first two tasks.
   useEffect(() => {
     if (brush < 2 || !pj || found) return;
@@ -299,7 +306,7 @@ export function Ch5() {
     const probability = plan.blackoutPressure === "merciful" ? 0.18 : plan.blackoutPressure === "relentless" ? 0.58 : 0.35;
     const id = window.setInterval(() => {
       const st = useGame.getState();
-      if (st.lightsOn && st.interactive && Math.random() < probability) { sfx("switch"); st.set({ lightsOn: false, flicker: Date.now() }); }
+      if (st.lightsOn && st.interactive && !st.paused && !st.scare && Math.random() < probability) { sfx("switch"); st.set({ lightsOn: false, flicker: Date.now() }); }
     }, 5000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -342,7 +349,7 @@ export function Ch5() {
 
   return (
     <Stage
-      bg={BG.bgBathroom} bgPos="50% 50%" chapter={5}
+      bg={BG.bgBathroom} bgPos="50% 50%" chapter={5} chapterCard progress={`Ready ${3 - todo.length}/3`}
       clues={brush === 2 && pj && !found && (
         <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${hidingSpot.clueX}%`, top: `${hidingSpot.clueY}%`, width: "18%" }}>
           <img src={TOY_IMG[toy]} alt="" className="w-full opacity-80" style={{ filter: "saturate(.4) brightness(1.2) drop-shadow(0 0 8px var(--glow))" }} />
@@ -350,7 +357,6 @@ export function Ch5() {
         </div>
       )}
     >
-      <ChapterCard n={5} title="Bedtime" />
       {/* toothbrush cup */}
       {brush === 0 && (
         <button aria-label="Take your toothbrush" className="absolute left-[41%] top-[40%] h-[10%] w-[12%]" onClick={() => { setBrush(1); sfx("tap"); s.say({ speaker: "narrator", text: "Scrub back and forth over the sink.", ms: 2200 }); }} />
@@ -370,11 +376,6 @@ export function Ch5() {
       {(Object.entries(HIDE_SPOTS) as Array<[keyof typeof HIDE_SPOTS, (typeof HIDE_SPOTS)[keyof typeof HIDE_SPOTS]]>).map(([id, spot]) => (
         <button key={id} aria-label={spot.label} className="absolute" style={{ left: `${spot.x}%`, top: `${spot.y}%`, width: `${spot.w}%`, height: `${spot.h}%` }} onClick={() => search(id)} disabled={brush < 2 || !pj} />
       ))}
-      <div className="absolute left-[5%] top-[66%] space-y-1 font-hand text-sm text-paper drop-shadow">
-        <p className={brush === 2 ? "line-through opacity-60" : ""}>☐ teeth</p>
-        <p className={pj ? "line-through opacity-60" : ""}>☐ pyjamas</p>
-        <p className={found ? "line-through opacity-60" : ""}>☐ {toyLabel}</p>
-      </div>
     </Stage>
   );
 }

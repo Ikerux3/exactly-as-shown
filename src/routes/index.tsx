@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useGame } from "@/game/store";
+import { restoreSettings, useGame } from "@/game/store";
+import { useSubtitles } from "@/game/Shell";
+import { preloadArt } from "@/game/assets";
 import { Ending, Final, Intro, Title } from "@/game/scenes/Opening";
 import { Ch1, Ch2Dining, Ch2Kitchen } from "@/game/scenes/Ch1Ch2";
 import { Ch3, Ch4, Ch5 } from "@/game/scenes/Ch3Ch5";
@@ -23,7 +25,10 @@ export const Route = createFileRoute("/")({
 function Game() {
   const screen = useGame((s) => s.screen);
   const phaseKey = useGame((s) => s.phaseKey);
+  useSubtitles();
   useEffect(() => {
+    restoreSettings();
+    preloadArt();
     const prevent = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
     document.addEventListener("touchmove", prevent, { passive: false });
     return () => document.removeEventListener("touchmove", prevent);
@@ -31,7 +36,7 @@ function Game() {
   const holding = useChapterJump();
   const k = `${screen}-${phaseKey}`;
   return (
-    <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void">
+    <main className="grid h-[100dvh] w-screen place-items-center overflow-hidden bg-void pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {screen === "title" && <Title />}
       {screen === "intro" && <Intro />}
       {screen === "ch1" && <Ch1 key={k} />}

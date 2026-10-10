@@ -176,9 +176,9 @@ export function LightSwitch({ on, onToggle, disabled }: { on: boolean; onToggle:
       disabled={disabled}
       aria-label={on ? "Turn the lights off" : "Turn the lights on"}
       aria-pressed={on}
-      className="absolute bottom-[3%] right-[3%] z-40 h-[11%] aspect-[3/4] disabled:opacity-40"
+      className="relative h-full shrink-0 aspect-[3/4] transition-[transform,opacity] active:scale-95 disabled:opacity-40"
     >
-      <svg viewBox="0 0 60 80" className="h-full w-full drop-shadow-lg">
+      <svg viewBox="0 0 60 80" className="h-full w-full drop-shadow-lg" aria-hidden>
         <rect x="4" y="4" width="52" height="72" rx="8" fill="var(--paper-deep)" stroke="var(--brass)" strokeWidth="3" />
         <circle cx="30" cy="12" r="2.5" fill="var(--brass)" />
         <circle cx="30" cy="68" r="2.5" fill="var(--brass)" />
