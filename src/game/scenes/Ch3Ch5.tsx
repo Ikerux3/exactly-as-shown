@@ -27,7 +27,7 @@ export function Ch3() {
 
   useEffect(() => {
     if (round >= 4) return;
-    setSeq(Array.from({ length: LENS[round] }, () => SYMS[Math.floor(Math.random() * 4)]!));
+    setSeq(Array.from({ length: LENS[round]! }, () => SYMS[Math.floor(Math.random() * 4)]!));
     setInput([]);
   }, [round]);
 
