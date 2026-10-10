@@ -135,7 +135,7 @@ function poseStyle(p: Pose | undefined): CSSProperties {
 }
 
 /** The front door, closed: a cut-out of the same panelled door that's painted open in the hallway photo. */
-function ClosedDoor() {
+export function ClosedDoor() {
   const frame = "oklch(0.2 0.03 50)";
   return (
     <svg
