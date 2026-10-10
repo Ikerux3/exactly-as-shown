@@ -311,7 +311,7 @@ export const useGame = create<State & Actions>((set, get) => ({
     const prev = loadMemory();
     const base = initial();
     clearSave();
-    set({ ...base, muted, facts: { ...base.facts, previousRuns: prev.runs } });
+    set({ ...base, muted, facts: { ...base.facts, previousRuns: prev.forgotten ? 0 : prev.runs } });
   },
   continueRun: () => {
     const save = loadSave();
@@ -484,6 +484,8 @@ export type Memory = {
   lastName?: string;
   lastToy?: ToyId;
   lastEnding?: "composed" | "crying";
+  /** When true the house keeps the data but acts like it never met you — toggleable. */
+  forgotten?: boolean;
 };
 export function loadMemory(): Memory {
   if (typeof window === "undefined") return { runs: 0 };
@@ -516,6 +518,11 @@ export function forgetMemory() {
   } catch {
     /* ignore */
   }
+}
+/** Toggle whether the house "knows" you, without losing the stored memory. */
+export function setMemoryForgotten(forgotten: boolean) {
+  const m = loadMemory();
+  saveMemory({ ...m, forgotten });
 }
 
 export function sanitizeName(raw: string): string {
