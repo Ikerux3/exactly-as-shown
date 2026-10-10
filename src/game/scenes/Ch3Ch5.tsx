@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { OnWall, Stage, illuminated } from "../Stage";
 import { pajamaWall } from "../roomLayout";
-import { BG, MUSICBOX, toyImageFor } from "../assets";
+import { BG, CUT, MUSICBOX, PROP3, SCARE, toyImageFor } from "../assets";
+import { JumpScare } from "../fx";
 import { TOY_LABEL, useGame } from "../store";
 import {
   Clock,
@@ -347,6 +348,27 @@ export function Ch4() {
   const hintRecorded = useRef(false);
   const inspected = useRef(new Set<string>());
   const nm = s.name || "sweetheart";
+  const [leaving, setLeaving] = useState<null | "door" | "wardrobe">(null);
+
+  const exitBy = (way: "door" | "wardrobe") => {
+    if (!s.interactive || leaving) return;
+    if (!hasKey) {
+      sfx(way === "door" ? "door" : "creak");
+      s.say({ speaker: "narrator", text: way === "door" ? "Locked. The key must be somewhere in this room." : "Something inside the wardrobe is breathing. Slowly.", ms: 2600 });
+      return;
+    }
+    setLeaving(way);
+    s.set({ interactive: false, objective: "" });
+    if (way === "door") {
+      sfx("door");
+      s.say({ speaker: "narrator", text: "The key turns. You slip out without a sound.", ms: 2400 });
+      window.setTimeout(() => useGame.getState().go("ch5"), 2600);
+    } else {
+      sfx("creak");
+      s.addCordura(25);
+      s.mistake();
+    }
+  };
 
   useEffect(() => setInput([]), [plan.puzzleVariant]);
   useEffect(() => {
@@ -499,6 +521,18 @@ export function Ch4() {
       }
       above={
         <>
+          {leaving === "wardrobe" && (
+            <JumpScare
+              img={CUT.guest}
+              ms={1500}
+              onDone={() => {
+                const st = useGame.getState();
+                st.set({ flicker: Date.now() });
+                st.say({ speaker: "guest", text: "You came inside. Good. I'll walk you to the bath.", ms: 2600 });
+                window.setTimeout(() => useGame.getState().go("ch5"), 2800);
+              }}
+            />
+          )}
           {note && (
             <button
               onClick={() => setNote(false)}
@@ -655,17 +689,26 @@ export function Ch4() {
           </div>
         </div>
       )}
-      {hasKey && (
-        <button
-          className="stitch-btn honey absolute bottom-[4%] left-[6%] z-20 animate-float-up"
-          onClick={() => {
-            sfx("open");
-            s.go("ch5");
-          }}
-        >
-          Unlock the door and run
-        </button>
+      {hasKey && !leaving && (
+        <p className="pointer-events-none absolute bottom-[4%] left-[6%] right-[6%] z-20 animate-float-up paper px-3 py-2 text-center font-hand text-sm">
+          Turn around. The door… or the wardrobe.
+        </p>
       )}
+      </OnWall>
+      {/* Two ways out, both on the back wall: the door is safe, the wardrobe is not. */}
+      <OnWall n={2}>
+        <button
+          aria-label="The bedroom door"
+          onClick={() => exitBy("door")}
+          className={`absolute touch-manipulation rounded-sm ${hasKey ? "ring-2 ring-honey/60" : ""}`}
+          style={{ left: "7%", top: "25%", width: "32%", height: "53%" }}
+        />
+        <button
+          aria-label="The wardrobe"
+          onClick={() => exitBy("wardrobe")}
+          className="absolute touch-manipulation rounded-sm"
+          style={{ left: "41%", top: "34%", width: "52%", height: "46%" }}
+        />
       </OnWall>
     </Stage>
   );
