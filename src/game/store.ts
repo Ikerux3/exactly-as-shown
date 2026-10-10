@@ -311,7 +311,7 @@ export const useGame = create<State & Actions>((set, get) => ({
     const prev = loadMemory();
     const base = initial();
     clearSave();
-    set({ ...base, muted, facts: { ...base.facts, previousRuns: prev.runs } });
+    set({ ...base, muted, facts: { ...base.facts, previousRuns: prev.forgotten ? 0 : prev.runs } });
   },
   continueRun: () => {
     const save = loadSave();
