@@ -272,11 +272,11 @@ export function Ch1() {
           sfx("open");
         }}
         className="absolute"
-        style={{ left: "64%", top: "44%", width: "26%" }}
+        style={{ left: "50%", top: "50%", width: "42%" }}
       >
         <Dresser open={drawerOpen} style={{ position: "static", width: "100%" }} />
       </button>
-      {drawerOpen && <Toy t={r3} x={77} y={58} w={13} />}
+      {drawerOpen && <Toy t={r3} x={71} y={67} w={14} />}
       </OnWall>
 
       <OnWall n={3}>
